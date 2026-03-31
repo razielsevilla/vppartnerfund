@@ -1,0 +1,71 @@
+# Development Phases Plan
+
+This document defines the phase-by-phase implementation plan for the DEVCON Laguna internal partnership dashboard.
+
+## Phase 1 - Project Foundation and Environment Setup
+| Task ID | Name | Description | Criteria |
+|---|---|---|---|
+| P1-T01 | Repository Bootstrap | Initialize project structure, package setup, linting, formatting, and environment variable conventions. | - [ ] Frontend and backend project folders are initialized.<br>- [ ] Linting and formatting are configured and runnable.<br>- [ ] `.env.example` is created with required variables.<br>- [ ] Basic README startup steps are documented. |
+| P1-T02 | Core Architecture Scaffold | Create domain-based folder structure for frontend modules and backend services. | - [ ] Feature-based folders are created (auth, partners, workflow, tasks, vault, settings).<br>- [ ] Shared utilities and config directories are defined.<br>- [ ] Naming conventions are documented. |
+| P1-T03 | Dev Tooling and Scripts | Configure scripts for development, build, test, and lint workflows. | - [ ] `dev`, `build`, `lint`, and `test` scripts are working.<br>- [ ] CI-ready command set exists.<br>- [ ] Fail-fast behavior on lint/test errors is verified. |
+
+## Phase 2 - Authentication and Access Control (Internal-Only)
+| Task ID | Name | Description | Criteria |
+|---|---|---|---|
+| P2-T01 | Login-Only Flow | Implement login route and prevent public registration. | - [ ] Login page is functional.<br>- [ ] No sign-up route exists in UI or API.<br>- [ ] Unauthorized users are redirected to login. |
+| P2-T02 | Preset User Provisioning | Implement seeded or admin-provisioned user records for internal team accounts. | - [ ] Admin and Team Member accounts can be provisioned manually.<br>- [ ] Default seeded users work in non-production only.<br>- [ ] Production provisioning path is documented. |
+| P2-T03 | Session and Role Enforcement | Add secure session handling and role-based route protection. | - [ ] Sessions use secure, HTTP-only cookies (or equivalent secure token flow).<br>- [ ] Role middleware protects restricted routes.<br>- [ ] Logout invalidates active session reliably. |
+| P2-T04 | Login Hardening | Add security controls around authentication. | - [ ] Passwords are hashed and never stored in plaintext.<br>- [ ] Login attempts are rate-limited.<br>- [ ] Failed login and auth events are logged. |
+
+## Phase 3 - Partner CRM Core
+| Task ID | Name | Description | Criteria |
+|---|---|---|---|
+| P3-T01 | Partner Data Model | Define and migrate core partner entities and relationships. | - [ ] Partner schema includes required fields from features spec.<br>- [ ] Contact and relationship tables are linked properly.<br>- [ ] Migrations run successfully in clean environments. |
+| P3-T02 | Partner CRUD API | Implement API endpoints for partner create/read/update/archive operations. | - [ ] CRUD endpoints are available and validated.<br>- [ ] Invalid payloads return structured errors.<br>- [ ] Archive behavior is implemented and test-covered. |
+| P3-T03 | Registry UI and Filters | Build partner registry table with search and filters. | - [ ] Users can search by partner name/keyword.<br>- [ ] Filters for type, industry, status, and impact work correctly.<br>- [ ] Empty, loading, and error states are implemented. |
+| P3-T04 | Duplicate Detection Guard | Add duplicate detection checks during partner creation. | - [ ] Similar-name duplicates trigger warning or block flow.<br>- [ ] User can resolve or confirm intentional duplicate via explicit action.<br>- [ ] Duplicate logic is tested with sample edge cases. |
+
+## Phase 4 - Workflow Tracker and Qualification Mapping
+| Task ID | Name | Description | Criteria |
+|---|---|---|---|
+| P4-T01 | Workflow Phase Engine | Implement standardized workflow phases and transition rules. | - [ ] Workflow phases are centrally defined and configurable.<br>- [ ] Transition validation enforces required fields.<br>- [ ] Invalid transitions are blocked with clear reasons. |
+| P4-T02 | Timeline and Audit Trail | Record stage changes and user actions in audit logs. | - [ ] Every status change captures actor, timestamp, and previous/new value.<br>- [ ] Timeline is visible in partner detail view.<br>- [ ] Audit records are immutable in standard UI. |
+| P4-T03 | Qualification Mapping UI | Implement duration, impact, function, and value proposition mapping. | - [ ] Multi-select value proposition mapping works.<br>- [ ] Potential and confirmed mapping are separated.<br>- [ ] Data persists correctly and rehydrates on reload. |
+| P4-T04 | Overdue and Stall Detection | Add pipeline health checks for stagnation and overdue follow-ups. | - [ ] System flags overdue next actions.<br>- [ ] Stalled stage thresholds are configurable.<br>- [ ] Dashboard receives stall metrics from backend. |
+
+## Phase 5 - Task Management and Notes
+| Task ID | Name | Description | Criteria |
+|---|---|---|---|
+| P5-T01 | Task Entity and API | Implement task models and endpoints linked to partner and workflow stage. | - [ ] Task schema includes owner, due date, priority, and status.<br>- [ ] Tasks are linked to partner records.<br>- [ ] CRUD endpoints are validated and tested. |
+| P5-T02 | Task Queue Views | Build personal/team task queues with status filters. | - [ ] Users can filter tasks by owner, due date, and state.<br>- [ ] Overdue tasks are visually highlighted.<br>- [ ] Task completion updates dashboard counters. |
+| P5-T03 | Discovery Notes Module | Implement guided notes and freeform notes capture. | - [ ] Guided question templates are available during discovery sessions.<br>- [ ] Freeform notes can be captured and edited.<br>- [ ] Notes appear in chronological activity timeline. |
+| P5-T04 | Reminder Workflow | Add due-date reminders for critical tasks. | - [ ] Reminder triggers are defined and tested.<br>- [ ] Users see upcoming and overdue reminder indicators.<br>- [ ] Reminder events are logged for auditability. |
+
+## Phase 6 - Artifact Vault and Document Controls
+| Task ID | Name | Description | Criteria |
+|---|---|---|---|
+| P6-T01 | Artifact Storage Service | Implement upload and retrieval service for partner artifacts. | - [ ] Files upload with type/size validation.<br>- [ ] Storage path abstraction supports local and future cloud backends.<br>- [ ] Retrieval permissions follow role access policy. |
+| P6-T02 | Artifact Metadata and Versioning | Track artifact state and version history. | - [ ] Artifact records include type, status, version, owner, and timestamps.<br>- [ ] New upload can create new version for same document type.<br>- [ ] Version history is visible in UI. |
+| P6-T03 | Workflow Guardrails by Artifact State | Enforce stage progression rules based on required documents. | - [ ] Missing required artifacts block stage progression.<br>- [ ] UI clearly explains blocking conditions.<br>- [ ] Guardrail logic is covered by integration tests. |
+| P6-T04 | Document Vault UI | Build partner-level document vault experience. | - [ ] Users can browse, filter, and open artifacts per partner.<br>- [ ] Artifact status labels are shown consistently.<br>- [ ] Upload and replacement flows are user-friendly and validated. |
+
+## Phase 7 - Dashboard Analytics and Reporting
+| Task ID | Name | Description | Criteria |
+|---|---|---|---|
+| P7-T01 | KPI Aggregation Layer | Build backend aggregation endpoints for executive dashboard metrics. | - [ ] KPI endpoints return current, accurate metrics.<br>- [ ] Metrics include stage counts, conversion, and overdue actions.<br>- [ ] Endpoint performance meets acceptable response targets. |
+| P7-T02 | Executive Dashboard UI | Implement dashboard widgets and visual summaries. | - [ ] KPI cards match agreed definitions from features spec.<br>- [ ] Drill-down links navigate to filtered operational views.<br>- [ ] Dashboard handles empty and partial-data states gracefully. |
+| P7-T03 | Strategic Coverage Insights | Add views for value proposition demand and coverage gaps. | - [ ] Demand distribution is visible by category.<br>- [ ] Coverage gap indicators are actionable.<br>- [ ] Insights reflect live underlying data. |
+| P7-T04 | Snapshot Reporting | Enable weekly and monthly operational snapshots. | - [ ] Snapshot generation can be triggered reliably.<br>- [ ] Snapshot outputs are consistent and timestamped.<br>- [ ] Historical snapshots can be reviewed later. |
+
+## Phase 8 - Import, Settings, Hardening, and Release
+| Task ID | Name | Description | Criteria |
+|---|---|---|---|
+| P8-T01 | Spreadsheet Import Pipeline | Build import flow from Google Sheet-style data into system schema. | - [ ] Column mapping configuration is available.<br>- [ ] Dry-run validates data without writing.<br>- [ ] Import summary reports created, updated, skipped, and failed records. |
+| P8-T02 | Settings and Master Data | Implement controlled configuration management for core taxonomies. | - [ ] Admin can update workflow phases and category masters safely.<br>- [ ] Invalid config edits are blocked.<br>- [ ] Config changes are audited. |
+| P8-T03 | Security and Reliability Hardening | Apply final security, validation, monitoring, and backup controls. | - [ ] Critical endpoints enforce authorization checks.<br>- [ ] Backup and restore process is documented and tested.<br>- [ ] Error monitoring and structured logging are operational. |
+| P8-T04 | UAT and Internal Go-Live | Execute user acceptance testing and prepare internal release. | - [ ] UAT scenarios are completed with sign-off.<br>- [ ] Critical defects are resolved or risk-accepted.<br>- [ ] Team onboarding guide is available for internal users. |
+
+## Global Exit Criteria
+| Task ID | Name | Description | Criteria |
+|---|---|---|---|
+| GX-T01 | Production Readiness Gate | Final readiness gate before internal production use. | - [ ] Authentication is login-only with preset accounts.<br>- [ ] Core modules (CRM, workflow, tasks, vault, dashboard) are stable.<br>- [ ] Data quality validations are active.<br>- [ ] Backup, restore, and monitoring are verified.<br>- [ ] Internal owner sign-off is complete. |
