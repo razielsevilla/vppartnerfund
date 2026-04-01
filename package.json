@@ -1,0 +1,21 @@
+{
+  "name": "vppartnerfund",
+  "version": "1.0.0",
+  "description": "DEVCON Laguna internal dashboard monorepo",
+  "private": true,
+  "scripts": {
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint && npm --prefix backend run lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm --prefix frontend run test --if-present && npm --prefix backend run test --if-present"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "prettier": "^3.8.1"
+  }
+}
