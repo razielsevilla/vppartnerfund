@@ -120,6 +120,54 @@ function defaultArtifactRequirements() {
   ];
 }
 
+function defaultMasterTaxonomyRows(nowIso) {
+  const actorId = "seed-admin-user";
+  const createRows = (taxonomyKey, values) =>
+    values.map((entry, index) => ({
+      id: `taxonomy_${taxonomyKey}_${entry.value}`,
+      taxonomy_key: taxonomyKey,
+      value: entry.value,
+      label: entry.label,
+      sort_order: index + 1,
+      is_active: true,
+      updated_by: actorId,
+      created_at: nowIso,
+      updated_at: nowIso,
+    }));
+
+  return [
+    ...createRows("organization_type", [
+      { value: "corporate", label: "Corporate" },
+      { value: "startup", label: "Startup" },
+      { value: "ngo", label: "NGO" },
+      { value: "government", label: "Government" },
+      { value: "academe", label: "Academe" },
+    ]),
+    ...createRows("industry_niche", [
+      { value: "technology", label: "Technology" },
+      { value: "education", label: "Education" },
+      { value: "health", label: "Health" },
+      { value: "environment", label: "Environment" },
+      { value: "logistics", label: "Logistics" },
+    ]),
+    ...createRows("impact_tier", [
+      { value: "standard", label: "Standard" },
+      { value: "major", label: "Major" },
+      { value: "lead", label: "Lead" },
+    ]),
+    ...createRows("value_proposition", [
+      { value: "brand_visibility", label: "Brand Visibility" },
+      { value: "developer_community_access", label: "Developer Community Access" },
+      { value: "talent_pipeline", label: "Talent Pipeline" },
+      { value: "product_adoption", label: "Product Adoption" },
+      { value: "research_collaboration", label: "Research Collaboration" },
+      { value: "event_activation", label: "Event Activation" },
+      { value: "csr_impact", label: "CSR Impact" },
+      { value: "market_expansion", label: "Market Expansion" },
+    ]),
+  ];
+}
+
 let db = null;
 
 async function initializeDatabase() {
@@ -141,6 +189,7 @@ async function initializeDatabase() {
       await seedWorkflowTransitionRulesIfNeeded();
       await seedWorkflowHealthConfigIfNeeded();
       await seedWorkflowArtifactRequirementsIfNeeded();
+      await seedMasterTaxonomyIfNeeded();
 
       console.log('Database initialized successfully');
     }
@@ -273,6 +322,20 @@ async function seedWorkflowArtifactRequirementsIfNeeded() {
       })),
     );
     console.log('Workflow artifact requirements seeded');
+  }
+}
+
+async function seedMasterTaxonomyIfNeeded() {
+  const tableExists = await db.schema.hasTable("master_taxonomy_items");
+  if (!tableExists) {
+    return;
+  }
+
+  const taxonomyCount = await db("master_taxonomy_items").count("* as count").first();
+  if (taxonomyCount.count === 0) {
+    const nowIso = new Date().toISOString();
+    await db("master_taxonomy_items").insert(defaultMasterTaxonomyRows(nowIso));
+    console.log("Master taxonomy seeded");
   }
 }
 

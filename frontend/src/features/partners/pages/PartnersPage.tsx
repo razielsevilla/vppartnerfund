@@ -451,6 +451,9 @@ export const PartnersPage = () => {
             <Link to="/tasks" className="link-button">
               Tasks
             </Link>
+            <Link to="/settings" className="link-button">
+              Settings
+            </Link>
           </nav>
           <span>{user?.displayName}</span>
           <button type="button" onClick={logout}>

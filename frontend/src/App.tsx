@@ -5,6 +5,7 @@ import { LoginPage } from "./features/auth/pages/LoginPage";
 import { ExecutiveDashboardPage } from "./features/dashboard/pages/ExecutiveDashboardPage";
 import { PartnerDetailPage } from "./features/partners/pages/PartnerDetailPage";
 import { PartnersPage } from "./features/partners/pages/PartnersPage";
+import { SettingsPage } from "./features/settings/pages/SettingsPage";
 import { TaskQueuePage } from "./features/tasks/pages/TaskQueuePage";
 import { ProtectedRoute } from "./shared/components/ProtectedRoute";
 
@@ -19,6 +20,7 @@ function App() {
             <Route path="/partners" element={<PartnersPage />} />
             <Route path="/partners/:partnerId" element={<PartnerDetailPage />} />
             <Route path="/tasks" element={<TaskQueuePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -27,6 +27,7 @@ test.after(async () => {
 
 test.beforeEach(async () => {
   const db = getDatabase();
+  await db("settings_audit_logs").del();
   await db("workflow_snapshots").del();
   await db("artifact_records").del();
   await db("discovery_notes").del();
@@ -223,6 +224,66 @@ test("workflow phases are centrally available through config endpoint", async ()
   assert.ok(response.body.phases.length > 0);
   assert.ok(Array.isArray(response.body.transitionRules));
   assert.ok(response.body.transitionRules.length > 0);
+});
+
+test("settings master data can be updated safely and logs audit entries", async () => {
+  const getResponse = await agent.get("/api/settings/master-data");
+  assert.equal(getResponse.status, 200);
+  assert.ok(Array.isArray(getResponse.body.workflowPhases));
+  assert.ok(Array.isArray(getResponse.body.taxonomies.value_proposition));
+
+  const phasesPayload = {
+    phases: getResponse.body.workflowPhases.map((phase) => ({
+      ...phase,
+      name: phase.code === "lead" ? "Lead Intake" : phase.name,
+    })),
+  };
+  const updatePhasesResponse = await agent.put("/api/settings/workflow-phases").send(phasesPayload);
+  assert.equal(updatePhasesResponse.status, 200);
+  assert.ok(
+    updatePhasesResponse.body.workflowPhases.some(
+      (phase) => phase.code === "lead" && phase.name === "Lead Intake",
+    ),
+  );
+
+  const taxonomyPayload = {
+    items: [
+      { value: "brand_visibility", label: "Brand Visibility", sortOrder: 1, isActive: true },
+      { value: "talent_pipeline", label: "Talent Pipeline", sortOrder: 2, isActive: true },
+      { value: "market_expansion", label: "Market Expansion", sortOrder: 3, isActive: false },
+    ],
+  };
+  const updateTaxonomyResponse = await agent
+    .put("/api/settings/taxonomies/value_proposition")
+    .send(taxonomyPayload);
+  assert.equal(updateTaxonomyResponse.status, 200);
+
+  const auditResponse = await agent.get("/api/settings/audit-log?limit=10");
+  assert.equal(auditResponse.status, 200);
+  assert.ok(Array.isArray(auditResponse.body.entries));
+  assert.ok(auditResponse.body.entries.some((entry) => entry.domain === "workflow_phases"));
+  assert.ok(auditResponse.body.entries.some((entry) => entry.domain === "taxonomy:value_proposition"));
+});
+
+test("invalid settings edits are blocked", async () => {
+  const getResponse = await agent.get("/api/settings/master-data");
+  assert.equal(getResponse.status, 200);
+
+  const invalidPhasePayload = {
+    phases: getResponse.body.workflowPhases.map((phase) => ({
+      ...phase,
+      isActive: false,
+    })),
+  };
+  const invalidPhaseResponse = await agent.put("/api/settings/workflow-phases").send(invalidPhasePayload);
+  assert.equal(invalidPhaseResponse.status, 400);
+  assert.equal(invalidPhaseResponse.body.error.code, "SETTINGS_ARCHIVED_PHASE_PROTECTED");
+
+  const invalidTaxonomyResponse = await agent.put("/api/settings/taxonomies/impact_tier").send({
+    items: [{ value: "major", label: "Major", sortOrder: 1, isActive: true }],
+  });
+  assert.equal(invalidTaxonomyResponse.status, 400);
+  assert.equal(invalidTaxonomyResponse.body.error.code, "SETTINGS_IMPACT_TIER_REQUIRED");
 });
 
 test("blocks invalid workflow transition with clear allowed targets", async () => {

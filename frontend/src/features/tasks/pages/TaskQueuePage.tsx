@@ -234,6 +234,9 @@ export const TaskQueuePage = () => {
             <Link to="/tasks" className="link-button link-button-active">
               Tasks
             </Link>
+            <Link to="/settings" className="link-button">
+              Settings
+            </Link>
           </nav>
           <span>{user?.displayName}</span>
           <button type="button" onClick={logout}>
