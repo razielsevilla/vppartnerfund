@@ -27,6 +27,7 @@ test.after(async () => {
 
 test.beforeEach(async () => {
   const db = getDatabase();
+  await db("artifact_records").del();
   await db("discovery_notes").del();
   await db("partners").del();
 });
@@ -197,6 +198,58 @@ test("enforces required fields for transition rules", async () => {
     .send({ toPhaseId: "phase_qualification", reason: "Fields now complete" });
   assert.equal(allowedToQualification.status, 200);
   assert.equal(allowedToQualification.body.partner.currentPhaseId, "phase_qualification");
+});
+
+test("blocks transition when required artifacts are missing and allows once uploaded", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Artifact Guardrail Partner",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createResponse.status, 201);
+
+  const partnerId = createResponse.body.partner.id;
+
+  const toProspecting = await agent
+    .post(`/api/partners/${partnerId}/transition`)
+    .send({ toPhaseId: "phase_prospecting" });
+  assert.equal(toProspecting.status, 200);
+
+  const updateResponse = await agent.put(`/api/partners/${partnerId}`).send({
+    lastContactDate: "2026-04-01",
+    nextActionStep: "Prepare qualification packet",
+  });
+  assert.equal(updateResponse.status, 200);
+
+  const toQualification = await agent
+    .post(`/api/partners/${partnerId}/transition`)
+    .send({ toPhaseId: "phase_qualification" });
+  assert.equal(toQualification.status, 200);
+
+  const blockedToProposal = await agent
+    .post(`/api/partners/${partnerId}/transition`)
+    .send({ toPhaseId: "phase_proposal" });
+  assert.equal(blockedToProposal.status, 400);
+  assert.equal(blockedToProposal.body.error.code, "WORKFLOW_ARTIFACT_REQUIREMENTS_NOT_MET");
+  assert.ok(Array.isArray(blockedToProposal.body.error.details[0].requiredArtifacts));
+  assert.equal(blockedToProposal.body.error.details[0].requiredArtifacts[0].documentType, "proposal");
+
+  const uploadResponse = await agent
+    .post(`/api/vault/partners/${partnerId}/artifacts`)
+    .field("documentType", "proposal")
+    .field("status", "active")
+    .attach("file", Buffer.from("proposal doc"), {
+      filename: "proposal.txt",
+      contentType: "text/plain",
+    });
+  assert.equal(uploadResponse.status, 201);
+
+  const allowedToProposal = await agent
+    .post(`/api/partners/${partnerId}/transition`)
+    .send({ toPhaseId: "phase_proposal", reason: "Proposal doc uploaded" });
+  assert.equal(allowedToProposal.status, 200);
+  assert.equal(allowedToProposal.body.partner.currentPhaseId, "phase_proposal");
 });
 
 test("blocks phase change through generic partner update endpoint", async () => {

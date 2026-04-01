@@ -24,6 +24,16 @@ function toRule(row) {
   };
 }
 
+function toArtifactRequirement(row) {
+  return {
+    id: row.id,
+    toPhaseId: row.to_phase_id,
+    documentType: row.document_type,
+    requiredStatus: row.required_status,
+    isActive: Boolean(row.is_active),
+  };
+}
+
 function daysBetween(fromIso, toIso) {
   const ms = new Date(toIso).getTime() - new Date(fromIso).getTime();
   return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
@@ -33,10 +43,12 @@ async function getWorkflowConfig() {
   const db = getDatabase();
   const phases = await db("workflow_phases").orderBy("sort_order", "asc");
   const rules = await db("workflow_transition_rules").where({ is_active: 1 });
+  const artifactRequirements = await db("workflow_artifact_requirements").where({ is_active: 1 });
 
   return {
     phases: phases.map(toPhase),
     transitionRules: rules.map(toRule),
+    artifactRequirements: artifactRequirements.map(toArtifactRequirement),
   };
 }
 
@@ -154,6 +166,47 @@ async function transitionPartnerPhase(partnerId, toPhaseId, actorId, reason) {
           },
         ],
       );
+    }
+
+    const artifactRequirements = await trx("workflow_artifact_requirements")
+      .where({ to_phase_id: toPhase.id, is_active: 1 })
+      .select("document_type", "required_status");
+
+    if (artifactRequirements.length > 0) {
+      const missingArtifacts = [];
+
+      for (const requirement of artifactRequirements) {
+        const artifact = await trx("artifact_records")
+          .where({
+            partner_id: partner.id,
+            document_type: requirement.document_type,
+            status: requirement.required_status,
+          })
+          .orderBy("version_number", "desc")
+          .first();
+
+        if (!artifact) {
+          missingArtifacts.push({
+            documentType: requirement.document_type,
+            requiredStatus: requirement.required_status,
+          });
+        }
+      }
+
+      if (missingArtifacts.length > 0) {
+        throw new PartnerServiceError(
+          "Transition blocked by missing required artifacts",
+          "WORKFLOW_ARTIFACT_REQUIREMENTS_NOT_MET",
+          400,
+          [
+            {
+              field: "artifacts",
+              message: "Upload required artifacts before transitioning to this phase",
+              requiredArtifacts: missingArtifacts,
+            },
+          ],
+        );
+      }
     }
 
     const nowIso = new Date().toISOString();

@@ -374,3 +374,88 @@ export const getWorkflowHealthMetricsRequest = async (): Promise<WorkflowHealthM
 
   return body as WorkflowHealthMetrics;
 };
+
+export type WorkflowPhase = {
+  id: string;
+  code: string;
+  name: string;
+  sortOrder: number;
+  isActive: boolean;
+};
+
+export type WorkflowConfig = {
+  phases: WorkflowPhase[];
+  transitionRules: Array<{
+    id: string;
+    fromPhaseId: string;
+    toPhaseId: string;
+    requiresLastContactDate: boolean;
+    requiresNextActionStep: boolean;
+    isActive: boolean;
+  }>;
+  artifactRequirements: Array<{
+    id: string;
+    toPhaseId: string;
+    documentType: string;
+    requiredStatus: string;
+    isActive: boolean;
+  }>;
+};
+
+export class WorkflowTransitionError extends Error {
+  code: string;
+  details: Array<Record<string, unknown>>;
+
+  constructor(message: string, code: string, details: Array<Record<string, unknown>>) {
+    super(message);
+    this.name = "WorkflowTransitionError";
+    this.code = code;
+    this.details = details;
+  }
+}
+
+export const getWorkflowConfigRequest = async (): Promise<WorkflowConfig> => {
+  const response = await fetch(`${API_URL}/workflow/config`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to load workflow config"));
+  }
+
+  return body as WorkflowConfig;
+};
+
+export const transitionPartnerPhaseRequest = async (
+  partnerId: string,
+  payload: { toPhaseId: string; reason?: string },
+): Promise<PartnerRecord> => {
+  const response = await fetch(`${API_URL}/partners/${partnerId}/transition`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const code =
+      body && typeof body === "object" && "error" in body
+        ? ((body.error as { code?: string }).code ?? "WORKFLOW_TRANSITION_FAILED")
+        : "WORKFLOW_TRANSITION_FAILED";
+    const details =
+      body && typeof body === "object" && "error" in body
+        ? ((body.error as { details?: Array<Record<string, unknown>> }).details ?? [])
+        : [];
+
+    throw new WorkflowTransitionError(
+      extractApiMessage(body, "Failed to transition partner phase"),
+      code,
+      details,
+    );
+  }
+
+  return (body as { partner: PartnerRecord }).partner;
+};

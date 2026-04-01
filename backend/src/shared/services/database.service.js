@@ -101,6 +101,25 @@ function defaultStageThresholds() {
   ];
 }
 
+function defaultArtifactRequirements() {
+  return [
+    {
+      id: 'requirement_qualification_to_proposal',
+      to_phase_id: 'phase_proposal',
+      document_type: 'proposal',
+      required_status: 'active',
+      is_active: true,
+    },
+    {
+      id: 'requirement_negotiation_to_won',
+      to_phase_id: 'phase_won',
+      document_type: 'contract',
+      required_status: 'active',
+      is_active: true,
+    },
+  ];
+}
+
 let db = null;
 
 async function initializeDatabase() {
@@ -121,6 +140,7 @@ async function initializeDatabase() {
       await seedWorkflowPhasesIfNeeded();
       await seedWorkflowTransitionRulesIfNeeded();
       await seedWorkflowHealthConfigIfNeeded();
+      await seedWorkflowArtifactRequirementsIfNeeded();
 
       console.log('Database initialized successfully');
     }
@@ -238,6 +258,21 @@ async function seedWorkflowHealthConfigIfNeeded() {
       defaultStageThresholds().map((row) => ({ ...row, updated_at: nowIso })),
     );
     console.log('Stage stall thresholds seeded');
+  }
+}
+
+async function seedWorkflowArtifactRequirementsIfNeeded() {
+  const requirementsCount = await db('workflow_artifact_requirements').count('* as count').first();
+  if (requirementsCount.count === 0) {
+    const nowIso = new Date().toISOString();
+    await db('workflow_artifact_requirements').insert(
+      defaultArtifactRequirements().map((row) => ({
+        ...row,
+        created_at: nowIso,
+        updated_at: nowIso,
+      })),
+    );
+    console.log('Workflow artifact requirements seeded');
   }
 }
 

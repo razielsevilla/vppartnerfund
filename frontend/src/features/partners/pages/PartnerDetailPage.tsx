@@ -13,8 +13,10 @@ import {
   getPartnerRequest,
   getPartnerQualificationRequest,
   getPartnerTimelineRequest,
+  getWorkflowConfigRequest,
   listDiscoveryNotesRequest,
   listDiscoveryNoteTemplatesRequest,
+  transitionPartnerPhaseRequest,
   updateDiscoveryNoteRequest,
   upsertPartnerQualificationRequest,
   type DiscoveryNoteGuidedAnswer,
@@ -23,6 +25,8 @@ import {
   type PartnerRecord,
   type QualificationProfile,
   type TimelineEntry,
+  type WorkflowPhase,
+  WorkflowTransitionError,
 } from "../services/partners-api";
 
 const VALUE_PROPOSITION_OPTIONS = [
@@ -71,6 +75,12 @@ export const PartnerDetailPage = () => {
   const [artifactFile, setArtifactFile] = useState<File | null>(null);
   const [artifactMessage, setArtifactMessage] = useState<string | null>(null);
   const [isUploadingArtifact, setIsUploadingArtifact] = useState(false);
+  const [workflowPhases, setWorkflowPhases] = useState<WorkflowPhase[]>([]);
+  const [targetPhaseId, setTargetPhaseId] = useState("");
+  const [transitionReason, setTransitionReason] = useState("");
+  const [transitionMessage, setTransitionMessage] = useState<string | null>(null);
+  const [transitionBlockingDetails, setTransitionBlockingDetails] = useState<string[]>([]);
+  const [isTransitioningPhase, setIsTransitioningPhase] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [qualificationMessage, setQualificationMessage] = useState<string | null>(null);
@@ -98,6 +108,7 @@ export const PartnerDetailPage = () => {
           listDiscoveryNoteTemplatesRequest(partnerId),
           listDiscoveryNotesRequest(partnerId),
         ]);
+        const workflowConfig = await getWorkflowConfigRequest();
         const artifactsData = await listArtifactsRequest(partnerId);
         if (!cancelled) {
           setPartner(partnerData);
@@ -106,6 +117,7 @@ export const PartnerDetailPage = () => {
           setDiscoveryTemplates(templatesData);
           setDiscoveryNotes(notesData);
           setArtifacts(artifactsData);
+          setWorkflowPhases(workflowConfig.phases.filter((phase) => phase.isActive));
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -302,6 +314,62 @@ export const PartnerDetailPage = () => {
     }
   };
 
+  const transitionPhase = async () => {
+    if (!partnerId || !targetPhaseId) {
+      setTransitionMessage("Select a target phase first.");
+      return;
+    }
+
+    setIsTransitioningPhase(true);
+    setTransitionMessage(null);
+    setTransitionBlockingDetails([]);
+    try {
+      const updatedPartner = await transitionPartnerPhaseRequest(partnerId, {
+        toPhaseId: targetPhaseId,
+        reason: transitionReason.trim() || undefined,
+      });
+
+      setPartner(updatedPartner);
+      await refreshNotesAndTimeline(partnerId);
+      setTransitionMessage(`Transitioned to ${targetPhaseId}.`);
+      setTransitionReason("");
+    } catch (transitionError) {
+      if (transitionError instanceof WorkflowTransitionError) {
+        const detailMessages = transitionError.details.flatMap((entry) => {
+          const lines = [];
+          if (entry.message && typeof entry.message === "string") {
+            lines.push(entry.message);
+          }
+
+          if (Array.isArray(entry.requiredFields)) {
+            lines.push(`Missing fields: ${entry.requiredFields.join(", ")}`);
+          }
+
+          if (Array.isArray(entry.requiredArtifacts)) {
+            lines.push(
+              `Required artifacts: ${entry.requiredArtifacts
+                .map((item) => `${String((item as { documentType?: string }).documentType)} (${String((item as { requiredStatus?: string }).requiredStatus)})`)
+                .join(", ")}`,
+            );
+          }
+
+          return lines;
+        });
+
+        setTransitionBlockingDetails(detailMessages);
+        setTransitionMessage(transitionError.message);
+      } else {
+        setTransitionMessage(
+          transitionError instanceof Error
+            ? transitionError.message
+            : "Failed to transition partner phase",
+        );
+      }
+    } finally {
+      setIsTransitioningPhase(false);
+    }
+  };
+
   const artifactsByType = useMemo(() => {
     const grouped = new Map<string, ArtifactRecord[]>();
     for (const artifact of artifacts) {
@@ -444,6 +512,56 @@ export const PartnerDetailPage = () => {
               </button>
               {qualificationMessage && <p className="muted">{qualificationMessage}</p>}
             </div>
+          </section>
+
+          <section className="timeline-panel">
+            <h2>Workflow Transition</h2>
+            <p className="muted">Move partner to the next phase once transition requirements are satisfied.</p>
+
+            <div className="artifact-upload-grid">
+              <label>
+                Current Phase
+                <input type="text" value={partner?.currentPhaseId || ""} disabled />
+              </label>
+              <label>
+                Target Phase
+                <select value={targetPhaseId} onChange={(event) => setTargetPhaseId(event.target.value)}>
+                  <option value="">Select phase</option>
+                  {workflowPhases.map((phase) => (
+                    <option key={phase.id} value={phase.id}>
+                      {phase.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Reason (optional)
+                <input
+                  type="text"
+                  value={transitionReason}
+                  onChange={(event) => setTransitionReason(event.target.value)}
+                  placeholder="Transition reason"
+                />
+              </label>
+            </div>
+
+            <div className="qualification-actions">
+              <button type="button" onClick={transitionPhase} disabled={isTransitioningPhase}>
+                {isTransitioningPhase ? "Transitioning..." : "Transition Phase"}
+              </button>
+              {transitionMessage && <p className="muted">{transitionMessage}</p>}
+            </div>
+
+            {transitionBlockingDetails.length > 0 && (
+              <div className="status-card status-error" role="alert">
+                <h2>Transition blocked</h2>
+                <ul>
+                  {transitionBlockingDetails.map((line, index) => (
+                    <li key={`${line}:${index}`}>{line}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
 
           <section className="timeline-panel">
