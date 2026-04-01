@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
+import { listTasksRequest, type TaskRecord } from "../../tasks/services/tasks-api";
 import {
   createPartnerRequest,
   DuplicatePartnerError,
@@ -26,6 +27,7 @@ export const PartnersPage = () => {
   const [partnersError, setPartnersError] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<WorkflowHealthMetrics | null>(null);
   const [metricsError, setMetricsError] = useState<string | null>(null);
+  const [taskCounters, setTaskCounters] = useState({ open: 0, done: 0, overdue: 0 });
   const [createError, setCreateError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [pendingDuplicateCandidates, setPendingDuplicateCandidates] = useState<DuplicateCandidate[]>([]);
@@ -106,6 +108,51 @@ export const PartnersPage = () => {
       cancelled = true;
     };
   }, [partners.length]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const computeCounters = (tasks: TaskRecord[]) => {
+      const now = Date.now();
+      const open = tasks.filter((task) => task.status !== "done").length;
+      const done = tasks.filter((task) => task.status === "done").length;
+      const overdue = tasks.filter((task) => {
+        if (task.status === "done") {
+          return false;
+        }
+
+        const dueAt = new Date(`${task.dueDate}T23:59:59.999Z`).getTime();
+        return dueAt < now;
+      }).length;
+
+      return { open, done, overdue };
+    };
+
+    const loadTaskCounters = async () => {
+      try {
+        const tasks = await listTasksRequest({});
+        if (!cancelled) {
+          setTaskCounters(computeCounters(tasks));
+        }
+      } catch {
+        if (!cancelled) {
+          setTaskCounters({ open: 0, done: 0, overdue: 0 });
+        }
+      }
+    };
+
+    const onTaskUpdate = () => {
+      loadTaskCounters();
+    };
+
+    loadTaskCounters();
+    window.addEventListener("task:updated", onTaskUpdate);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("task:updated", onTaskUpdate);
+    };
+  }, []);
 
   const subtitle = useMemo(() => {
     if (isLoadingPartners) {
@@ -191,6 +238,14 @@ export const PartnersPage = () => {
           <p className="muted">{subtitle}</p>
         </div>
         <div className="user-actions">
+          <nav className="page-nav-links" aria-label="Primary navigation">
+            <Link to="/partners" className="link-button link-button-active">
+              Partners
+            </Link>
+            <Link to="/tasks" className="link-button">
+              Tasks
+            </Link>
+          </nav>
           <span>{user?.displayName}</span>
           <button type="button" onClick={logout}>
             Logout
@@ -270,6 +325,15 @@ export const PartnersPage = () => {
               <h3>Stalled Partners</h3>
               <strong>{metrics.summary.stalledPartnerCount}</strong>
               <p>From stage threshold rules</p>
+            </article>
+            <article className="health-card">
+              <h3>Open Tasks</h3>
+              <strong>{taskCounters.open}</strong>
+            </article>
+            <article className="health-card">
+              <h3>Completed Tasks</h3>
+              <strong>{taskCounters.done}</strong>
+              <p>{taskCounters.overdue} overdue</p>
             </article>
           </div>
         )}

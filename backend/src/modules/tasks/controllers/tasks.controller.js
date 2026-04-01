@@ -59,6 +59,8 @@ async function listTasksHandler(req, res) {
       ownerId: req.query.ownerId,
       partnerId: req.query.partnerId,
       status: req.query.status,
+      dueDateFrom: req.query.dueDateFrom,
+      dueDateTo: req.query.dueDateTo,
     });
     return res.status(200).json({ tasks });
   } catch (error) {

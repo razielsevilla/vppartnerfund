@@ -74,6 +74,8 @@ async function listTasks(filters) {
   if (filters.ownerId) query.where("owner_id", filters.ownerId);
   if (filters.partnerId) query.where("partner_id", filters.partnerId);
   if (filters.status) query.where("status", filters.status);
+  if (filters.dueDateFrom) query.where("due_date", ">=", filters.dueDateFrom);
+  if (filters.dueDateTo) query.where("due_date", "<=", filters.dueDateTo);
 
   const rows = await query.orderBy("due_date", "asc").orderBy("created_at", "desc");
   return rows.map(mapTask);

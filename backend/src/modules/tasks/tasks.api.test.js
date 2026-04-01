@@ -103,3 +103,50 @@ test("rejects create when linked references are invalid", async () => {
   assert.equal(response.status, 400);
   assert.equal(response.body.error.code, "TASK_INVALID_REFERENCE");
 });
+
+test("filters tasks by owner, status, and due-date range", async () => {
+  const partner = await createPartner();
+
+  const seedPayloads = [
+    {
+      title: "Owner A near due",
+      ownerId: "seed-admin-user",
+      partnerId: partner.id,
+      workflowPhaseId: "phase_lead",
+      dueDate: "2026-05-10",
+      priority: "high",
+      status: "open",
+    },
+    {
+      title: "Owner B completed",
+      ownerId: "seed-team-user",
+      partnerId: partner.id,
+      workflowPhaseId: "phase_lead",
+      dueDate: "2026-05-20",
+      priority: "medium",
+      status: "done",
+    },
+    {
+      title: "Owner A later",
+      ownerId: "seed-admin-user",
+      partnerId: partner.id,
+      workflowPhaseId: "phase_lead",
+      dueDate: "2026-06-05",
+      priority: "low",
+      status: "blocked",
+    },
+  ];
+
+  for (const payload of seedPayloads) {
+    const createResponse = await agent.post("/api/tasks").send(payload);
+    assert.equal(createResponse.status, 201);
+  }
+
+  const filtered = await agent.get(
+    "/api/tasks?ownerId=seed-admin-user&status=open&dueDateFrom=2026-05-01&dueDateTo=2026-05-31",
+  );
+
+  assert.equal(filtered.status, 200);
+  assert.equal(filtered.body.tasks.length, 1);
+  assert.equal(filtered.body.tasks[0].title, "Owner A near due");
+});
