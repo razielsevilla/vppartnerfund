@@ -267,6 +267,42 @@ textarea:hover {
   color: var(--text-primary);
 }
 
+.dashboard-kpi-success {
+  border-color: var(--state-success-border);
+  background: linear-gradient(160deg, #f2fff8, #e9fff3);
+}
+
+.dashboard-kpi-warning {
+  border-color: var(--state-warning-border);
+  background: linear-gradient(160deg, #fffdf5, #fffaea);
+}
+
+.dashboard-kpi-danger {
+  border-color: var(--state-danger-border);
+  background: linear-gradient(160deg, #fff5f5, #ffecec);
+}
+
+.kpi-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.45rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  min-height: 1.9rem;
+  padding: 0.25rem 0.65rem;
+  background: #ffffff;
+  color: #1e3a8a;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.kpi-action:hover {
+  border-color: #9eb5ce;
+  background: #f8fbff;
+}
+
 .status-error {
   border: 1px solid var(--state-danger-border);
   background: var(--state-danger-bg);
@@ -464,6 +500,9 @@ textarea:hover {
 
 .dashboard-module {
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .dashboard-module .dashboard-panel-head {
@@ -480,6 +519,9 @@ textarea:hover {
   padding: 0;
   display: grid;
   gap: 0.55rem;
+  flex: 1;
+  overflow: auto;
+  padding-right: 0.15rem;
 }
 
 .dashboard-mini-list li {
@@ -487,6 +529,21 @@ textarea:hover {
   border-radius: 10px;
   padding: 0.55rem;
   background: #fbfdff;
+}
+
+.dashboard-module-clickable {
+  cursor: pointer;
+}
+
+.dashboard-module-clickable:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px rgba(30, 64, 175, 0.35);
+}
+
+.conversion-rate-highlight {
+  color: #0b3b8f;
+  font-size: 1.05rem;
+  font-weight: 800;
 }
 
 .dashboard-inline-metrics {
@@ -555,5 +612,125 @@ textarea:hover {
 
   .dashboard-quick-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+.single-screen-page {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-view-switcher {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+  padding: 0.4rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  background: linear-gradient(145deg, #ffffff, #f6f9ff);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.view-tab-btn {
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--text-secondary);
+  min-height: 2rem;
+  padding: 0.3rem 0.75rem;
+  font-weight: 700;
+  font-size: 0.82rem;
+  box-shadow: none;
+  transition: all 160ms ease;
+}
+
+.view-tab-btn:hover {
+  border-color: #9fb5cf;
+  transform: translateY(-1px);
+}
+
+.view-tab-btn.is-active {
+  border-color: transparent;
+  background: linear-gradient(145deg, #1d3f97, #274eb2);
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(39, 78, 178, 0.24);
+}
+
+.single-screen-content {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding-right: 0.3rem;
+  scrollbar-width: thin;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.single-screen-content > section {
+  animation: fade-slide-in 220ms ease;
+}
+
+.single-screen-content > .registry-controls,
+.single-screen-content > .registry-panel,
+.single-screen-content > .registry-create-panel,
+.single-screen-content > .health-metrics-panel {
+  margin-top: 0;
+}
+
+.table-pagination-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.table-pagination-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.table-pagination-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.table-pagination-controls select {
+  min-height: 2rem;
+  padding: 0.2rem 0.5rem;
+}
+
+.page-header {
+  margin-bottom: 0.95rem;
+}
+
+.page-header > div > h1 {
+  text-wrap: balance;
+}
+
+.page-header > div > .muted {
+  max-width: 62ch;
+}
+
+.ui-modal {
+  animation: fade-slide-in 180ms ease;
+}
+
+@media (max-width: 960px) {
+  .single-screen-page {
+    height: auto;
+    overflow: visible;
+  }
+
+  .single-screen-content {
+    overflow: visible;
   }
 }

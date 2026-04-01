@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
-import { CollapsibleSection } from "../../../shared/components/CollapsibleSection";
+import { usePersistentState } from "../../../shared/hooks/usePersistentState";
 import { listTasksRequest, type TaskRecord } from "../../tasks/services/tasks-api";
 import {
   createPartnerRequest,
@@ -129,6 +129,11 @@ export const PartnersPage = () => {
   const [importResult, setImportResult] = useState<PartnerImportResult | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [activeView, setActiveView] = usePersistentState<
+    "table" | "filters" | "health" | "add" | "import"
+  >("ui:partners:active-view", "table");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = usePersistentState<number>("ui:partners:page-size", 10);
   const [pendingDuplicateCandidates, setPendingDuplicateCandidates] = useState<DuplicateCandidate[]>([]);
   const [pendingCreatePayload, setPendingCreatePayload] = useState<{
     organizationName: string;
@@ -334,6 +339,22 @@ export const PartnersPage = () => {
     });
   }, [filters.phaseCode, partners]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredPartners.length / pageSize));
+  const paginatedPartners = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredPartners.slice(start, start + pageSize);
+  }, [currentPage, filteredPartners, pageSize]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, pageSize]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const phaseOptions = useMemo(
     () =>
       (workflowConfig?.phases || [])
@@ -486,7 +507,7 @@ export const PartnersPage = () => {
   };
 
   return (
-    <main className="page-layout">
+    <main className="page-layout single-screen-page">
       <header className="page-header">
         <div>
           <h1>Partner Registry</h1>
@@ -503,6 +524,9 @@ export const PartnersPage = () => {
             <Link to="/tasks" className="link-button">
               Tasks
             </Link>
+            <Link to="/team" className="link-button">
+              Team
+            </Link>
             <Link to="/settings" className="link-button">
               Settings
             </Link>
@@ -513,12 +537,47 @@ export const PartnersPage = () => {
           </button>
         </div>
       </header>
-      <CollapsibleSection
-        title="Registry Filters"
-        description="Show only the partner records relevant to your current review."
-        defaultOpen
-      >
-        <section className="registry-controls" aria-label="Partner registry filters">
+      <div className="page-view-switcher" role="tablist" aria-label="Partner registry view switcher">
+        <button
+          type="button"
+          className={`view-tab-btn ${activeView === "table" ? "is-active" : ""}`}
+          onClick={() => setActiveView("table")}
+        >
+          Registry Table
+        </button>
+        <button
+          type="button"
+          className={`view-tab-btn ${activeView === "filters" ? "is-active" : ""}`}
+          onClick={() => setActiveView("filters")}
+        >
+          Filters
+        </button>
+        <button
+          type="button"
+          className={`view-tab-btn ${activeView === "health" ? "is-active" : ""}`}
+          onClick={() => setActiveView("health")}
+        >
+          Pipeline Health
+        </button>
+        <button
+          type="button"
+          className={`view-tab-btn ${activeView === "add" ? "is-active" : ""}`}
+          onClick={() => setActiveView("add")}
+        >
+          Add Partner
+        </button>
+        <button
+          type="button"
+          className={`view-tab-btn ${activeView === "import" ? "is-active" : ""}`}
+          onClick={() => setActiveView("import")}
+        >
+          Import
+        </button>
+      </div>
+
+      <div className="single-screen-content">
+      {activeView === "filters" && (
+      <section className="registry-controls" aria-label="Partner registry filters">
         <label>
           Search
           <input
@@ -607,15 +666,11 @@ export const PartnersPage = () => {
             <option value="lead">Lead</option>
           </select>
         </label>
-        </section>
-      </CollapsibleSection>
+      </section>
+      )}
 
-      <CollapsibleSection
-        title="Pipeline Health"
-        description="Quick operational snapshot of active, overdue, and stalled workload."
-        defaultOpen
-      >
-        <section className="health-metrics-panel" aria-label="Pipeline health metrics">
+      {activeView === "health" && (
+      <section className="health-metrics-panel" aria-label="Pipeline health metrics">
         {metricsError && <p className="error-text">{metricsError}</p>}
         {!metricsError && metrics && (
           <div className="health-cards">
@@ -644,14 +699,11 @@ export const PartnersPage = () => {
             </article>
           </div>
         )}
-        </section>
-      </CollapsibleSection>
+      </section>
+      )}
 
-      <CollapsibleSection
-        title="Add Partner"
-        description="Create a new partner record with profile, location, and link details."
-      >
-        <section className="registry-create-panel" aria-label="Create partner">
+      {activeView === "add" && (
+      <section className="registry-create-panel" aria-label="Create partner">
         <form className="registry-create-form" onSubmit={onCreateSubmit}>
           <input
             required
@@ -736,14 +788,11 @@ export const PartnersPage = () => {
             </button>
           </div>
         )}
-        </section>
-      </CollapsibleSection>
+      </section>
+      )}
 
-      <CollapsibleSection
-        title="Spreadsheet Import"
-        description="Paste sheet rows, map columns, and run dry-run before applying."
-      >
-        <section className="registry-create-panel" aria-label="Spreadsheet import">
+      {activeView === "import" && (
+      <section className="registry-create-panel" aria-label="Spreadsheet import">
         <p className="muted">Paste CSV/TSV exported from Sheets, map columns, and run dry-run before apply.</p>
 
         <div className="import-grid">
@@ -836,15 +885,11 @@ export const PartnersPage = () => {
             </div>
           </div>
         )}
-        </section>
-      </CollapsibleSection>
+      </section>
+      )}
 
-      <CollapsibleSection
-        title="Partner Registry Table"
-        description="Browse partner entries and open detailed partner records."
-        defaultOpen
-      >
-        <section className="registry-panel">
+      {activeView === "table" && (
+      <section className="registry-panel">
         {isLoadingPartners && <p className="loading-state">Loading partners...</p>}
 
         {!isLoadingPartners && partnersError && (
@@ -862,6 +907,42 @@ export const PartnersPage = () => {
         )}
 
         {!isLoadingPartners && !partnersError && filteredPartners.length > 0 && (
+          <>
+          <div className="table-pagination-row">
+            <p className="muted">
+              {`Showing ${(currentPage - 1) * pageSize + 1}-${Math.min(currentPage * pageSize, filteredPartners.length)} of ${filteredPartners.length}`}
+            </p>
+            <div className="table-pagination-controls">
+              <label>
+                Rows
+                <select
+                  value={String(pageSize)}
+                  onChange={(event) => setPageSize(Number(event.target.value))}
+                >
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="30">30</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                className="secondary-btn"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              >
+                Prev
+              </button>
+              <span className="muted">{`Page ${currentPage} of ${totalPages}`}</span>
+              <button
+                type="button"
+                className="secondary-btn"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              >
+                Next
+              </button>
+            </div>
+          </div>
           <div className="registry-table-wrap">
             <table className="registry-table">
               <thead>
@@ -875,7 +956,7 @@ export const PartnersPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredPartners.map((partner) => (
+                {paginatedPartners.map((partner) => (
                   <tr key={partner.id}>
                     <td>
                       <Link to={`/partners/${partner.id}`} className="table-link">
@@ -892,9 +973,11 @@ export const PartnersPage = () => {
               </tbody>
             </table>
           </div>
+          </>
         )}
-        </section>
-      </CollapsibleSection>
+      </section>
+      )}
+      </div>
     </main>
   );
 };

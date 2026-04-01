@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { CollapsibleSection } from "../../../shared/components/CollapsibleSection";
+import { usePersistentState } from "../../../shared/hooks/usePersistentState";
 import {
   artifactFileUrl,
   listArtifactsRequest,
@@ -156,6 +156,9 @@ export const PartnerDetailPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [qualificationMessage, setQualificationMessage] = useState<string | null>(null);
   const [isSavingQualification, setIsSavingQualification] = useState(false);
+  const [activeView, setActiveView] = usePersistentState<
+    "qualification" | "contacts" | "transition" | "artifacts" | "notes" | "timeline"
+  >("ui:partner-detail:active-view", "qualification");
 
   useEffect(() => {
     if (!partnerId) {
@@ -587,7 +590,7 @@ export const PartnerDetailPage = () => {
   }, [error, isLoading, timeline.length]);
 
   return (
-    <main className="page-layout">
+    <main className="page-layout single-screen-page">
       <header className="page-header">
         <div>
           <h1>{partner?.organizationName || "Partner Detail"}</h1>
@@ -609,11 +612,53 @@ export const PartnerDetailPage = () => {
 
       {!isLoading && !error && (
         <>
-          <CollapsibleSection
-            title="Qualification Mapping"
-            description="Build role packages first, then curate matching functional benefit packages."
-            defaultOpen
-          >
+          <div className="page-view-switcher" role="tablist" aria-label="Partner detail view switcher">
+            <button
+              type="button"
+              className={`view-tab-btn ${activeView === "qualification" ? "is-active" : ""}`}
+              onClick={() => setActiveView("qualification")}
+            >
+              Qualification
+            </button>
+            <button
+              type="button"
+              className={`view-tab-btn ${activeView === "contacts" ? "is-active" : ""}`}
+              onClick={() => setActiveView("contacts")}
+            >
+              Contacts
+            </button>
+            <button
+              type="button"
+              className={`view-tab-btn ${activeView === "transition" ? "is-active" : ""}`}
+              onClick={() => setActiveView("transition")}
+            >
+              Transition
+            </button>
+            <button
+              type="button"
+              className={`view-tab-btn ${activeView === "artifacts" ? "is-active" : ""}`}
+              onClick={() => setActiveView("artifacts")}
+            >
+              Artifacts
+            </button>
+            <button
+              type="button"
+              className={`view-tab-btn ${activeView === "notes" ? "is-active" : ""}`}
+              onClick={() => setActiveView("notes")}
+            >
+              Discovery Notes
+            </button>
+            <button
+              type="button"
+              className={`view-tab-btn ${activeView === "timeline" ? "is-active" : ""}`}
+              onClick={() => setActiveView("timeline")}
+            >
+              Timeline
+            </button>
+          </div>
+
+          <div className="single-screen-content">
+          {activeView === "qualification" && (
             <section className="timeline-panel">
 
             <div className="qualification-grid">
@@ -795,12 +840,9 @@ export const PartnerDetailPage = () => {
               {qualificationMessage && <p className="muted">{qualificationMessage}</p>}
             </div>
             </section>
-          </CollapsibleSection>
+          )}
 
-          <CollapsibleSection
-            title="Contact Person"
-            description="Add designated contacts without editing core partner details."
-          >
+          {activeView === "contacts" && (
             <section className="timeline-panel">
 
             <div className="artifact-upload-grid">
@@ -902,12 +944,9 @@ export const PartnerDetailPage = () => {
               </ol>
             )}
             </section>
-          </CollapsibleSection>
+          )}
 
-          <CollapsibleSection
-            title="Workflow Transition"
-            description="Move partner to the next phase once requirements are satisfied."
-          >
+          {activeView === "transition" && (
             <section className="timeline-panel">
 
             <div className="artifact-upload-grid">
@@ -955,12 +994,9 @@ export const PartnerDetailPage = () => {
               </div>
             )}
             </section>
-          </CollapsibleSection>
+          )}
 
-          <CollapsibleSection
-            title="Artifact Vault"
-            description="Upload and track document versions by artifact type."
-          >
+          {activeView === "artifacts" && (
             <section className="timeline-panel">
 
             <div className="artifact-upload-grid">
@@ -1104,12 +1140,9 @@ export const PartnerDetailPage = () => {
               </div>
             )}
             </section>
-          </CollapsibleSection>
+          )}
 
-          <CollapsibleSection
-            title="Discovery Notes"
-            description="Capture guided discovery answers and freeform context."
-          >
+          {activeView === "notes" && (
             <section className="timeline-panel">
 
             <div className="discovery-note-composer">
@@ -1211,12 +1244,9 @@ export const PartnerDetailPage = () => {
               </ol>
             )}
             </section>
-          </CollapsibleSection>
+          )}
 
-          <CollapsibleSection
-            title="Timeline and Audit Trail"
-            description="Read-only history of workflow changes and partner actions."
-          >
+          {activeView === "timeline" && (
             <section className="timeline-panel">
 
             {timeline.length === 0 && (
@@ -1249,7 +1279,8 @@ export const PartnerDetailPage = () => {
               </ol>
             )}
             </section>
-          </CollapsibleSection>
+          )}
+          </div>
         </>
       )}
     </main>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
-import { CollapsibleSection } from "../../../shared/components/CollapsibleSection";
+import { usePersistentState } from "../../../shared/hooks/usePersistentState";
 import {
   getTaskReminderSummaryRequest,
   listTasksRequest,
@@ -65,6 +65,10 @@ export const TaskQueuePage = () => {
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [reminderSummary, setReminderSummary] = useState<TaskReminderSummary | null>(null);
   const [isTriggeringReminders, setIsTriggeringReminders] = useState(false);
+  const [activeView, setActiveView] = usePersistentState<"summary" | "filters" | "table">(
+    "ui:tasks:active-view",
+    "table",
+  );
   const [triggerMessage, setTriggerMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -218,7 +222,7 @@ export const TaskQueuePage = () => {
   };
 
   return (
-    <main className="page-layout">
+    <main className="page-layout single-screen-page">
       <header className="page-header">
         <div>
           <h1>Task Queues</h1>
@@ -235,6 +239,9 @@ export const TaskQueuePage = () => {
             <Link to="/tasks" className="link-button link-button-active">
               Tasks
             </Link>
+            <Link to="/team" className="link-button">
+              Team
+            </Link>
             <Link to="/settings" className="link-button">
               Settings
             </Link>
@@ -246,12 +253,33 @@ export const TaskQueuePage = () => {
         </div>
       </header>
 
-      <CollapsibleSection
-        title="Task Counters"
-        description="Quick summary of task volume, urgency, and reminders."
-        defaultOpen
-      >
-        <section className="health-metrics-panel" aria-label="Task queue summary">
+      <div className="page-view-switcher" role="tablist" aria-label="Task view switcher">
+        <button
+          type="button"
+          className={`view-tab-btn ${activeView === "summary" ? "is-active" : ""}`}
+          onClick={() => setActiveView("summary")}
+        >
+          Summary
+        </button>
+        <button
+          type="button"
+          className={`view-tab-btn ${activeView === "filters" ? "is-active" : ""}`}
+          onClick={() => setActiveView("filters")}
+        >
+          Filters
+        </button>
+        <button
+          type="button"
+          className={`view-tab-btn ${activeView === "table" ? "is-active" : ""}`}
+          onClick={() => setActiveView("table")}
+        >
+          Queue Table
+        </button>
+      </div>
+
+      <div className="single-screen-content">
+      {activeView === "summary" && (
+      <section className="health-metrics-panel" aria-label="Task queue summary">
         <h2>Task Counters</h2>
         <div className="health-cards">
           <article className="health-card">
@@ -290,15 +318,11 @@ export const TaskQueuePage = () => {
           </button>
           {triggerMessage && <p className="muted">{triggerMessage}</p>}
         </div>
-        </section>
-      </CollapsibleSection>
+      </section>
+      )}
 
-      <CollapsibleSection
-        title="Task Filters"
-        description="Limit results by queue type, owner, status, and due date."
-        defaultOpen
-      >
-        <section className="registry-controls" aria-label="Task queue filters">
+      {activeView === "filters" && (
+      <section className="registry-controls" aria-label="Task queue filters">
         <label>
           Queue
           <select
@@ -365,15 +389,11 @@ export const TaskQueuePage = () => {
             onChange={(event) => setFilters((prev) => ({ ...prev, dueDateTo: event.target.value }))}
           />
         </label>
-        </section>
-      </CollapsibleSection>
+      </section>
+      )}
 
-      <CollapsibleSection
-        title="Task Queue Table"
-        description="Detailed task records and completion actions."
-        defaultOpen
-      >
-        <section className="registry-panel" aria-label="Task queue table">
+      {activeView === "table" && (
+      <section className="registry-panel" aria-label="Task queue table">
         {isLoading && <p className="loading-state">Loading tasks...</p>}
 
         {!isLoading && error && (
@@ -452,8 +472,9 @@ export const TaskQueuePage = () => {
             </table>
           </div>
         )}
-        </section>
-      </CollapsibleSection>
+      </section>
+      )}
+      </div>
     </main>
   );
 };

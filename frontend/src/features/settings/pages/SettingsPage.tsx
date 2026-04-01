@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
-import { CollapsibleSection } from "../../../shared/components/CollapsibleSection";
+import { usePersistentState } from "../../../shared/hooks/usePersistentState";
 import {
   getSettingsMasterDataRequest,
   listSettingsAuditLogRequest,
@@ -20,11 +20,15 @@ export const SettingsPage = () => {
   const [taxonomyKey, setTaxonomyKey] = useState<string>("value_proposition");
   const [taxonomyItems, setTaxonomyItems] = useState<TaxonomyItemSetting[]>([]);
   const [auditEntries, setAuditEntries] = useState<SettingsAuditEntry[]>([]);
+  const [activeView, setActiveView] = usePersistentState<"phases" | "taxonomy" | "audit">(
+    "ui:settings:active-view",
+    "phases",
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "vp_head";
 
   useEffect(() => {
     let cancelled = false;
@@ -110,11 +114,11 @@ export const SettingsPage = () => {
     }
     return isAdmin
       ? "Manage workflow and taxonomy configuration safely."
-      : "Read-only settings view. Admin role required for updates.";
+      : "Read-only settings view. VP Head role required for updates.";
   }, [isAdmin, isLoading]);
 
   return (
-    <main className="page-layout">
+    <main className="page-layout single-screen-page">
       <header className="page-header">
         <div>
           <h1>Settings and Master Data</h1>
@@ -131,6 +135,9 @@ export const SettingsPage = () => {
             <Link to="/tasks" className="link-button">
               Tasks
             </Link>
+            <Link to="/team" className="link-button">
+              Team
+            </Link>
             <Link to="/settings" className="link-button link-button-active">
               Settings
             </Link>
@@ -145,12 +152,33 @@ export const SettingsPage = () => {
       {error && <p className="error-text">{error}</p>}
       {message && <p className="muted">{message}</p>}
 
-      <CollapsibleSection
-        title="Workflow Phases"
-        description="Configure phase names, order, and active status."
-        defaultOpen
-      >
-        <section className="registry-panel" aria-label="Workflow phase settings">
+      <div className="page-view-switcher" role="tablist" aria-label="Settings view switcher">
+        <button
+          type="button"
+          className={`view-tab-btn ${activeView === "phases" ? "is-active" : ""}`}
+          onClick={() => setActiveView("phases")}
+        >
+          Workflow Phases
+        </button>
+        <button
+          type="button"
+          className={`view-tab-btn ${activeView === "taxonomy" ? "is-active" : ""}`}
+          onClick={() => setActiveView("taxonomy")}
+        >
+          Taxonomy Masters
+        </button>
+        <button
+          type="button"
+          className={`view-tab-btn ${activeView === "audit" ? "is-active" : ""}`}
+          onClick={() => setActiveView("audit")}
+        >
+          Audit Trail
+        </button>
+      </div>
+
+      <div className="single-screen-content">
+      {activeView === "phases" && (
+      <section className="registry-panel" aria-label="Workflow phase settings">
         <div className="registry-table-wrap">
           <table className="registry-table">
             <thead>
@@ -220,15 +248,11 @@ export const SettingsPage = () => {
             Save Phase Settings
           </button>
         )}
-        </section>
-      </CollapsibleSection>
+      </section>
+      )}
 
-      <CollapsibleSection
-        title="Taxonomy Masters"
-        description="Manage canonical lists used across partner workflows."
-        defaultOpen
-      >
-        <section className="registry-panel" aria-label="Taxonomy settings">
+      {activeView === "taxonomy" && (
+      <section className="registry-panel" aria-label="Taxonomy settings">
         <label className="settings-inline-field">
           Taxonomy Key
           <select
@@ -326,14 +350,11 @@ export const SettingsPage = () => {
             Save Taxonomy
           </button>
         )}
-        </section>
-      </CollapsibleSection>
+      </section>
+      )}
 
-      <CollapsibleSection
-        title="Settings Audit Trail"
-        description="Recent configuration changes for governance and traceability."
-      >
-        <section className="registry-panel" aria-label="Settings audit trail">
+      {activeView === "audit" && (
+      <section className="registry-panel" aria-label="Settings audit trail">
         <div className="registry-table-wrap">
           <table className="registry-table">
             <thead>
@@ -356,8 +377,9 @@ export const SettingsPage = () => {
             </tbody>
           </table>
         </div>
-        </section>
-      </CollapsibleSection>
+      </section>
+      )}
+      </div>
     </main>
   );
 };

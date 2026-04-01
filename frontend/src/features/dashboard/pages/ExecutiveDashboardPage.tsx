@@ -24,6 +24,28 @@ function toPhaseParam(phaseCode: string): string {
   return encodeURIComponent(phaseCode);
 }
 
+function getHealthTone(level: number, thresholds: { warning: number; danger: number; invert?: boolean }) {
+  const { warning, danger, invert = false } = thresholds;
+
+  if (invert) {
+    if (level <= warning) {
+      return "dashboard-kpi-success";
+    }
+    if (level >= danger) {
+      return "dashboard-kpi-danger";
+    }
+    return "dashboard-kpi-warning";
+  }
+
+  if (level >= danger) {
+    return "dashboard-kpi-danger";
+  }
+  if (level >= warning) {
+    return "dashboard-kpi-warning";
+  }
+  return "dashboard-kpi-success";
+}
+
 export const ExecutiveDashboardPage = () => {
   const { user, logout } = useAuthSession();
   const [metrics, setMetrics] = useState<WorkflowKpiMetrics | null>(null);
@@ -74,16 +96,23 @@ export const ExecutiveDashboardPage = () => {
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const stageCounts = metrics?.stageCounts ?? [];
-  const maxStageCount = stageCounts.reduce((max, stage) => Math.max(max, stage.count), 0);
   const hasStageData = stageCounts.length > 0;
   const stageConversion = metrics?.conversion.stageConversion ?? [];
   const hasConversionData = stageConversion.length > 0;
   const demandDistribution = coverage?.demandDistribution ?? [];
   const coverageGaps = coverage?.coverageGaps ?? [];
+  const totalActivePartners = metrics?.summary.totalActivePartners || 0;
   const stagePreview = stageCounts.slice(0, 4);
   const conversionPreview = stageConversion.slice(0, 4);
   const gapPreview = coverageGaps.slice(0, 3);
   const snapshotPreview = snapshots.slice(0, 3);
+  const winRateValue = Number(metrics?.conversion.overallWinRatePct || 0);
+  const overdueValue = metrics?.overdueActions.count || 0;
+  const gapCategoryValue = coverage?.summary.categoriesWithGaps || 0;
+
+  const overdueCardClass = getHealthTone(overdueValue, { warning: 0, danger: 6, invert: true });
+  const winRateCardClass = getHealthTone(winRateValue, { warning: 1, danger: 0 });
+  const gapCardClass = getHealthTone(gapCategoryValue, { warning: 1, danger: 4, invert: true });
 
   const refreshSnapshotHistory = async () => {
     const history = await listWorkflowSnapshotsRequest({ limit: 8 });
@@ -126,6 +155,9 @@ export const ExecutiveDashboardPage = () => {
             <Link to="/tasks" className="link-button">
               Tasks
             </Link>
+            <Link to="/team" className="link-button">
+              Team
+            </Link>
             <Link to="/settings" className="link-button">
               Settings
             </Link>
@@ -154,53 +186,62 @@ export const ExecutiveDashboardPage = () => {
                 <h2>Active Partners</h2>
                 <strong>{metrics.summary.totalActivePartners}</strong>
                 <p>Current active portfolio count.</p>
-                <Link to="/partners?status=active" className="table-link">
-                  Open active partners
+                <Link to="/partners?status=active" className="kpi-action">
+                  Open active partners &gt;
                 </Link>
               </article>
 
-              <article className="dashboard-kpi-card dashboard-kpi-warning">
+              <article className={`dashboard-kpi-card ${overdueCardClass}`}>
                 <h2>Overdue Next Actions</h2>
                 <strong>{metrics.overdueActions.count}</strong>
                 <p>{`Threshold: ${metrics.overdueActions.thresholdDays} days since last touchpoint.`}</p>
                 <Link
                   to={`/tasks?queue=team&status=open&dueDateTo=${todayIso}`}
-                  className="table-link"
+                  className="kpi-action"
                 >
-                  Open overdue task queue
+                  Open overdue task queue &gt;
                 </Link>
               </article>
 
-              <article className="dashboard-kpi-card">
+              <article className={`dashboard-kpi-card ${winRateCardClass}`}>
                 <h2>Overall Win Rate</h2>
                 <strong>{formatPct(metrics.conversion.overallWinRatePct)}</strong>
                 <p>Won-stage share across all active partners.</p>
-                <Link to="/partners?status=active&phaseCode=won" className="table-link">
-                  Open won-stage partners
+                <Link to="/partners?status=active&phaseCode=won" className="kpi-action">
+                  Open won-stage partners &gt;
                 </Link>
               </article>
 
-              <article className="dashboard-kpi-card">
-                <h2>Endpoint Response Time</h2>
-                <strong>{`${metrics.summary.responseTimeMs} ms`}</strong>
-                <p>Server aggregation runtime for current snapshot.</p>
-                <Link to="/dashboard" className="table-link">
-                  Refresh dashboard
-                </Link>
+              <article className={`dashboard-kpi-card ${gapCardClass}`}>
+                <h2>Coverage Gap Categories</h2>
+                <strong>{gapCategoryValue}</strong>
+                <p>Strategic categories with demand but weak confirmation coverage.</p>
+                <button type="button" className="kpi-action" onClick={() => setActiveModal("coverage")}>
+                  Review coverage gaps &gt;
+                </button>
               </article>
             </section>
             <section className="dashboard-quick-grid" aria-label="Dashboard quick modules">
-              <article className="dashboard-panel dashboard-module">
+              <article
+                className="dashboard-panel dashboard-module dashboard-module-clickable"
+                role="button"
+                tabIndex={0}
+                onClick={() => setActiveModal("stage")}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setActiveModal("stage");
+                  }
+                }}
+              >
                 <div className="dashboard-panel-head">
                   <h2>Stage Distribution</h2>
-                  <button type="button" className="secondary-btn" onClick={() => setActiveModal("stage")}>
-                    Full View
-                  </button>
+                  <span className="muted">Click card for details</span>
                 </div>
                 {hasStageData ? (
                   <ul className="dashboard-mini-list">
                     {stagePreview.map((stage) => {
-                      const barPct = maxStageCount > 0 ? (stage.count / maxStageCount) * 100 : 0;
+                      const barPct = totalActivePartners > 0 ? (stage.count / totalActivePartners) * 100 : 0;
                       return (
                         <li key={stage.phaseId}>
                           <div className="stage-list-meta">
@@ -221,12 +262,21 @@ export const ExecutiveDashboardPage = () => {
                 )}
               </article>
 
-              <article className="dashboard-panel dashboard-module">
+              <article
+                className="dashboard-panel dashboard-module dashboard-module-clickable"
+                role="button"
+                tabIndex={0}
+                onClick={() => setActiveModal("conversion")}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setActiveModal("conversion");
+                  }
+                }}
+              >
                 <div className="dashboard-panel-head">
                   <h2>Conversion by Stage</h2>
-                  <button type="button" className="secondary-btn" onClick={() => setActiveModal("conversion")}>
-                    Full View
-                  </button>
+                  <span className="muted">Click card for details</span>
                 </div>
                 {hasConversionData ? (
                   <ul className="dashboard-mini-list">
@@ -234,7 +284,7 @@ export const ExecutiveDashboardPage = () => {
                       <li key={`${entry.fromPhaseCode}-${entry.toPhaseCode}`}>
                         <div className="stage-list-meta">
                           <span>{`${entry.fromPhaseCode} to ${entry.toPhaseCode}`}</span>
-                          <strong>{formatPct(entry.conversionRatePct)}</strong>
+                          <strong className="conversion-rate-highlight">{formatPct(entry.conversionRatePct)}</strong>
                         </div>
                         <p className="muted">{`${entry.toCount}/${entry.fromCount} progressed`}</p>
                       </li>
@@ -245,12 +295,21 @@ export const ExecutiveDashboardPage = () => {
                 )}
               </article>
 
-              <article className="dashboard-panel dashboard-module">
+              <article
+                className="dashboard-panel dashboard-module dashboard-module-clickable"
+                role="button"
+                tabIndex={0}
+                onClick={() => setActiveModal("coverage")}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setActiveModal("coverage");
+                  }
+                }}
+              >
                 <div className="dashboard-panel-head">
                   <h2>Coverage Insights</h2>
-                  <button type="button" className="secondary-btn" onClick={() => setActiveModal("coverage")}>
-                    Full View
-                  </button>
+                  <span className="muted">Click card for details</span>
                 </div>
                 <div className="dashboard-inline-metrics">
                   <span>{`Tracked: ${coverage?.summary.categoriesTracked || 0}`}</span>
@@ -275,19 +334,31 @@ export const ExecutiveDashboardPage = () => {
                 )}
               </article>
 
-              <article className="dashboard-panel dashboard-module">
+              <article
+                className="dashboard-panel dashboard-module dashboard-module-clickable"
+                role="button"
+                tabIndex={0}
+                onClick={() => setActiveModal("snapshot")}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setActiveModal("snapshot");
+                  }
+                }}
+              >
                 <div className="dashboard-panel-head">
                   <h2>Snapshot Reporting</h2>
-                  <button type="button" className="secondary-btn" onClick={() => setActiveModal("snapshot")}>
-                    Full View
-                  </button>
+                  <span className="muted">Click card for details</span>
                 </div>
                 <div className="snapshot-actions">
                   <button
                     type="button"
                     className="secondary-btn"
                     disabled={isTriggeringPeriod === "weekly"}
-                    onClick={() => triggerSnapshot("weekly")}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      triggerSnapshot("weekly");
+                    }}
                   >
                     {isTriggeringPeriod === "weekly" ? "Generating Weekly..." : "Generate Weekly"}
                   </button>
@@ -295,7 +366,10 @@ export const ExecutiveDashboardPage = () => {
                     type="button"
                     className="secondary-btn"
                     disabled={isTriggeringPeriod === "monthly"}
-                    onClick={() => triggerSnapshot("monthly")}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      triggerSnapshot("monthly");
+                    }}
                   >
                     {isTriggeringPeriod === "monthly" ? "Generating Monthly..." : "Generate Monthly"}
                   </button>
@@ -330,7 +404,7 @@ export const ExecutiveDashboardPage = () => {
             {hasStageData && (
               <ul className="stage-list">
                 {stageCounts.map((stage) => {
-                  const barPct = maxStageCount > 0 ? (stage.count / maxStageCount) * 100 : 0;
+                  const barPct = totalActivePartners > 0 ? (stage.count / totalActivePartners) * 100 : 0;
                   return (
                     <li key={stage.phaseId} className="stage-list-item">
                       <div className="stage-list-meta">
@@ -376,7 +450,9 @@ export const ExecutiveDashboardPage = () => {
                         <td>{entry.toPhaseCode}</td>
                         <td>{entry.fromCount}</td>
                         <td>{entry.toCount}</td>
-                        <td>{formatPct(entry.conversionRatePct)}</td>
+                        <td>
+                          <strong className="conversion-rate-highlight">{formatPct(entry.conversionRatePct)}</strong>
+                        </td>
                         <td>
                           <Link to={`/partners?status=active&phaseCode=${toPhaseParam(entry.toPhaseCode)}`} className="table-link">
                             Open {entry.toPhaseCode}
@@ -437,6 +513,25 @@ export const ExecutiveDashboardPage = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {coverageGaps.length > 0 && (
+              <div className="coverage-gap-list">
+                {coverageGaps.map((gap) => (
+                  <article key={`modal-gap-${gap.category}`} className="coverage-gap-item">
+                    <div>
+                      <h3>{gap.category}</h3>
+                      <p>{gap.recommendedAction}</p>
+                    </div>
+                    <div className="coverage-gap-meta">
+                      <span className={`coverage-severity coverage-severity-${gap.severity}`}>
+                        {gap.severity.toUpperCase()}
+                      </span>
+                      <span>{`Gap: ${gap.gapCount}`}</span>
+                    </div>
+                  </article>
+                ))}
               </div>
             )}
           </Modal>
