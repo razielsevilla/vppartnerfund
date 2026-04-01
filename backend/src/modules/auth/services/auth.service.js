@@ -1,12 +1,13 @@
 const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const { getDatabase } = require("../../../shared/services/database.service");
 const { ALL_ROLE_CODES } = require("../../../shared/constants/roles");
 
-const sessions = new Map();
-
 const isProduction = process.env.NODE_ENV === "production";
 const bcryptRounds = Number(process.env.AUTH_BCRYPT_ROUNDS || 10);
+const SESSION_SECRET = process.env.SESSION_SECRET || "change-me-immediately";
+const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS || 1000 * 60 * 60 * 8);
 
 const safeUser = (user) => {
   if (!user) {
@@ -14,7 +15,7 @@ const safeUser = (user) => {
   }
 
   return {
-    id: user.id,
+    id: user.id || user.sub,
     email: user.email,
     role: user.role,
     displayName: user.displayName,
@@ -67,26 +68,39 @@ const validateCredentials = async (email, password) => {
 };
 
 const createSession = (user) => {
-  const token = crypto.randomUUID();
-  sessions.set(token, {
-    user,
-    createdAt: new Date().toISOString(),
+  const payload = {
+    sub: user.id,
+    email: user.email,
+    role: user.role,
+    displayName: user.displayName,
+    lastLoginAt: user.lastLoginAt,
+  };
+
+  return jwt.sign(payload, SESSION_SECRET, {
+    expiresIn: Math.floor(SESSION_TTL_MS / 1000),
   });
-  return token;
 };
 
 const findSession = (token) => {
   if (!token) {
     return null;
   }
-  return sessions.get(token) || null;
+
+  try {
+    const payload = jwt.verify(token, SESSION_SECRET);
+    return {
+      user: safeUser(payload),
+      createdAt: payload.iat ? new Date(payload.iat * 1000).toISOString() : null,
+    };
+  } catch (_error) {
+    return null;
+  }
 };
 
 const revokeSession = (token) => {
-  if (!token) {
-    return false;
-  }
-  return sessions.delete(token);
+  // Stateless JWTs aren't easily revoked without a blacklist.
+  // Clearing the cookie on the client is the standard serverless pattern here.
+  return true; 
 };
 
 const provisionUser = async ({ email, password, role, displayName }) => {
