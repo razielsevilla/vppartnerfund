@@ -3,6 +3,7 @@ const {
   createPartner,
   listPartners,
   getPartnerById,
+  getPartnerTimeline,
   updatePartner,
   archivePartner,
 } = require("../services/partners.service");
@@ -89,6 +90,25 @@ async function getPartnerHandler(req, res) {
   }
 }
 
+async function getPartnerTimelineHandler(req, res) {
+  try {
+    const timeline = await getPartnerTimeline(req.params.partnerId);
+    if (!timeline) {
+      return res.status(404).json({
+        error: {
+          code: "PARTNER_NOT_FOUND",
+          message: "Partner was not found",
+          details: [{ field: "partnerId", message: "No partner exists with this id" }],
+        },
+      });
+    }
+
+    return res.status(200).json(timeline);
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
 async function updatePartnerHandler(req, res) {
   const validation = validateUpdatePartnerPayload(req.body);
   if (!validation.isValid) {
@@ -111,7 +131,7 @@ async function updatePartnerHandler(req, res) {
   }
 
   try {
-    const partner = await updatePartner(req.params.partnerId, validation.value);
+    const partner = await updatePartner(req.params.partnerId, validation.value, req.user.id);
     if (!partner) {
       return res.status(404).json({
         error: {
@@ -131,7 +151,7 @@ const transitionPartnerHandler = transitionPartnerPhaseHandler;
 
 async function archivePartnerHandler(req, res) {
   try {
-    const partner = await archivePartner(req.params.partnerId);
+    const partner = await archivePartner(req.params.partnerId, req.user.id);
     if (!partner) {
       return res.status(404).json({
         error: {
@@ -152,6 +172,7 @@ module.exports = {
   createPartnerHandler,
   listPartnersHandler,
   getPartnerHandler,
+  getPartnerTimelineHandler,
   updatePartnerHandler,
   transitionPartnerHandler,
   archivePartnerHandler,

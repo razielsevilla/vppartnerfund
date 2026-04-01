@@ -233,6 +233,78 @@ body {
   cursor: pointer;
 }
 
+.table-link {
+  color: #1d4ed8;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.table-link:hover {
+  text-decoration: underline;
+}
+
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+  text-decoration: none;
+  color: #0f172a;
+  background: #ffffff;
+  font-weight: 600;
+}
+
+.timeline-panel {
+  background: #ffffff;
+  border: 1px solid #dbe3ef;
+  border-radius: 16px;
+  padding: 1rem;
+}
+
+.timeline-panel h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.timeline-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.timeline-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: #f8fafc;
+}
+
+.timeline-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.45rem;
+}
+
+.timeline-item p {
+  margin: 0.3rem 0;
+}
+
+.timeline-item pre {
+  margin: 0.5rem 0 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0.55rem;
+  font-size: 0.78rem;
+  overflow-x: auto;
+}
+
 .registry-table-wrap {
   overflow-x: auto;
 }

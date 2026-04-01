@@ -214,3 +214,52 @@ test("blocks phase change through generic partner update endpoint", async () => 
   assert.equal(updateResponse.status, 400);
   assert.equal(updateResponse.body.error.code, "PARTNER_PHASE_UPDATE_BLOCKED");
 });
+
+test("timeline endpoint returns status changes with actor and previous/new values", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Timeline Partner",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+    lastContactDate: "2026-04-01",
+    nextActionStep: "Initial discovery",
+  });
+  assert.equal(createResponse.status, 201);
+
+  const partnerId = createResponse.body.partner.id;
+
+  const transitionResponse = await agent
+    .post(`/api/partners/${partnerId}/transition`)
+    .send({ toPhaseId: "phase_prospecting", reason: "Discovery complete" });
+  assert.equal(transitionResponse.status, 200);
+
+  const timelineResponse = await agent.get(`/api/partners/${partnerId}/timeline`);
+  assert.equal(timelineResponse.status, 200);
+  assert.ok(Array.isArray(timelineResponse.body.entries));
+  assert.ok(timelineResponse.body.entries.length > 0);
+
+  const statusEntry = timelineResponse.body.entries.find((entry) => entry.kind === "status_change");
+  assert.ok(statusEntry);
+  assert.equal(statusEntry.actorId, "seed-admin-user");
+  assert.equal(statusEntry.previousValue.phaseId, "phase_lead");
+  assert.equal(statusEntry.newValue.phaseId, "phase_prospecting");
+  assert.ok(statusEntry.happenedAt);
+});
+
+test("timeline audit endpoint is read-only in standard routes", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Immutable Timeline Partner",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createResponse.status, 201);
+
+  const partnerId = createResponse.body.partner.id;
+
+  const mutateAttempt = await agent.post(`/api/partners/${partnerId}/timeline`).send({
+    fake: true,
+  });
+
+  assert.ok([404, 405].includes(mutateAttempt.status));
+});

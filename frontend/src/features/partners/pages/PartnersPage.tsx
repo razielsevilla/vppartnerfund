@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
 import {
   createPartnerRequest,
@@ -330,7 +331,11 @@ export const PartnersPage = () => {
               <tbody>
                 {partners.map((partner) => (
                   <tr key={partner.id}>
-                    <td>{partner.organizationName}</td>
+                    <td>
+                      <Link to={`/partners/${partner.id}`} className="table-link">
+                        {partner.organizationName}
+                      </Link>
+                    </td>
                     <td>{partner.organizationType}</td>
                     <td>{partner.industryNiche}</td>
                     <td>{partner.impactTier || "-"}</td>

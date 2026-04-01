@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { getDatabase } = require("../../../shared/services/database.service");
+const { logPartnerActivity } = require("../../../shared/services/audit-log.service");
 
 class PartnerServiceError extends Error {
   constructor(message, code, status = 400, details = []) {
@@ -157,6 +158,16 @@ async function createPartner(data, actorId) {
     updated_at: nowIso,
   });
 
+  await logPartnerActivity(db, {
+    partnerId,
+    actionType: "partner_created",
+    actorId,
+    payload: {
+      organizationName: data.organizationName,
+      currentPhaseId: data.currentPhaseId,
+    },
+  });
+
   const created = await db("partners").where({ id: partnerId }).first();
   return mapPartnerRow(created);
 }
@@ -200,7 +211,7 @@ async function getPartnerById(partnerId) {
   return mapPartnerRow(row);
 }
 
-async function updatePartner(partnerId, updates) {
+async function updatePartner(partnerId, updates, actorId) {
   const db = getDatabase();
 
   if (updates.currentPhaseId) {
@@ -230,10 +241,22 @@ async function updatePartner(partnerId, updates) {
   await db("partners").where({ id: partnerId }).update(payload);
 
   const updated = await db("partners").where({ id: partnerId }).first();
+
+  await logPartnerActivity(db, {
+    partnerId,
+    actionType: "partner_updated",
+    actorId,
+    payload: {
+      changedFields: Object.keys(updates).filter((key) => updates[key] !== undefined),
+      previous: mapPartnerRow(existing),
+      next: mapPartnerRow(updated),
+    },
+  });
+
   return mapPartnerRow(updated);
 }
 
-async function archivePartner(partnerId) {
+async function archivePartner(partnerId, actorId) {
   const db = getDatabase();
   const existing = await db("partners").where({ id: partnerId }).first();
   if (!existing) {
@@ -247,7 +270,105 @@ async function archivePartner(partnerId) {
   }
 
   const archived = await db("partners").where({ id: partnerId }).first();
+
+  await logPartnerActivity(db, {
+    partnerId,
+    actionType: "partner_archived",
+    actorId,
+    payload: {
+      previousArchivedAt: existing.archived_at,
+      archivedAt: archived.archived_at,
+    },
+  });
+
   return mapPartnerRow(archived);
+}
+
+function parseJson(value) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return { raw: value };
+  }
+}
+
+async function getPartnerTimeline(partnerId) {
+  const db = getDatabase();
+  const partner = await db("partners").where({ id: partnerId }).first();
+  if (!partner) {
+    return null;
+  }
+
+  const transitions = await db("workflow_transitions as wt")
+    .leftJoin("workflow_phases as fp", "wt.from_phase_id", "fp.id")
+    .leftJoin("workflow_phases as tp", "wt.to_phase_id", "tp.id")
+    .leftJoin("users as u", "wt.changed_by", "u.id")
+    .where("wt.partner_id", partnerId)
+    .select(
+      "wt.id",
+      "wt.changed_at",
+      "wt.change_reason",
+      "wt.changed_by",
+      "u.full_name as actor_name",
+      "wt.from_phase_id",
+      "wt.to_phase_id",
+      "fp.name as from_phase_name",
+      "tp.name as to_phase_name",
+    );
+
+  const activities = await db("activity_logs as al")
+    .leftJoin("users as u", "al.actor_id", "u.id")
+    .where("al.partner_id", partnerId)
+    .select(
+      "al.id",
+      "al.action_type",
+      "al.action_description",
+      "al.actor_id",
+      "u.full_name as actor_name",
+      "al.happened_at",
+    );
+
+  const transitionEntries = transitions.map((entry) => ({
+    id: `transition:${entry.id}`,
+    kind: "status_change",
+    actionType: "workflow_transition",
+    actorId: entry.changed_by,
+    actorName: entry.actor_name || "Unknown User",
+    happenedAt: entry.changed_at,
+    previousValue: {
+      phaseId: entry.from_phase_id,
+      phaseName: entry.from_phase_name || null,
+    },
+    newValue: {
+      phaseId: entry.to_phase_id,
+      phaseName: entry.to_phase_name || null,
+    },
+    metadata: {
+      reason: entry.change_reason,
+    },
+  }));
+
+  const activityEntries = activities.map((entry) => ({
+    id: `activity:${entry.id}`,
+    kind: "activity",
+    actionType: entry.action_type,
+    actorId: entry.actor_id,
+    actorName: entry.actor_name || "Unknown User",
+    happenedAt: entry.happened_at,
+    previousValue: null,
+    newValue: null,
+    metadata: parseJson(entry.action_description),
+  }));
+
+  const entries = [...transitionEntries, ...activityEntries].sort((left, right) =>
+    left.happenedAt < right.happenedAt ? 1 : -1,
+  );
+
+  return { entries };
 }
 
 module.exports = {
@@ -257,4 +378,5 @@ module.exports = {
   getPartnerById,
   updatePartner,
   archivePartner,
+  getPartnerTimeline,
 };

@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const { getDatabase } = require("../../../shared/services/database.service");
 const { PartnerServiceError } = require("../../partners/services/partners.service");
+const { logPartnerActivity } = require("../../../shared/services/audit-log.service");
 
 function toPhase(row) {
   return {
@@ -165,6 +166,17 @@ async function transitionPartnerPhase(partnerId, toPhaseId, actorId, reason) {
       change_reason: reason || null,
       changed_by: actorId,
       changed_at: nowIso,
+    });
+
+    await logPartnerActivity(trx, {
+      partnerId: partner.id,
+      actionType: "partner_phase_transitioned",
+      actorId,
+      payload: {
+        previous: { phaseId: fromPhase.id, phaseCode: fromPhase.code, phaseName: fromPhase.name },
+        next: { phaseId: toPhase.id, phaseCode: toPhase.code, phaseName: toPhase.name },
+        reason: reason || null,
+      },
     });
 
     const updated = await trx("partners").where({ id: partnerId }).first();

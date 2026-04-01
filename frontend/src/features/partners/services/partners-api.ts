@@ -18,6 +18,18 @@ export type PartnerRecord = {
   updatedAt: string;
 };
 
+export type TimelineEntry = {
+  id: string;
+  kind: "status_change" | "activity";
+  actionType: string;
+  actorId: string;
+  actorName: string;
+  happenedAt: string;
+  previousValue: { phaseId?: string | null; phaseName?: string | null } | null;
+  newValue: { phaseId?: string | null; phaseName?: string | null } | null;
+  metadata: Record<string, unknown> | null;
+};
+
 export type PartnerListFilters = {
   search?: string;
   organizationType?: string;
@@ -130,4 +142,32 @@ export const createPartnerRequest = async (payload: CreatePartnerPayload): Promi
   }
 
   return (body as { partner: PartnerRecord }).partner;
+};
+
+export const getPartnerRequest = async (partnerId: string): Promise<PartnerRecord> => {
+  const response = await fetch(`${API_URL}/partners/${partnerId}`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to load partner detail"));
+  }
+
+  return (body as { partner: PartnerRecord }).partner;
+};
+
+export const getPartnerTimelineRequest = async (partnerId: string): Promise<TimelineEntry[]> => {
+  const response = await fetch(`${API_URL}/partners/${partnerId}/timeline`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to load partner timeline"));
+  }
+
+  return (body as { entries: TimelineEntry[] }).entries;
 };
