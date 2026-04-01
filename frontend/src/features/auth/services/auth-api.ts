@@ -8,19 +8,14 @@ export type AuthUser = {
 };
 
 export type LoginResponse = {
-  token: string;
   user: AuthUser;
 };
-
-const authHeaders = (token: string) => ({
-  Authorization: `Bearer ${token}`,
-  "Content-Type": "application/json",
-});
 
 export const loginRequest = async (email: string, password: string): Promise<LoginResponse> => {
   const response = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({ email, password }),
   });
 
@@ -32,10 +27,10 @@ export const loginRequest = async (email: string, password: string): Promise<Log
   return response.json();
 };
 
-export const sessionRequest = async (token: string): Promise<{ user: AuthUser }> => {
+export const sessionRequest = async (): Promise<{ user: AuthUser }> => {
   const response = await fetch(`${API_URL}/auth/session`, {
     method: "GET",
-    headers: authHeaders(token),
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -45,9 +40,9 @@ export const sessionRequest = async (token: string): Promise<{ user: AuthUser }>
   return response.json();
 };
 
-export const logoutRequest = async (token: string): Promise<void> => {
+export const logoutRequest = async (): Promise<void> => {
   await fetch(`${API_URL}/auth/logout`, {
     method: "POST",
-    headers: authHeaders(token),
+    credentials: "include",
   });
 };

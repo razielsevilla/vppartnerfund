@@ -2,8 +2,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { loginRequest, logoutRequest, sessionRequest, type AuthUser } from "../services/auth-api";
 
-const TOKEN_KEY = "vp_partner_fund_token";
-
 type AuthContextValue = {
   user: AuthUser | null;
   isLoading: boolean;
@@ -19,17 +17,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const hydrateSession = async () => {
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
       try {
-        const { user: sessionUser } = await sessionRequest(token);
+        const { user: sessionUser } = await sessionRequest();
         setUser(sessionUser);
       } catch {
-        localStorage.removeItem(TOKEN_KEY);
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -40,17 +31,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const { token, user: loggedInUser } = await loginRequest(email, password);
-    localStorage.setItem(TOKEN_KEY, token);
+    const { user: loggedInUser } = await loginRequest(email, password);
     setUser(loggedInUser);
   };
 
   const logout = async () => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (token) {
-      await logoutRequest(token);
-    }
-    localStorage.removeItem(TOKEN_KEY);
+    await logoutRequest();
     setUser(null);
   };
 

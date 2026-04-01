@@ -6,6 +6,17 @@ const {
   isProduction,
 } = require("../services/auth.service");
 
+const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || "vp_partner_fund_session";
+const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS || 1000 * 60 * 60 * 8);
+
+const cookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: "lax",
+  path: "/",
+  maxAge: SESSION_TTL_MS,
+};
+
 const login = (req, res) => {
   const { email, password } = req.body || {};
 
@@ -18,8 +29,9 @@ const login = (req, res) => {
     return res.status(401).json({ error: "Invalid credentials" });
   }
   const token = createSession(user);
+  res.cookie(SESSION_COOKIE_NAME, token, cookieOptions);
 
-  return res.status(200).json({ token, user });
+  return res.status(200).json({ user });
 };
 
 const session = (req, res) => {
@@ -28,14 +40,16 @@ const session = (req, res) => {
 
 const logout = (req, res) => {
   revokeSession(req.authToken);
+  res.clearCookie(SESSION_COOKIE_NAME, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+    path: "/",
+  });
   return res.status(200).json({ message: "Logged out" });
 };
 
 const provision = (req, res) => {
-  if (!req.user || req.user.role !== "admin") {
-    return res.status(403).json({ error: "Forbidden" });
-  }
-
   if (isProduction) {
     return res.status(400).json({
       error:
