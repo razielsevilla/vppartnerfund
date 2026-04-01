@@ -296,6 +296,101 @@ function parseJson(value) {
   }
 }
 
+function parseJsonArray(value) {
+  const parsed = parseJson(value);
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+  return parsed.map((item) => String(item));
+}
+
+function mapQualificationRow(row) {
+  if (!row) {
+    return {
+      durationCategory: null,
+      impactLevel: null,
+      functionalRole: null,
+      potentialValuePropositions: [],
+      confirmedValuePropositions: [],
+      updatedBy: null,
+      createdAt: null,
+      updatedAt: null,
+    };
+  }
+
+  return {
+    durationCategory: row.duration_category,
+    impactLevel: row.impact_level,
+    functionalRole: row.functional_role,
+    potentialValuePropositions: parseJsonArray(row.potential_value_props),
+    confirmedValuePropositions: parseJsonArray(row.confirmed_value_props),
+    updatedBy: row.updated_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+async function getPartnerQualification(partnerId) {
+  const db = getDatabase();
+  const partner = await db("partners").where({ id: partnerId }).first();
+  if (!partner) {
+    return null;
+  }
+
+  const row = await db("partner_qualification_profiles").where({ partner_id: partnerId }).first();
+  return mapQualificationRow(row);
+}
+
+async function upsertPartnerQualification(partnerId, payload, actorId) {
+  const db = getDatabase();
+  const partner = await db("partners").where({ id: partnerId }).first();
+  if (!partner) {
+    return null;
+  }
+
+  const nowIso = new Date().toISOString();
+  const row = {
+    partner_id: partnerId,
+    duration_category: payload.durationCategory,
+    impact_level: payload.impactLevel,
+    functional_role: payload.functionalRole,
+    potential_value_props: JSON.stringify(payload.potentialValuePropositions || []),
+    confirmed_value_props: JSON.stringify(payload.confirmedValuePropositions || []),
+    updated_by: actorId,
+    updated_at: nowIso,
+  };
+
+  const existing = await db("partner_qualification_profiles").where({ partner_id: partnerId }).first();
+
+  if (!existing) {
+    await db("partner_qualification_profiles").insert({
+      ...row,
+      created_at: nowIso,
+    });
+  } else {
+    await db("partner_qualification_profiles").where({ partner_id: partnerId }).update(row);
+  }
+
+  await logPartnerActivity(db, {
+    partnerId,
+    actionType: "partner_qualification_updated",
+    actorId,
+    payload: {
+      previous: mapQualificationRow(existing),
+      next: {
+        durationCategory: payload.durationCategory,
+        impactLevel: payload.impactLevel,
+        functionalRole: payload.functionalRole,
+        potentialValuePropositions: payload.potentialValuePropositions || [],
+        confirmedValuePropositions: payload.confirmedValuePropositions || [],
+      },
+    },
+  });
+
+  const saved = await db("partner_qualification_profiles").where({ partner_id: partnerId }).first();
+  return mapQualificationRow(saved);
+}
+
 async function getPartnerTimeline(partnerId) {
   const db = getDatabase();
   const partner = await db("partners").where({ id: partnerId }).first();
@@ -376,7 +471,9 @@ module.exports = {
   createPartner,
   listPartners,
   getPartnerById,
+  getPartnerQualification,
   updatePartner,
+  upsertPartnerQualification,
   archivePartner,
   getPartnerTimeline,
 };

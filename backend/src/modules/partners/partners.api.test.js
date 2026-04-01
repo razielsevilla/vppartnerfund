@@ -263,3 +263,58 @@ test("timeline audit endpoint is read-only in standard routes", async () => {
 
   assert.ok([404, 405].includes(mutateAttempt.status));
 });
+
+test("qualification mapping supports multi-select potential and confirmed sets", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Qualification Partner",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createResponse.status, 201);
+
+  const partnerId = createResponse.body.partner.id;
+
+  const saveResponse = await agent.put(`/api/partners/${partnerId}/qualification`).send({
+    durationCategory: "mid_term",
+    impactLevel: "high",
+    functionalRole: "Strategic Sponsor",
+    potentialValuePropositions: ["Brand Visibility", "Talent Pipeline", "Product Adoption"],
+    confirmedValuePropositions: ["Brand Visibility"],
+  });
+
+  assert.equal(saveResponse.status, 200);
+  assert.equal(saveResponse.body.qualification.durationCategory, "mid_term");
+  assert.equal(saveResponse.body.qualification.impactLevel, "high");
+  assert.equal(saveResponse.body.qualification.potentialValuePropositions.length, 3);
+  assert.equal(saveResponse.body.qualification.confirmedValuePropositions.length, 1);
+});
+
+test("qualification mapping persists and rehydrates on reload", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Reload Qualification Partner",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createResponse.status, 201);
+
+  const partnerId = createResponse.body.partner.id;
+
+  const firstSave = await agent.put(`/api/partners/${partnerId}/qualification`).send({
+    durationCategory: "long_term",
+    impactLevel: "transformational",
+    functionalRole: "Innovation Partner",
+    potentialValuePropositions: ["Research Collaboration", "Market Expansion"],
+    confirmedValuePropositions: ["Research Collaboration"],
+  });
+  assert.equal(firstSave.status, 200);
+
+  const reload = await agent.get(`/api/partners/${partnerId}/qualification`);
+  assert.equal(reload.status, 200);
+  assert.equal(reload.body.qualification.durationCategory, "long_term");
+  assert.equal(reload.body.qualification.impactLevel, "transformational");
+  assert.equal(reload.body.qualification.functionalRole, "Innovation Partner");
+  assert.ok(reload.body.qualification.potentialValuePropositions.includes("Market Expansion"));
+  assert.ok(reload.body.qualification.confirmedValuePropositions.includes("Research Collaboration"));
+});

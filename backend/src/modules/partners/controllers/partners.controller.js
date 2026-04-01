@@ -3,14 +3,17 @@ const {
   createPartner,
   listPartners,
   getPartnerById,
+  getPartnerQualification,
   getPartnerTimeline,
   updatePartner,
+  upsertPartnerQualification,
   archivePartner,
 } = require("../services/partners.service");
 const {
   validateCreatePartnerPayload,
   validateUpdatePartnerPayload,
 } = require("../validators/partner.validator");
+const { validateQualificationPayload } = require("../validators/qualification.validator");
 const { transitionPartnerPhaseHandler } = require("../../workflow/controllers/workflow.controller");
 
 function validationError(res, details) {
@@ -109,6 +112,53 @@ async function getPartnerTimelineHandler(req, res) {
   }
 }
 
+async function getPartnerQualificationHandler(req, res) {
+  try {
+    const qualification = await getPartnerQualification(req.params.partnerId);
+    if (!qualification) {
+      return res.status(404).json({
+        error: {
+          code: "PARTNER_NOT_FOUND",
+          message: "Partner was not found",
+          details: [{ field: "partnerId", message: "No partner exists with this id" }],
+        },
+      });
+    }
+
+    return res.status(200).json({ qualification });
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
+async function upsertPartnerQualificationHandler(req, res) {
+  const validation = validateQualificationPayload(req.body);
+  if (!validation.isValid) {
+    return validationError(res, validation.errors);
+  }
+
+  try {
+    const qualification = await upsertPartnerQualification(
+      req.params.partnerId,
+      validation.value,
+      req.user.id,
+    );
+    if (!qualification) {
+      return res.status(404).json({
+        error: {
+          code: "PARTNER_NOT_FOUND",
+          message: "Partner was not found",
+          details: [{ field: "partnerId", message: "No partner exists with this id" }],
+        },
+      });
+    }
+
+    return res.status(200).json({ qualification });
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
 async function updatePartnerHandler(req, res) {
   const validation = validateUpdatePartnerPayload(req.body);
   if (!validation.isValid) {
@@ -172,7 +222,9 @@ module.exports = {
   createPartnerHandler,
   listPartnersHandler,
   getPartnerHandler,
+  getPartnerQualificationHandler,
   getPartnerTimelineHandler,
+  upsertPartnerQualificationHandler,
   updatePartnerHandler,
   transitionPartnerHandler,
   archivePartnerHandler,

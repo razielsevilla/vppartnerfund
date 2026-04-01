@@ -30,6 +30,25 @@ export type TimelineEntry = {
   metadata: Record<string, unknown> | null;
 };
 
+export type QualificationProfile = {
+  durationCategory: "short_term" | "mid_term" | "long_term" | null;
+  impactLevel: "low" | "medium" | "high" | "transformational" | null;
+  functionalRole: string | null;
+  potentialValuePropositions: string[];
+  confirmedValuePropositions: string[];
+  updatedBy: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type QualificationPayload = {
+  durationCategory: "short_term" | "mid_term" | "long_term" | null;
+  impactLevel: "low" | "medium" | "high" | "transformational" | null;
+  functionalRole: string | null;
+  potentialValuePropositions: string[];
+  confirmedValuePropositions: string[];
+};
+
 export type PartnerListFilters = {
   search?: string;
   organizationType?: string;
@@ -170,4 +189,39 @@ export const getPartnerTimelineRequest = async (partnerId: string): Promise<Time
   }
 
   return (body as { entries: TimelineEntry[] }).entries;
+};
+
+export const getPartnerQualificationRequest = async (
+  partnerId: string,
+): Promise<QualificationProfile> => {
+  const response = await fetch(`${API_URL}/partners/${partnerId}/qualification`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to load qualification profile"));
+  }
+
+  return (body as { qualification: QualificationProfile }).qualification;
+};
+
+export const upsertPartnerQualificationRequest = async (
+  partnerId: string,
+  payload: QualificationPayload,
+): Promise<QualificationProfile> => {
+  const response = await fetch(`${API_URL}/partners/${partnerId}/qualification`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to save qualification profile"));
+  }
+
+  return (body as { qualification: QualificationProfile }).qualification;
 };
