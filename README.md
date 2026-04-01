@@ -24,19 +24,37 @@ This repository contains the internal DEVCON Laguna dashboard workspace.
 
 ## Development
 
-1. Start backend API:
-   `npm run dev:backend`
-2. Start frontend app:
-   `npm run dev:frontend`
+Run both applications together:
+`npm run dev`
+
+Or run them separately:
+
+- `npm run dev:backend`
+- `npm run dev:frontend`
 
 ## Tooling
 
-- Run lint checks:
+- Build (frontend + backend build step):
+  `npm run build`
+- Lint:
   `npm run lint`
-- Run formatting check:
+- Test:
+  `npm run test`
+- Formatting check:
   `npm run format:check`
 - Format repository files:
   `npm run format`
+
+## CI Commands
+
+The repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`.
+
+- Run full CI command chain locally:
+  `npm run ci`
+- Run CI sub-commands:
+  `npm run ci:lint`
+  `npm run ci:test`
+  `npm run ci:build`
 
 ## Environment Variables
 
