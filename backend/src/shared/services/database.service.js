@@ -196,7 +196,7 @@ async function initializeDatabase() {
     return db;
   } catch (err) {
     console.error('Database initialization failed:', err);
-    process.exit(1);
+    throw err;
   }
 }
 
