@@ -60,18 +60,27 @@ The repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`.
 
 Use `.env.example` as the source of required variables for local development.
 
+## Early Access Deployment
+
+This repository includes a one-service early-access deployment path:
+
+- Deployment guide: `docs/deployment-early-access.md`
+- Render blueprint: `render.yaml`
+
+The early-access path serves frontend and backend from one Node service and uses persistent SQLite + local artifact disk.
+
 ## Internal User Provisioning
 
 Non-production behavior:
 
-- Admin and Team Member accounts are seeded from `.env` values.
+- VP and officer accounts are seeded from `.env` values.
 - Default seeded credentials are intended for local and staging only.
 
 Manual provisioning (non-production only):
 
 1. Login as Admin using `POST /api/auth/login`.
 2. Call `POST /api/auth/provision` with bearer token and payload:
-   `{"email":"member@devconlaguna.internal","password":"<temporary>","role":"team_member","displayName":"Team Member"}`
+  `{"email":"member@devconlaguna.internal","password":"<temporary>","role":"liaison_officer","displayName":"Liaison Officer"}`
 
 Production provisioning path:
 

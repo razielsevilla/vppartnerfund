@@ -228,7 +228,8 @@ async function seedWorkflowPhases() {
 }
 
 async function seedUsersIfNeeded() {
-  if (process.env.NODE_ENV === 'production') {
+  const disableAutoUserSeed = String(process.env.DISABLE_AUTO_USER_SEED || '').toLowerCase() === 'true';
+  if (disableAutoUserSeed) {
     return;
   }
 

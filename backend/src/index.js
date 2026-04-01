@@ -5,7 +5,7 @@ const logger = require("./shared/utils/logger");
 
 dotenv.config();
 
-const PORT = process.env.BACKEND_PORT || 4000;
+const PORT = process.env.PORT || process.env.BACKEND_PORT || 4000;
 const app = createApp();
 
 async function startServer() {

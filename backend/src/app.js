@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const fs = require("fs");
+const path = require("path");
 const authRoutes = require("./modules/auth/routes/auth.routes");
 const partnerRoutes = require("./modules/partners/routes/partners.routes");
 const taskRoutes = require("./modules/tasks/routes/tasks.routes");
@@ -18,6 +20,9 @@ const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
 
 function createApp() {
   const app = express();
+  const isProduction = process.env.NODE_ENV === "production";
+  const frontendDistPath = path.resolve(__dirname, "../../frontend/dist");
+  const hasFrontendDist = fs.existsSync(frontendDistPath);
 
   app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
   app.use(cookieParser());
@@ -37,6 +42,17 @@ function createApp() {
       .status(200)
       .json({ status: "ok", service: "backend", timestamp: new Date().toISOString() });
   });
+
+  if (isProduction && hasFrontendDist) {
+    app.use(express.static(frontendDistPath));
+    app.get(/^(?!\/api\/).*/, (req, res, next) => {
+      if (req.path.startsWith("/api/")) {
+        return next();
+      }
+
+      return res.sendFile(path.join(frontendDistPath, "index.html"));
+    });
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler);

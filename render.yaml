@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: vppartnerfund-early-access
+    env: node
+    plan: starter
+    rootDir: .
+    buildCommand: npm ci ; npm --prefix frontend ci ; npm --prefix backend ci ; npm run build
+    startCommand: npm run start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_CLIENT
+        value: sqlite
+      - key: SQLITE_DB_PATH
+        value: /var/data/prod.db
+      - key: ARTIFACT_LOCAL_ROOT
+        value: /var/data/artifacts
+      - key: SESSION_COOKIE_NAME
+        value: vp_partner_fund_session
+      - key: SESSION_TTL_MS
+        value: 28800000
+      - key: AUTH_BCRYPT_ROUNDS
+        value: 10
+      - key: LOGIN_RATE_LIMIT_WINDOW_MS
+        value: 600000
+      - key: LOGIN_RATE_LIMIT_MAX
+        value: 5
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: AUTH_VP_EMAIL
+        sync: false
+      - key: AUTH_VP_PASSWORD
+        sync: false
+      - key: AUTH_LIAISON_EMAIL
+        sync: false
+      - key: AUTH_LIAISON_PASSWORD
+        sync: false
+      - key: AUTH_COMPLIANCE_EMAIL
+        sync: false
+      - key: AUTH_COMPLIANCE_PASSWORD
+        sync: false
+      - key: AUTH_DEVCON_EMAIL
+        sync: false
+      - key: AUTH_DEVCON_PASSWORD
+        sync: false
+    disk:
+      name: vppartnerfund-data
+      mountPath: /var/data
+      sizeGB: 5
