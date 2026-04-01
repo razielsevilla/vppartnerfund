@@ -77,3 +77,10 @@ Production provisioning path:
 
 - Runtime provisioning endpoint is intentionally disabled in production.
 - Provision production users through controlled deployment-time account setup (secrets-managed seed values and approved credential rotation process).
+
+## Release and Onboarding Documents
+
+- UAT sign-off record: `docs/uat-signoff.md`
+- Internal team onboarding guide: `docs/team-onboarding.md`
+- Deployment/go-live controls: `docs/deployment.md`
+- QA acceptance gates: `docs/qa_acceptance.md`
