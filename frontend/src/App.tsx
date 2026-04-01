@@ -11,6 +11,7 @@ import { ExecutiveDashboardPage } from "./features/dashboard/pages/ExecutiveDash
 import { PartnerDetailPage } from "./features/partners/pages/PartnerDetailPage";
 import { PartnersPage } from "./features/partners/pages/PartnersPage";
 import { SettingsPage } from "./features/settings/pages/SettingsPage";
+import { TeamManagementPage } from "./features/team/pages/TeamManagementPage";
 import { TaskQueuePage } from "./features/tasks/pages/TaskQueuePage";
 import { ProtectedRoute } from "./shared/components/ProtectedRoute";
 
@@ -25,6 +26,7 @@ function App() {
             <Route path="/partners" element={<PartnersPage />} />
             <Route path="/partners/:partnerId" element={<PartnerDetailPage />} />
             <Route path="/tasks" element={<TaskQueuePage />} />
+            <Route path="/team" element={<TeamManagementPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

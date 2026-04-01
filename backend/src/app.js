@@ -7,6 +7,7 @@ const taskRoutes = require("./modules/tasks/routes/tasks.routes");
 const vaultRoutes = require("./modules/vault/routes/vault.routes");
 const workflowRoutes = require("./modules/workflow/routes/workflow.routes");
 const settingsRoutes = require("./modules/settings/routes/settings.routes");
+const teamRoutes = require("./modules/team/routes/team.routes");
 const {
   attachRequestContext,
   notFoundHandler,
@@ -29,6 +30,7 @@ function createApp() {
   app.use("/api/vault", vaultRoutes);
   app.use("/api/workflow", workflowRoutes);
   app.use("/api/settings", settingsRoutes);
+  app.use("/api/team", teamRoutes);
 
   app.get("/api/health", (_req, res) => {
     res
