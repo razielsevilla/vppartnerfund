@@ -245,12 +245,22 @@ body {
 }
 
 .registry-create-form input,
-.registry-create-form select {
+.registry-create-form select,
+.registry-create-form textarea {
   border: 1px solid #cbd5e1;
   border-radius: 10px;
   padding: 0.6rem 0.7rem;
   font-size: 0.9rem;
   background: #f8fafc;
+}
+
+.registry-create-form textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.registry-create-field-wide {
+  grid-column: 1 / -1;
 }
 
 .registry-create-form button {

@@ -37,6 +37,21 @@ function parseStatus(value: string | null): FilterState["status"] {
   return "active";
 }
 
+const ORGANIZATION_TYPE_OPTIONS = [
+  "Tech Corporate",
+  "IT-BPO",
+  "Startup",
+  "Manufacturing / Industrial",
+  "Local Government Unit",
+  "National Government Agency",
+  "Academe",
+  "Academic Organization",
+  "Community / Non-Profit",
+  "Incubator / Accelerator",
+  "Media/Marketing",
+  "Food and Hospitality",
+];
+
 function splitDelimitedLine(line: string, delimiter: string): string[] {
   const cells: string[] = [];
   let current = "";
@@ -119,7 +134,6 @@ export const PartnersPage = () => {
     organizationType: string;
     industryNiche: string;
     currentPhaseId: string;
-    impactTier: "" | "standard" | "major" | "lead";
     location: string;
   } | null>(null);
   const [createForm, setCreateForm] = useState({
@@ -127,8 +141,8 @@ export const PartnersPage = () => {
     organizationType: "",
     industryNiche: "",
     currentPhaseId: "phase_lead",
-    impactTier: "" as "" | "standard" | "major" | "lead",
-    location: "",
+    locationScope: "laguna" as "laguna" | "non_laguna",
+    nonLagunaLocation: "",
   });
   const [filters, setFilters] = useState<FilterState>(() => ({
     search: searchParams.get("search") || "",
@@ -356,8 +370,22 @@ export const PartnersPage = () => {
     }
   };
 
-  const submitCreate = async (confirmDuplicate: boolean) => {
-    const payloadSource = pendingCreatePayload || createForm;
+  const submitCreate = async (
+    confirmDuplicate: boolean,
+    payloadOverride?: {
+      organizationName: string;
+      organizationType: string;
+      industryNiche: string;
+      currentPhaseId: string;
+      location: string;
+    },
+  ) => {
+    const payloadSource = payloadOverride || pendingCreatePayload;
+    if (!payloadSource) {
+      setCreateError("Please complete the partner form.");
+      return;
+    }
+
     setCreateError(null);
     setIsCreating(true);
 
@@ -367,7 +395,6 @@ export const PartnersPage = () => {
         organizationType: payloadSource.organizationType,
         industryNiche: payloadSource.industryNiche,
         currentPhaseId: payloadSource.currentPhaseId,
-        impactTier: payloadSource.impactTier,
         location: payloadSource.location,
         confirmDuplicate,
       });
@@ -379,8 +406,8 @@ export const PartnersPage = () => {
         organizationType: "",
         industryNiche: "",
         currentPhaseId: "phase_lead",
-        impactTier: "",
-        location: "",
+        locationScope: "laguna",
+        nonLagunaLocation: "",
       });
       await refreshPartners();
     } catch (error) {
@@ -399,9 +426,27 @@ export const PartnersPage = () => {
 
   const onCreateSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const location =
+      createForm.locationScope === "laguna"
+        ? "Laguna"
+        : createForm.nonLagunaLocation.trim();
+
+    if (!location) {
+      setCreateError("Please specify the non-Laguna location.");
+      return;
+    }
+
     setPendingCreatePayload(null);
     setPendingDuplicateCandidates([]);
-    await submitCreate(false);
+    const payload = {
+      organizationName: createForm.organizationName,
+      organizationType: createForm.organizationType,
+      industryNiche: createForm.industryNiche,
+      currentPhaseId: createForm.currentPhaseId,
+      location,
+    };
+    setPendingCreatePayload(payload);
+    await submitCreate(false, payload);
   };
 
   const runImport = async (dryRun: boolean) => {
@@ -481,10 +526,10 @@ export const PartnersPage = () => {
           />
         </label>
         <label>
-          Industry
+          Niche
           <input
             type="text"
-            placeholder="e.g. Technology"
+            placeholder="e.g. Digital upskilling for startups and SMEs"
             value={filters.industryNiche}
             onChange={(event) => onFilterChange("industryNiche", event.target.value)}
           />
@@ -596,44 +641,52 @@ export const PartnersPage = () => {
               setCreateForm((prev) => ({ ...prev, organizationName: event.target.value }))
             }
           />
-          <input
+          <select
             required
-            type="text"
-            placeholder="Type"
             value={createForm.organizationType}
             onChange={(event) =>
               setCreateForm((prev) => ({ ...prev, organizationType: event.target.value }))
             }
-          />
-          <input
+          >
+            <option value="">Select type</option>
+            {ORGANIZATION_TYPE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+          <textarea
+            className="registry-create-field-wide"
             required
-            type="text"
-            placeholder="Industry"
+            placeholder="Niche (long answer)"
             value={createForm.industryNiche}
             onChange={(event) =>
               setCreateForm((prev) => ({ ...prev, industryNiche: event.target.value }))
             }
           />
-          <input
-            type="text"
-            placeholder="Location"
-            value={createForm.location}
-            onChange={(event) => setCreateForm((prev) => ({ ...prev, location: event.target.value }))}
-          />
           <select
-            value={createForm.impactTier}
+            value={createForm.locationScope}
             onChange={(event) =>
               setCreateForm((prev) => ({
                 ...prev,
-                impactTier: event.target.value as "" | "standard" | "major" | "lead",
+                locationScope: event.target.value as "laguna" | "non_laguna",
               }))
             }
           >
-            <option value="">Impact (any)</option>
-            <option value="standard">Standard</option>
-            <option value="major">Major</option>
-            <option value="lead">Lead</option>
+            <option value="laguna">Laguna</option>
+            <option value="non_laguna">Non-Laguna</option>
           </select>
+          {createForm.locationScope === "non_laguna" && (
+            <input
+              required
+              type="text"
+              placeholder="Specify non-Laguna location"
+              value={createForm.nonLagunaLocation}
+              onChange={(event) =>
+                setCreateForm((prev) => ({ ...prev, nonLagunaLocation: event.target.value }))
+              }
+            />
+          )}
           <button type="submit" disabled={isCreating}>
             {isCreating ? "Creating..." : "Create Partner"}
           </button>
@@ -778,7 +831,7 @@ export const PartnersPage = () => {
                 <tr>
                   <th>Organization</th>
                   <th>Type</th>
-                  <th>Industry</th>
+                  <th>Niche</th>
                   <th>Impact</th>
                   <th>Status</th>
                   <th>Location</th>
