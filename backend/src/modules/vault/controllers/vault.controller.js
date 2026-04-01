@@ -5,6 +5,7 @@ const {
   uploadArtifact,
   listArtifacts,
   getArtifactById,
+  updateArtifactStatus,
 } = require("../services/artifact-storage.service");
 
 function serviceError(res, error) {
@@ -35,7 +36,7 @@ function parseFileUpload(req) {
   });
 
   return new Promise((resolve, reject) => {
-    form.parse(req, (err, _fields, files) => {
+    form.parse(req, (err, fields, files) => {
       if (err) {
         reject(err);
         return;
@@ -54,6 +55,11 @@ function parseFileUpload(req) {
         mimetype: uploaded.mimetype || "application/octet-stream",
         size: uploaded.size,
         filepath: uploaded.filepath,
+        documentType: Array.isArray(fields.documentType)
+          ? fields.documentType[0]
+          : fields.documentType,
+        status: Array.isArray(fields.status) ? fields.status[0] : fields.status,
+        ownerId: Array.isArray(fields.ownerId) ? fields.ownerId[0] : fields.ownerId,
       });
     });
   });
@@ -82,9 +88,31 @@ async function uploadArtifactHandler(req, res) {
         ...file,
         buffer,
       },
+      documentType: file.documentType,
+      status: file.status,
+      ownerId: file.ownerId,
     });
 
     return res.status(201).json({ artifact });
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
+async function updateArtifactStatusHandler(req, res) {
+  try {
+    const artifact = await updateArtifactStatus(req.params.artifactId, req.body?.status, req.user.id);
+    if (!artifact) {
+      return res.status(404).json({
+        error: {
+          code: "ARTIFACT_NOT_FOUND",
+          message: "Artifact was not found",
+          details: [{ field: "artifactId", message: "No artifact exists with this id" }],
+        },
+      });
+    }
+
+    return res.status(200).json({ artifact });
   } catch (error) {
     return serviceError(res, error);
   }
@@ -124,4 +152,5 @@ module.exports = {
   uploadArtifactHandler,
   listArtifactsHandler,
   getArtifactHandler,
+  updateArtifactStatusHandler,
 };

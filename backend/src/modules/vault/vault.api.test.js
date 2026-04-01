@@ -47,6 +47,8 @@ test("uploads artifact with validation and lists/retrieves it", async () => {
 
   const uploadResponse = await agent
     .post(`/api/vault/partners/${partner.id}/artifacts`)
+    .field("documentType", "proposal")
+    .field("status", "pending_review")
     .attach("file", Buffer.from("sample artifact"), {
       filename: "brief.txt",
       contentType: "text/plain",
@@ -55,6 +57,9 @@ test("uploads artifact with validation and lists/retrieves it", async () => {
   assert.equal(uploadResponse.status, 201);
   assert.equal(uploadResponse.body.artifact.partnerId, partner.id);
   assert.equal(uploadResponse.body.artifact.mimeType, "text/plain");
+  assert.equal(uploadResponse.body.artifact.documentType, "proposal");
+  assert.equal(uploadResponse.body.artifact.status, "pending_review");
+  assert.equal(uploadResponse.body.artifact.versionNumber, 1);
 
   const listResponse = await agent.get(`/api/vault/partners/${partner.id}/artifacts`);
   assert.equal(listResponse.status, 200);
@@ -65,6 +70,59 @@ test("uploads artifact with validation and lists/retrieves it", async () => {
   assert.equal(getResponse.status, 200);
   assert.equal(getResponse.headers["content-type"], "text/plain");
   assert.ok(getResponse.text.includes("sample artifact"));
+});
+
+test("new uploads create incremented version for the same document type", async () => {
+  const partner = await createPartner();
+
+  const first = await agent
+    .post(`/api/vault/partners/${partner.id}/artifacts`)
+    .field("documentType", "mou")
+    .attach("file", Buffer.from("version 1"), {
+      filename: "mou-v1.txt",
+      contentType: "text/plain",
+    });
+  assert.equal(first.status, 201);
+  assert.equal(first.body.artifact.versionNumber, 1);
+
+  const second = await agent
+    .post(`/api/vault/partners/${partner.id}/artifacts`)
+    .field("documentType", "mou")
+    .attach("file", Buffer.from("version 2"), {
+      filename: "mou-v2.txt",
+      contentType: "text/plain",
+    });
+  assert.equal(second.status, 201);
+  assert.equal(second.body.artifact.versionNumber, 2);
+
+  const listResponse = await agent.get(`/api/vault/partners/${partner.id}/artifacts`);
+  assert.equal(listResponse.status, 200);
+
+  const mouArtifacts = listResponse.body.artifacts.filter((item) => item.documentType === "mou");
+  assert.equal(mouArtifacts.length, 2);
+  assert.equal(mouArtifacts[0].versionNumber, 2);
+  assert.equal(mouArtifacts[1].versionNumber, 1);
+});
+
+test("artifact status can be updated and tracked", async () => {
+  const partner = await createPartner();
+
+  const uploadResponse = await agent
+    .post(`/api/vault/partners/${partner.id}/artifacts`)
+    .field("documentType", "contract")
+    .attach("file", Buffer.from("contract"), {
+      filename: "contract.txt",
+      contentType: "text/plain",
+    });
+  assert.equal(uploadResponse.status, 201);
+
+  const artifactId = uploadResponse.body.artifact.id;
+  const updateResponse = await agent
+    .put(`/api/vault/artifacts/${artifactId}/status`)
+    .send({ status: "archived" });
+
+  assert.equal(updateResponse.status, 200);
+  assert.equal(updateResponse.body.artifact.status, "archived");
 });
 
 test("rejects disallowed artifact file type", async () => {

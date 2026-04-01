@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
+  artifactFileUrl,
+  listArtifactsRequest,
+  updateArtifactStatusRequest,
+  uploadArtifactRequest,
+  type ArtifactRecord,
+  type ArtifactStatus,
+} from "../../vault/services/vault-api";
+import {
   createDiscoveryNoteRequest,
   getPartnerRequest,
   getPartnerQualificationRequest,
@@ -57,6 +65,12 @@ export const PartnerDetailPage = () => {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [notesMessage, setNotesMessage] = useState<string | null>(null);
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [artifacts, setArtifacts] = useState<ArtifactRecord[]>([]);
+  const [artifactDocumentType, setArtifactDocumentType] = useState("proposal");
+  const [artifactStatus, setArtifactStatus] = useState<ArtifactStatus>("pending_review");
+  const [artifactFile, setArtifactFile] = useState<File | null>(null);
+  const [artifactMessage, setArtifactMessage] = useState<string | null>(null);
+  const [isUploadingArtifact, setIsUploadingArtifact] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [qualificationMessage, setQualificationMessage] = useState<string | null>(null);
@@ -84,12 +98,14 @@ export const PartnerDetailPage = () => {
           listDiscoveryNoteTemplatesRequest(partnerId),
           listDiscoveryNotesRequest(partnerId),
         ]);
+        const artifactsData = await listArtifactsRequest(partnerId);
         if (!cancelled) {
           setPartner(partnerData);
           setQualification(qualificationData || defaultQualification);
           setTimeline(timelineData);
           setDiscoveryTemplates(templatesData);
           setDiscoveryNotes(notesData);
+          setArtifacts(artifactsData);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -240,6 +256,68 @@ export const PartnerDetailPage = () => {
     }
   };
 
+  const refreshArtifacts = async (targetPartnerId: string) => {
+    const records = await listArtifactsRequest(targetPartnerId);
+    setArtifacts(records);
+  };
+
+  const uploadArtifact = async () => {
+    if (!partnerId || !artifactFile) {
+      setArtifactMessage("Select a file to upload.");
+      return;
+    }
+
+    setIsUploadingArtifact(true);
+    setArtifactMessage(null);
+    try {
+      await uploadArtifactRequest(partnerId, {
+        file: artifactFile,
+        documentType: artifactDocumentType,
+        status: artifactStatus,
+      });
+      await refreshArtifacts(partnerId);
+      await refreshNotesAndTimeline(partnerId);
+      setArtifactFile(null);
+      setArtifactMessage("Artifact uploaded.");
+    } catch (uploadError) {
+      setArtifactMessage(uploadError instanceof Error ? uploadError.message : "Failed to upload artifact");
+    } finally {
+      setIsUploadingArtifact(false);
+    }
+  };
+
+  const changeArtifactStatus = async (artifactId: string, status: ArtifactStatus) => {
+    if (!partnerId) {
+      return;
+    }
+
+    setArtifactMessage(null);
+    try {
+      await updateArtifactStatusRequest(artifactId, status);
+      await refreshArtifacts(partnerId);
+      await refreshNotesAndTimeline(partnerId);
+      setArtifactMessage("Artifact status updated.");
+    } catch (statusError) {
+      setArtifactMessage(statusError instanceof Error ? statusError.message : "Failed to update artifact status");
+    }
+  };
+
+  const artifactsByType = useMemo(() => {
+    const grouped = new Map<string, ArtifactRecord[]>();
+    for (const artifact of artifacts) {
+      const key = artifact.documentType || "general";
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)?.push(artifact);
+    }
+
+    return Array.from(grouped.entries()).map(([documentType, records]) => ({
+      documentType,
+      records: [...records].sort((left, right) => right.versionNumber - left.versionNumber),
+    }));
+  }, [artifacts]);
+
   const subtitle = useMemo(() => {
     if (isLoading) {
       return "Loading partner detail...";
@@ -366,6 +444,98 @@ export const PartnerDetailPage = () => {
               </button>
               {qualificationMessage && <p className="muted">{qualificationMessage}</p>}
             </div>
+          </section>
+
+          <section className="timeline-panel">
+            <h2>Artifact Vault</h2>
+            <p className="muted">Upload and track document versions by artifact type.</p>
+
+            <div className="artifact-upload-grid">
+              <label>
+                Document Type
+                <input
+                  type="text"
+                  value={artifactDocumentType}
+                  onChange={(event) => setArtifactDocumentType(event.target.value)}
+                  placeholder="e.g. proposal"
+                />
+              </label>
+
+              <label>
+                Status
+                <select
+                  value={artifactStatus}
+                  onChange={(event) => setArtifactStatus(event.target.value as ArtifactStatus)}
+                >
+                  <option value="pending_review">Pending Review</option>
+                  <option value="active">Active</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </label>
+
+              <label>
+                File
+                <input
+                  type="file"
+                  onChange={(event) => setArtifactFile(event.target.files?.[0] || null)}
+                />
+              </label>
+
+              <div className="qualification-actions">
+                <button type="button" onClick={uploadArtifact} disabled={isUploadingArtifact}>
+                  {isUploadingArtifact ? "Uploading..." : "Upload Artifact"}
+                </button>
+                {artifactMessage && <p className="muted">{artifactMessage}</p>}
+              </div>
+            </div>
+
+            {artifactsByType.length === 0 && (
+              <div className="status-card status-empty">
+                <h2>No artifacts yet</h2>
+                <p>Upload files to start building version history.</p>
+              </div>
+            )}
+
+            {artifactsByType.length > 0 && (
+              <div className="artifact-version-groups">
+                {artifactsByType.map((group) => (
+                  <article key={group.documentType} className="artifact-version-card">
+                    <h3>{group.documentType}</h3>
+                    <ol>
+                      {group.records.map((artifact) => (
+                        <li key={artifact.id}>
+                          <div className="timeline-item-head">
+                            <strong>{`v${artifact.versionNumber} - ${artifact.fileName}`}</strong>
+                            <span>{new Date(artifact.createdAt).toLocaleString()}</span>
+                          </div>
+                          <p>{`${artifact.status} | ${artifact.mimeType} | ${artifact.sizeBytes} bytes`}</p>
+                          <div className="artifact-actions-row">
+                            <a
+                              href={artifactFileUrl(artifact.id)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="table-link"
+                            >
+                              Open
+                            </a>
+                            <select
+                              value={artifact.status}
+                              onChange={(event) =>
+                                changeArtifactStatus(artifact.id, event.target.value as ArtifactStatus)
+                              }
+                            >
+                              <option value="pending_review">Pending Review</option>
+                              <option value="active">Active</option>
+                              <option value="archived">Archived</option>
+                            </select>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="timeline-panel">

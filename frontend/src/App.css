@@ -441,6 +441,68 @@ body {
   cursor: pointer;
 }
 
+.artifact-upload-grid {
+  margin-top: 0.8rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.7rem;
+}
+
+.artifact-upload-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.artifact-upload-grid input,
+.artifact-upload-grid select {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  background: #f8fafc;
+}
+
+.artifact-version-groups {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.artifact-version-card {
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 0.8rem;
+}
+
+.artifact-version-card h3 {
+  margin: 0 0 0.5rem;
+  text-transform: capitalize;
+}
+
+.artifact-version-card ol {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.artifact-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.artifact-actions-row select {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.3rem 0.5rem;
+  background: #ffffff;
+}
+
 .qualification-actions button:disabled {
   opacity: 0.7;
 }
