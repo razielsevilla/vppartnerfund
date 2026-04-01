@@ -53,11 +53,8 @@ function isAllowedVercelPreviewOrigin(origin, primaryOriginUrl) {
   const primaryProjectSlug = primaryHost.replace(/\.vercel\.app$/, "");
   const originHost = originUrl.hostname;
 
-  // Accept preview deployments that belong to the same Vercel project slug.
-  return (
-    originHost === `${primaryProjectSlug}.vercel.app` ||
-    (originHost.startsWith(`${primaryProjectSlug}-`) && originHost.endsWith(".vercel.app"))
-  );
+  // Accept any vercel.app origin in production as a fallback for initial setup.
+  return originHost.endsWith(".vercel.app");
 }
 
 function createApp() {

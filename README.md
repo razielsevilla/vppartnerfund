@@ -1,6 +1,6 @@
 ﻿# VP Partner Fund Workspace
 
-This repository contains the internal DEVCON Laguna dashboard workspace.
+This repository contains the internal DEVCON Laguna dashboard workspace
 
 ## Project Structure
 
