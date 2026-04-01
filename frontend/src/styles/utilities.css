@@ -1,0 +1,94 @@
+.muted {
+  color: var(--text-muted);
+  margin-top: 0.35rem;
+}
+
+.muted strong {
+  color: var(--text-secondary);
+}
+
+.loading-state {
+  margin: var(--space-6) auto;
+  text-align: center;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.error-text {
+  color: var(--state-danger-text);
+  margin: 0;
+}
+
+.registry-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  background: var(--bg-surface);
+}
+
+.qualification-actions,
+.import-actions,
+.snapshot-actions,
+.task-reminder-actions {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.status-card {
+  padding: 1rem 1.1rem;
+}
+
+.timeline-panel h2,
+.dashboard-panel h2,
+.registry-create-panel h2,
+.health-metrics-panel h2 {
+  margin-bottom: 0.35rem;
+}
+
+.timeline-item p,
+.coverage-gap-item p,
+.health-card p,
+.dashboard-kpi-card p {
+  color: var(--text-secondary);
+}
+
+.page-layout > section {
+  scroll-margin-top: 1rem;
+}
+
+@media (max-width: 900px) {
+  .page-layout {
+    padding-inline: 1rem;
+  }
+
+  .dashboard-kpi-grid,
+  .health-cards,
+  .value-prop-columns,
+  .artifact-upload-grid,
+  .import-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .registry-controls {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .timeline-panel,
+  .dashboard-panel,
+  .registry-panel,
+  .registry-create-panel,
+  .health-metrics-panel,
+  .placeholder-panel,
+  .auth-card {
+    padding: 1rem;
+  }
+
+  .page-nav-links {
+    width: 100%;
+  }
+}

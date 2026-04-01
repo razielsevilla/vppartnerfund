@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { CollapsibleSection } from "../../../shared/components/CollapsibleSection";
 import {
   artifactFileUrl,
   listArtifactsRequest,
@@ -31,27 +32,52 @@ import {
   type WorkflowPhase,
   WorkflowTransitionError,
 } from "../services/partners-api";
+import {
+  DURATION_OPTIONS,
+  FUNCTIONAL_BENEFIT_GUIDES,
+  IMPACT_LABEL,
+  IMPACT_PACKAGE_OPTIONS,
+  ROLE_GUIDES,
+  ROLE_PACKAGE_FUNCTION_OPTIONS,
+} from "../constants/qualification-menu";
 
-const ROLE_PACKAGE_FUNCTION_OPTIONS = [
-  "Technology Partner",
-  "Knowledge Partner",
-  "Mentorship Partner",
-  "Venue Partner",
-  "Logistics Partner",
-  "F&B Partner",
-  "Swag Partner",
-  "Media Partner",
-  "Community Partner",
-  "Ecosystem Partner",
-  "Resource Partner",
-  "Grant Partner",
-];
+const joinWithAnd = (parts: string[]) => {
+  if (parts.length === 0) {
+    return "";
+  }
+  if (parts.length === 1) {
+    return parts[0];
+  }
+  if (parts.length === 2) {
+    return `${parts[0]} and ${parts[1]}`;
+  }
 
-const IMPACT_PACKAGE_OPTIONS: Array<"standard" | "major" | "lead"> = [
-  "standard",
-  "major",
-  "lead",
-];
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+};
+
+const buildRolePackageSummary = (rolePackages: QualificationProfile["rolePackages"]) => {
+  if (!rolePackages.length) {
+    return "";
+  }
+
+  const order: Array<"lead" | "major" | "standard"> = ["lead", "major", "standard"];
+
+  const grouped = order
+    .map((impact) => {
+      const roles = rolePackages
+        .filter((pkg) => pkg.impactLevel === impact)
+        .map((pkg) => pkg.functionalRole.replace(/\s+Partner$/i, "").trim());
+
+      if (!roles.length) {
+        return null;
+      }
+
+      return `${IMPACT_LABEL[impact]} ${joinWithAnd(roles)} Partner`;
+    })
+    .filter(Boolean) as string[];
+
+  return joinWithAnd(grouped);
+};
 
 const defaultQualification: QualificationProfile = {
   durationCategory: null,
@@ -214,6 +240,11 @@ export const PartnerDetailPage = () => {
 
   const benefitSlots =
     qualification.rolePackages.length + Math.floor(qualification.rolePackages.length / 3);
+
+  const qualificationTitleSummary = useMemo(
+    () => buildRolePackageSummary(qualification.rolePackages),
+    [qualification.rolePackages],
+  );
 
   const updateBenefitAtSlot = (index: number, value: string) => {
     setQualification((prev) => {
@@ -578,9 +609,12 @@ export const PartnerDetailPage = () => {
 
       {!isLoading && !error && (
         <>
-          <section className="timeline-panel">
-            <h2>Qualification Mapping</h2>
-            <p className="muted">Build role packages first, then curate matching functional benefit packages.</p>
+          <CollapsibleSection
+            title="Qualification Mapping"
+            description="Build role packages first, then curate matching functional benefit packages."
+            defaultOpen
+          >
+            <section className="timeline-panel">
 
             <div className="qualification-grid">
               <label>
@@ -595,9 +629,11 @@ export const PartnerDetailPage = () => {
                   }
                 >
                   <option value="">Unspecified</option>
-                  <option value="short_term">Short Term</option>
-                  <option value="mid_term">Mid Term</option>
-                  <option value="long_term">Long Term</option>
+                  {DURATION_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </label>
 
@@ -617,7 +653,7 @@ export const PartnerDetailPage = () => {
                     >
                       {IMPACT_PACKAGE_OPTIONS.map((impact) => (
                         <option key={impact} value={impact}>
-                          {impact}
+                          {IMPACT_LABEL[impact]}
                         </option>
                       ))}
                     </select>
@@ -651,7 +687,7 @@ export const PartnerDetailPage = () => {
                       <li key={`${pkg.impactLevel}:${pkg.functionalRole}:${index}`} className="timeline-item">
                         <div className="timeline-item-head">
                           <strong>{`Package ${index + 1}`}</strong>
-                          <span>{pkg.impactLevel}</span>
+                          <span>{IMPACT_LABEL[pkg.impactLevel]}</span>
                         </div>
                         <p>{pkg.functionalRole}</p>
                         <button
@@ -665,6 +701,28 @@ export const PartnerDetailPage = () => {
                     ))}
                   </ol>
                 )}
+
+                <h4>Role Menu Guide (What Each Role Includes)</h4>
+                <div className="timeline-list">
+                  {ROLE_PACKAGE_FUNCTION_OPTIONS.map((role) => {
+                    const roleGuide = ROLE_GUIDES[role];
+                    if (!roleGuide) {
+                      return null;
+                    }
+
+                    return (
+                      <article key={`role-guide:${role}`} className="timeline-item">
+                        <div className="timeline-item-head">
+                          <strong>{role}</strong>
+                        </div>
+                        <p>{roleGuide.description}</p>
+                        <p>{`Standard: ${roleGuide.tiers.standard}`}</p>
+                        <p>{`Major: ${roleGuide.tiers.major}`}</p>
+                        <p>{`Lead: ${roleGuide.tiers.lead}`}</p>
+                      </article>
+                    );
+                  })}
+                </div>
               </div>
 
               <div>
@@ -704,8 +762,31 @@ export const PartnerDetailPage = () => {
                   </p>
                 )}
                 <p className="muted">Benefit packages are standard-only and have no impact level.</p>
+
+                <h4>Functional Benefit Guide (What Each Benefit Includes)</h4>
+                <div className="timeline-list">
+                  {functionalBenefitOptions.map((benefit) => {
+                    const benefitGuide = FUNCTIONAL_BENEFIT_GUIDES[benefit];
+
+                    return (
+                      <article key={`benefit-guide:${benefit}`} className="timeline-item">
+                        <div className="timeline-item-head">
+                          <strong>{benefit}</strong>
+                        </div>
+                        <p>{benefitGuide?.description || "Detailed package scope available from partnership docs."}</p>
+                        {(benefitGuide?.responsibilities || []).map((entry) => (
+                          <p key={`${benefit}:${entry}`}>{`- ${entry}`}</p>
+                        ))}
+                      </article>
+                    );
+                  })}
+                </div>
               </div>
             </div>
+
+            {qualificationTitleSummary && (
+              <p className="muted">{`Current package title summary: ${qualificationTitleSummary}.`}</p>
+            )}
 
             <div className="qualification-actions">
               <button type="button" onClick={saveQualification} disabled={isSavingQualification}>
@@ -713,11 +794,14 @@ export const PartnerDetailPage = () => {
               </button>
               {qualificationMessage && <p className="muted">{qualificationMessage}</p>}
             </div>
-          </section>
+            </section>
+          </CollapsibleSection>
 
-          <section className="timeline-panel">
-            <h2>Contact Person</h2>
-            <p className="muted">Add designated contacts per partner without editing core partner details.</p>
+          <CollapsibleSection
+            title="Contact Person"
+            description="Add designated contacts without editing core partner details."
+          >
+            <section className="timeline-panel">
 
             <div className="artifact-upload-grid">
               <label>
@@ -817,11 +901,14 @@ export const PartnerDetailPage = () => {
                 ))}
               </ol>
             )}
-          </section>
+            </section>
+          </CollapsibleSection>
 
-          <section className="timeline-panel">
-            <h2>Workflow Transition</h2>
-            <p className="muted">Move partner to the next phase once transition requirements are satisfied.</p>
+          <CollapsibleSection
+            title="Workflow Transition"
+            description="Move partner to the next phase once requirements are satisfied."
+          >
+            <section className="timeline-panel">
 
             <div className="artifact-upload-grid">
               <label>
@@ -867,11 +954,14 @@ export const PartnerDetailPage = () => {
                 </ul>
               </div>
             )}
-          </section>
+            </section>
+          </CollapsibleSection>
 
-          <section className="timeline-panel">
-            <h2>Artifact Vault</h2>
-            <p className="muted">Upload and track document versions by artifact type.</p>
+          <CollapsibleSection
+            title="Artifact Vault"
+            description="Upload and track document versions by artifact type."
+          >
+            <section className="timeline-panel">
 
             <div className="artifact-upload-grid">
               <label>
@@ -1013,11 +1103,14 @@ export const PartnerDetailPage = () => {
                 ))}
               </div>
             )}
-          </section>
+            </section>
+          </CollapsibleSection>
 
-          <section className="timeline-panel">
-            <h2>Discovery Notes</h2>
-            <p className="muted">Capture guided discovery answers and freeform context.</p>
+          <CollapsibleSection
+            title="Discovery Notes"
+            description="Capture guided discovery answers and freeform context."
+          >
+            <section className="timeline-panel">
 
             <div className="discovery-note-composer">
               <label>
@@ -1117,11 +1210,14 @@ export const PartnerDetailPage = () => {
                 ))}
               </ol>
             )}
-          </section>
+            </section>
+          </CollapsibleSection>
 
-          <section className="timeline-panel">
-            <h2>Timeline and Audit Trail</h2>
-            <p className="muted">Read-only history of workflow changes and partner actions.</p>
+          <CollapsibleSection
+            title="Timeline and Audit Trail"
+            description="Read-only history of workflow changes and partner actions."
+          >
+            <section className="timeline-panel">
 
             {timeline.length === 0 && (
               <div className="status-card status-empty">
@@ -1152,7 +1248,8 @@ export const PartnerDetailPage = () => {
                 ))}
               </ol>
             )}
-          </section>
+            </section>
+          </CollapsibleSection>
         </>
       )}
     </main>

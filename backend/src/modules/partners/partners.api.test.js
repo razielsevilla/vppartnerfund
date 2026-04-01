@@ -472,7 +472,7 @@ test("qualification mapping supports multi-select potential and confirmed sets",
   const partnerId = createResponse.body.partner.id;
 
   const saveResponse = await agent.put(`/api/partners/${partnerId}/qualification`).send({
-    durationCategory: "mid_term",
+    durationCategory: "project_based",
     impactLevel: "high",
     functionalRole: "Strategic Sponsor",
     potentialValuePropositions: ["Brand Visibility", "Talent Pipeline", "Product Adoption"],
@@ -480,7 +480,7 @@ test("qualification mapping supports multi-select potential and confirmed sets",
   });
 
   assert.equal(saveResponse.status, 200);
-  assert.equal(saveResponse.body.qualification.durationCategory, "mid_term");
+  assert.equal(saveResponse.body.qualification.durationCategory, "project_based");
   assert.equal(saveResponse.body.qualification.impactLevel, "high");
   assert.equal(saveResponse.body.qualification.potentialValuePropositions.length, 3);
   assert.equal(saveResponse.body.qualification.confirmedValuePropositions.length, 1);
@@ -498,7 +498,7 @@ test("qualification mapping persists and rehydrates on reload", async () => {
   const partnerId = createResponse.body.partner.id;
 
   const firstSave = await agent.put(`/api/partners/${partnerId}/qualification`).send({
-    durationCategory: "long_term",
+    durationCategory: "term_based",
     impactLevel: "transformational",
     functionalRole: "Innovation Partner",
     potentialValuePropositions: ["Research Collaboration", "Market Expansion"],
@@ -508,7 +508,7 @@ test("qualification mapping persists and rehydrates on reload", async () => {
 
   const reload = await agent.get(`/api/partners/${partnerId}/qualification`);
   assert.equal(reload.status, 200);
-  assert.equal(reload.body.qualification.durationCategory, "long_term");
+  assert.equal(reload.body.qualification.durationCategory, "term_based");
   assert.equal(reload.body.qualification.impactLevel, "transformational");
   assert.equal(reload.body.qualification.functionalRole, "Innovation Partner");
   assert.ok(reload.body.qualification.potentialValuePropositions.includes("Market Expansion"));
@@ -527,7 +527,7 @@ test("qualification mapping supports role packages and functional benefit packag
   const partnerId = createResponse.body.partner.id;
 
   const saveResponse = await agent.put(`/api/partners/${partnerId}/qualification`).send({
-    durationCategory: "mid_term",
+    durationCategory: "project_based",
     rolePackages: [
       { impactLevel: "standard", functionalRole: "Technology Partner" },
       { impactLevel: "major", functionalRole: "Mentorship Partner" },
@@ -749,7 +749,7 @@ test("coverage insights expose demand distribution and actionable gap drill-down
   const betaId = createBeta.body.partner.id;
 
   const saveAlphaQualification = await agent.put(`/api/partners/${alphaId}/qualification`).send({
-    durationCategory: "mid_term",
+    durationCategory: "project_based",
     impactLevel: "high",
     functionalRole: "Strategic Sponsor",
     potentialValuePropositions: ["Talent Pipeline", "Brand Visibility"],
@@ -758,7 +758,7 @@ test("coverage insights expose demand distribution and actionable gap drill-down
   assert.equal(saveAlphaQualification.status, 200);
 
   const saveBetaQualification = await agent.put(`/api/partners/${betaId}/qualification`).send({
-    durationCategory: "long_term",
+    durationCategory: "term_based",
     impactLevel: "transformational",
     functionalRole: "Innovation Partner",
     potentialValuePropositions: ["Talent Pipeline"],

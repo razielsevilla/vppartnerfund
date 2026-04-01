@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
+import { CollapsibleSection } from "../../../shared/components/CollapsibleSection";
 import {
   getSettingsMasterDataRequest,
   listSettingsAuditLogRequest,
@@ -144,8 +145,12 @@ export const SettingsPage = () => {
       {error && <p className="error-text">{error}</p>}
       {message && <p className="muted">{message}</p>}
 
-      <section className="registry-panel" aria-label="Workflow phase settings">
-        <h2>Workflow Phases</h2>
+      <CollapsibleSection
+        title="Workflow Phases"
+        description="Configure phase names, order, and active status."
+        defaultOpen
+      >
+        <section className="registry-panel" aria-label="Workflow phase settings">
         <div className="registry-table-wrap">
           <table className="registry-table">
             <thead>
@@ -215,10 +220,15 @@ export const SettingsPage = () => {
             Save Phase Settings
           </button>
         )}
-      </section>
+        </section>
+      </CollapsibleSection>
 
-      <section className="registry-panel" aria-label="Taxonomy settings">
-        <h2>Taxonomy Masters</h2>
+      <CollapsibleSection
+        title="Taxonomy Masters"
+        description="Manage canonical lists used across partner workflows."
+        defaultOpen
+      >
+        <section className="registry-panel" aria-label="Taxonomy settings">
         <label className="settings-inline-field">
           Taxonomy Key
           <select
@@ -316,10 +326,14 @@ export const SettingsPage = () => {
             Save Taxonomy
           </button>
         )}
-      </section>
+        </section>
+      </CollapsibleSection>
 
-      <section className="registry-panel" aria-label="Settings audit trail">
-        <h2>Settings Audit Trail</h2>
+      <CollapsibleSection
+        title="Settings Audit Trail"
+        description="Recent configuration changes for governance and traceability."
+      >
+        <section className="registry-panel" aria-label="Settings audit trail">
         <div className="registry-table-wrap">
           <table className="registry-table">
             <thead>
@@ -342,7 +356,8 @@ export const SettingsPage = () => {
             </tbody>
           </table>
         </div>
-      </section>
+        </section>
+      </CollapsibleSection>
     </main>
   );
 };

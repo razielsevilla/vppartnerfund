@@ -1,4 +1,4 @@
-const ALLOWED_DURATION = ["short_term", "mid_term", "long_term"];
+const ALLOWED_DURATION = ["event_based", "project_based", "term_based"];
 const ALLOWED_IMPACT = ["standard", "major", "lead", "low", "medium", "high", "transformational"];
 
 function normalizeString(value) {

@@ -55,7 +55,7 @@ export type DiscoveryNoteRecord = {
 };
 
 export type QualificationProfile = {
-  durationCategory: "short_term" | "mid_term" | "long_term" | null;
+  durationCategory: "event_based" | "project_based" | "term_based" | null;
   rolePackages: Array<{
     impactLevel: "standard" | "major" | "lead";
     functionalRole: string;
@@ -71,7 +71,7 @@ export type QualificationProfile = {
 };
 
 export type QualificationPayload = {
-  durationCategory: "short_term" | "mid_term" | "long_term" | null;
+  durationCategory: "event_based" | "project_based" | "term_based" | null;
   rolePackages: Array<{
     impactLevel: "standard" | "major" | "lead";
     functionalRole: string;

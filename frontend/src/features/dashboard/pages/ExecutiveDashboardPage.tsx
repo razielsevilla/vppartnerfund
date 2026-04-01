@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
+import { Modal } from "../../../shared/components/Modal";
 import {
   createWorkflowSnapshotRequest,
   getWorkflowCoverageInsightsRequest,
@@ -30,6 +31,7 @@ export const ExecutiveDashboardPage = () => {
   const [snapshots, setSnapshots] = useState<WorkflowSnapshot[]>([]);
   const [snapshotMessage, setSnapshotMessage] = useState<string | null>(null);
   const [isTriggeringPeriod, setIsTriggeringPeriod] = useState<"weekly" | "monthly" | null>(null);
+  const [activeModal, setActiveModal] = useState<"stage" | "conversion" | "coverage" | "snapshot" | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,6 +80,10 @@ export const ExecutiveDashboardPage = () => {
   const hasConversionData = stageConversion.length > 0;
   const demandDistribution = coverage?.demandDistribution ?? [];
   const coverageGaps = coverage?.coverageGaps ?? [];
+  const stagePreview = stageCounts.slice(0, 4);
+  const conversionPreview = stageConversion.slice(0, 4);
+  const gapPreview = coverageGaps.slice(0, 3);
+  const snapshotPreview = snapshots.slice(0, 3);
 
   const refreshSnapshotHistory = async () => {
     const history = await listWorkflowSnapshotsRequest({ limit: 8 });
@@ -103,7 +109,7 @@ export const ExecutiveDashboardPage = () => {
   };
 
   return (
-    <main className="page-layout">
+    <main className="page-layout dashboard-page">
       <header className="page-header">
         <div>
           <h1>Executive Dashboard</h1>
@@ -142,60 +148,185 @@ export const ExecutiveDashboardPage = () => {
 
       {!isLoading && !error && metrics && (
         <>
-          <section className="dashboard-kpi-grid" aria-label="Executive KPI cards">
-            <article className="dashboard-kpi-card">
-              <h2>Active Partners</h2>
-              <strong>{metrics.summary.totalActivePartners}</strong>
-              <p>Current active portfolio count.</p>
-              <Link to="/partners?status=active" className="table-link">
-                Open active partners
-              </Link>
-            </article>
+          <div className="dashboard-screen">
+            <section className="dashboard-kpi-grid" aria-label="Executive KPI cards">
+              <article className="dashboard-kpi-card">
+                <h2>Active Partners</h2>
+                <strong>{metrics.summary.totalActivePartners}</strong>
+                <p>Current active portfolio count.</p>
+                <Link to="/partners?status=active" className="table-link">
+                  Open active partners
+                </Link>
+              </article>
 
-            <article className="dashboard-kpi-card dashboard-kpi-warning">
-              <h2>Overdue Next Actions</h2>
-              <strong>{metrics.overdueActions.count}</strong>
-              <p>{`Threshold: ${metrics.overdueActions.thresholdDays} days since last touchpoint.`}</p>
-              <Link
-                to={`/tasks?queue=team&status=open&dueDateTo=${todayIso}`}
-                className="table-link"
-              >
-                Open overdue task queue
-              </Link>
-            </article>
+              <article className="dashboard-kpi-card dashboard-kpi-warning">
+                <h2>Overdue Next Actions</h2>
+                <strong>{metrics.overdueActions.count}</strong>
+                <p>{`Threshold: ${metrics.overdueActions.thresholdDays} days since last touchpoint.`}</p>
+                <Link
+                  to={`/tasks?queue=team&status=open&dueDateTo=${todayIso}`}
+                  className="table-link"
+                >
+                  Open overdue task queue
+                </Link>
+              </article>
 
-            <article className="dashboard-kpi-card">
-              <h2>Overall Win Rate</h2>
-              <strong>{formatPct(metrics.conversion.overallWinRatePct)}</strong>
-              <p>Won-stage share across all active partners.</p>
-              <Link to="/partners?status=active&phaseCode=won" className="table-link">
-                Open won-stage partners
-              </Link>
-            </article>
+              <article className="dashboard-kpi-card">
+                <h2>Overall Win Rate</h2>
+                <strong>{formatPct(metrics.conversion.overallWinRatePct)}</strong>
+                <p>Won-stage share across all active partners.</p>
+                <Link to="/partners?status=active&phaseCode=won" className="table-link">
+                  Open won-stage partners
+                </Link>
+              </article>
 
-            <article className="dashboard-kpi-card">
-              <h2>Endpoint Response Time</h2>
-              <strong>{`${metrics.summary.responseTimeMs} ms`}</strong>
-              <p>Server aggregation runtime for current snapshot.</p>
-              <Link to="/dashboard" className="table-link">
-                Refresh dashboard
-              </Link>
-            </article>
-          </section>
+              <article className="dashboard-kpi-card">
+                <h2>Endpoint Response Time</h2>
+                <strong>{`${metrics.summary.responseTimeMs} ms`}</strong>
+                <p>Server aggregation runtime for current snapshot.</p>
+                <Link to="/dashboard" className="table-link">
+                  Refresh dashboard
+                </Link>
+              </article>
+            </section>
+            <section className="dashboard-quick-grid" aria-label="Dashboard quick modules">
+              <article className="dashboard-panel dashboard-module">
+                <div className="dashboard-panel-head">
+                  <h2>Stage Distribution</h2>
+                  <button type="button" className="secondary-btn" onClick={() => setActiveModal("stage")}>
+                    Full View
+                  </button>
+                </div>
+                {hasStageData ? (
+                  <ul className="dashboard-mini-list">
+                    {stagePreview.map((stage) => {
+                      const barPct = maxStageCount > 0 ? (stage.count / maxStageCount) * 100 : 0;
+                      return (
+                        <li key={stage.phaseId}>
+                          <div className="stage-list-meta">
+                            <Link to={`/partners?status=active&phaseCode=${toPhaseParam(stage.phaseCode)}`} className="table-link">
+                              {stage.phaseName}
+                            </Link>
+                            <strong>{stage.count}</strong>
+                          </div>
+                          <div className="stage-progress-track" aria-hidden="true">
+                            <span className="stage-progress-fill" style={{ width: `${barPct}%` }} />
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="muted">No stage data yet.</p>
+                )}
+              </article>
 
-          <section className="dashboard-panel" aria-label="Stage count summary">
-            <div className="dashboard-panel-head">
-              <h2>Stage Distribution</h2>
-              <p className="muted">Partner counts by pipeline phase.</p>
-            </div>
+              <article className="dashboard-panel dashboard-module">
+                <div className="dashboard-panel-head">
+                  <h2>Conversion by Stage</h2>
+                  <button type="button" className="secondary-btn" onClick={() => setActiveModal("conversion")}>
+                    Full View
+                  </button>
+                </div>
+                {hasConversionData ? (
+                  <ul className="dashboard-mini-list">
+                    {conversionPreview.map((entry) => (
+                      <li key={`${entry.fromPhaseCode}-${entry.toPhaseCode}`}>
+                        <div className="stage-list-meta">
+                          <span>{`${entry.fromPhaseCode} to ${entry.toPhaseCode}`}</span>
+                          <strong>{formatPct(entry.conversionRatePct)}</strong>
+                        </div>
+                        <p className="muted">{`${entry.toCount}/${entry.fromCount} progressed`}</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted">No conversion data yet.</p>
+                )}
+              </article>
 
+              <article className="dashboard-panel dashboard-module">
+                <div className="dashboard-panel-head">
+                  <h2>Coverage Insights</h2>
+                  <button type="button" className="secondary-btn" onClick={() => setActiveModal("coverage")}>
+                    Full View
+                  </button>
+                </div>
+                <div className="dashboard-inline-metrics">
+                  <span>{`Tracked: ${coverage?.summary.categoriesTracked || 0}`}</span>
+                  <span>{`With Gaps: ${coverage?.summary.categoriesWithGaps || 0}`}</span>
+                </div>
+                {gapPreview.length > 0 ? (
+                  <ul className="dashboard-mini-list">
+                    {gapPreview.map((gap) => (
+                      <li key={gap.category}>
+                        <div className="stage-list-meta">
+                          <span>{gap.category}</span>
+                          <span className={`coverage-severity coverage-severity-${gap.severity}`}>
+                            {gap.severity.toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="muted">{gap.recommendedAction}</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted">No coverage gaps identified.</p>
+                )}
+              </article>
+
+              <article className="dashboard-panel dashboard-module">
+                <div className="dashboard-panel-head">
+                  <h2>Snapshot Reporting</h2>
+                  <button type="button" className="secondary-btn" onClick={() => setActiveModal("snapshot")}>
+                    Full View
+                  </button>
+                </div>
+                <div className="snapshot-actions">
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    disabled={isTriggeringPeriod === "weekly"}
+                    onClick={() => triggerSnapshot("weekly")}
+                  >
+                    {isTriggeringPeriod === "weekly" ? "Generating Weekly..." : "Generate Weekly"}
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    disabled={isTriggeringPeriod === "monthly"}
+                    onClick={() => triggerSnapshot("monthly")}
+                  >
+                    {isTriggeringPeriod === "monthly" ? "Generating Monthly..." : "Generate Monthly"}
+                  </button>
+                </div>
+                {snapshotMessage && <p className="muted snapshot-feedback">{snapshotMessage}</p>}
+                {snapshotPreview.length > 0 ? (
+                  <ul className="dashboard-mini-list">
+                    {snapshotPreview.map((snapshot) => (
+                      <li key={snapshot.id}>
+                        <div className="stage-list-meta">
+                          <span>{snapshot.periodType}</span>
+                          <strong>{snapshot.periodEnd}</strong>
+                        </div>
+                        <p className="muted">{`${snapshot.metrics?.kpi.summary.totalActivePartners ?? "--"} active partners`}</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted">No snapshots generated yet.</p>
+                )}
+              </article>
+            </section>
+          </div>
+
+          <Modal title="Stage Distribution" open={activeModal === "stage"} onClose={() => setActiveModal(null)}>
             {!hasStageData && (
               <div className="status-card status-empty">
                 <h2>No stage data yet</h2>
                 <p>Stage metrics will appear after partners are created and assigned phases.</p>
               </div>
             )}
-
             {hasStageData && (
               <ul className="stage-list">
                 {stageCounts.map((stage) => {
@@ -203,10 +334,7 @@ export const ExecutiveDashboardPage = () => {
                   return (
                     <li key={stage.phaseId} className="stage-list-item">
                       <div className="stage-list-meta">
-                        <Link
-                          to={`/partners?status=active&phaseCode=${toPhaseParam(stage.phaseCode)}`}
-                          className="table-link"
-                        >
+                        <Link to={`/partners?status=active&phaseCode=${toPhaseParam(stage.phaseCode)}`} className="table-link">
                           {stage.phaseName}
                         </Link>
                         <strong>{stage.count}</strong>
@@ -219,21 +347,15 @@ export const ExecutiveDashboardPage = () => {
                 })}
               </ul>
             )}
-          </section>
+          </Modal>
 
-          <section className="dashboard-panel" aria-label="Conversion summary">
-            <div className="dashboard-panel-head">
-              <h2>Conversion by Stage</h2>
-              <p className="muted">Progression quality between adjacent phases.</p>
-            </div>
-
+          <Modal title="Conversion by Stage" open={activeModal === "conversion"} onClose={() => setActiveModal(null)}>
             {!hasConversionData && (
               <div className="status-card status-empty">
                 <h2>No conversion data yet</h2>
                 <p>Conversion metrics will appear once stages have active records.</p>
               </div>
             )}
-
             {hasConversionData && (
               <div className="registry-table-wrap">
                 <table className="registry-table">
@@ -256,10 +378,7 @@ export const ExecutiveDashboardPage = () => {
                         <td>{entry.toCount}</td>
                         <td>{formatPct(entry.conversionRatePct)}</td>
                         <td>
-                          <Link
-                            to={`/partners?status=active&phaseCode=${toPhaseParam(entry.toPhaseCode)}`}
-                            className="table-link"
-                          >
+                          <Link to={`/partners?status=active&phaseCode=${toPhaseParam(entry.toPhaseCode)}`} className="table-link">
                             Open {entry.toPhaseCode}
                           </Link>
                         </td>
@@ -269,14 +388,9 @@ export const ExecutiveDashboardPage = () => {
                 </table>
               </div>
             )}
-          </section>
+          </Modal>
 
-          <section className="dashboard-panel" aria-label="Strategic coverage insights">
-            <div className="dashboard-panel-head">
-              <h2>Strategic Coverage Insights</h2>
-              <p className="muted">Demand distribution and actionable proposition coverage gaps.</p>
-            </div>
-
+          <Modal title="Strategic Coverage Insights" open={activeModal === "coverage"} onClose={() => setActiveModal(null)}>
             <div className="dashboard-kpi-grid">
               <article className="dashboard-kpi-card">
                 <h2>Categories Tracked</h2>
@@ -289,13 +403,6 @@ export const ExecutiveDashboardPage = () => {
                 <p>Potential demand exists but confirmation is still incomplete.</p>
               </article>
             </div>
-
-            {demandDistribution.length === 0 && (
-              <div className="status-card status-empty">
-                <h2>No value proposition demand yet</h2>
-                <p>Insights appear once teams map potential and confirmed value propositions.</p>
-              </div>
-            )}
 
             {demandDistribution.length > 0 && (
               <div className="registry-table-wrap">
@@ -332,39 +439,9 @@ export const ExecutiveDashboardPage = () => {
                 </table>
               </div>
             )}
+          </Modal>
 
-            {coverageGaps.length > 0 && (
-              <div className="coverage-gap-list">
-                {coverageGaps.slice(0, 5).map((gap) => (
-                  <article key={`gap-${gap.category}`} className="coverage-gap-item">
-                    <div>
-                      <h3>{gap.category}</h3>
-                      <p>{gap.recommendedAction}</p>
-                    </div>
-                    <div className="coverage-gap-meta">
-                      <span className={`coverage-severity coverage-severity-${gap.severity}`}>
-                        {gap.severity.toUpperCase()}
-                      </span>
-                      <span>{`Gap: ${gap.gapCount}`}</span>
-                      <Link
-                        className="table-link"
-                        to={`/partners?status=active&valueProp=${encodeURIComponent(gap.category)}&coverageState=gap`}
-                      >
-                        Review Partners
-                      </Link>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="dashboard-panel" aria-label="Snapshot reporting">
-            <div className="dashboard-panel-head">
-              <h2>Snapshot Reporting</h2>
-              <p className="muted">Generate weekly or monthly snapshots and review historical outputs.</p>
-            </div>
-
+          <Modal title="Snapshot Reporting" open={activeModal === "snapshot"} onClose={() => setActiveModal(null)}>
             <div className="snapshot-actions">
               <button
                 type="button"
@@ -385,13 +462,6 @@ export const ExecutiveDashboardPage = () => {
             </div>
 
             {snapshotMessage && <p className="muted snapshot-feedback">{snapshotMessage}</p>}
-
-            {snapshots.length === 0 && (
-              <div className="status-card status-empty">
-                <h2>No snapshots yet</h2>
-                <p>Trigger weekly or monthly generation to start snapshot history.</p>
-              </div>
-            )}
 
             {snapshots.length > 0 && (
               <div className="registry-table-wrap">
@@ -421,7 +491,7 @@ export const ExecutiveDashboardPage = () => {
                 </table>
               </div>
             )}
-          </section>
+          </Modal>
         </>
       )}
 

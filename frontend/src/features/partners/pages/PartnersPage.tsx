@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
+import { CollapsibleSection } from "../../../shared/components/CollapsibleSection";
 import { listTasksRequest, type TaskRecord } from "../../tasks/services/tasks-api";
 import {
   createPartnerRequest,
@@ -512,7 +513,12 @@ export const PartnersPage = () => {
           </button>
         </div>
       </header>
-      <section className="registry-controls" aria-label="Partner registry filters">
+      <CollapsibleSection
+        title="Registry Filters"
+        description="Show only the partner records relevant to your current review."
+        defaultOpen
+      >
+        <section className="registry-controls" aria-label="Partner registry filters">
         <label>
           Search
           <input
@@ -601,10 +607,15 @@ export const PartnersPage = () => {
             <option value="lead">Lead</option>
           </select>
         </label>
-      </section>
+        </section>
+      </CollapsibleSection>
 
-      <section className="health-metrics-panel" aria-label="Pipeline health metrics">
-        <h2>Pipeline Health</h2>
+      <CollapsibleSection
+        title="Pipeline Health"
+        description="Quick operational snapshot of active, overdue, and stalled workload."
+        defaultOpen
+      >
+        <section className="health-metrics-panel" aria-label="Pipeline health metrics">
         {metricsError && <p className="error-text">{metricsError}</p>}
         {!metricsError && metrics && (
           <div className="health-cards">
@@ -633,10 +644,14 @@ export const PartnersPage = () => {
             </article>
           </div>
         )}
-      </section>
+        </section>
+      </CollapsibleSection>
 
-      <section className="registry-create-panel" aria-label="Create partner">
-        <h2>Add Partner</h2>
+      <CollapsibleSection
+        title="Add Partner"
+        description="Create a new partner record with profile, location, and link details."
+      >
+        <section className="registry-create-panel" aria-label="Create partner">
         <form className="registry-create-form" onSubmit={onCreateSubmit}>
           <input
             required
@@ -721,10 +736,14 @@ export const PartnersPage = () => {
             </button>
           </div>
         )}
-      </section>
+        </section>
+      </CollapsibleSection>
 
-      <section className="registry-create-panel" aria-label="Spreadsheet import">
-        <h2>Spreadsheet Import</h2>
+      <CollapsibleSection
+        title="Spreadsheet Import"
+        description="Paste sheet rows, map columns, and run dry-run before applying."
+      >
+        <section className="registry-create-panel" aria-label="Spreadsheet import">
         <p className="muted">Paste CSV/TSV exported from Sheets, map columns, and run dry-run before apply.</p>
 
         <div className="import-grid">
@@ -817,9 +836,15 @@ export const PartnersPage = () => {
             </div>
           </div>
         )}
-      </section>
+        </section>
+      </CollapsibleSection>
 
-      <section className="registry-panel">
+      <CollapsibleSection
+        title="Partner Registry Table"
+        description="Browse partner entries and open detailed partner records."
+        defaultOpen
+      >
+        <section className="registry-panel">
         {isLoadingPartners && <p className="loading-state">Loading partners...</p>}
 
         {!isLoadingPartners && partnersError && (
@@ -868,7 +893,8 @@ export const PartnersPage = () => {
             </table>
           </div>
         )}
-      </section>
+        </section>
+      </CollapsibleSection>
     </main>
   );
 };

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
+import { CollapsibleSection } from "../../../shared/components/CollapsibleSection";
 import {
   getTaskReminderSummaryRequest,
   listTasksRequest,
@@ -245,7 +246,12 @@ export const TaskQueuePage = () => {
         </div>
       </header>
 
-      <section className="health-metrics-panel" aria-label="Task queue summary">
+      <CollapsibleSection
+        title="Task Counters"
+        description="Quick summary of task volume, urgency, and reminders."
+        defaultOpen
+      >
+        <section className="health-metrics-panel" aria-label="Task queue summary">
         <h2>Task Counters</h2>
         <div className="health-cards">
           <article className="health-card">
@@ -284,9 +290,15 @@ export const TaskQueuePage = () => {
           </button>
           {triggerMessage && <p className="muted">{triggerMessage}</p>}
         </div>
-      </section>
+        </section>
+      </CollapsibleSection>
 
-      <section className="registry-controls" aria-label="Task queue filters">
+      <CollapsibleSection
+        title="Task Filters"
+        description="Limit results by queue type, owner, status, and due date."
+        defaultOpen
+      >
+        <section className="registry-controls" aria-label="Task queue filters">
         <label>
           Queue
           <select
@@ -353,9 +365,15 @@ export const TaskQueuePage = () => {
             onChange={(event) => setFilters((prev) => ({ ...prev, dueDateTo: event.target.value }))}
           />
         </label>
-      </section>
+        </section>
+      </CollapsibleSection>
 
-      <section className="registry-panel" aria-label="Task queue table">
+      <CollapsibleSection
+        title="Task Queue Table"
+        description="Detailed task records and completion actions."
+        defaultOpen
+      >
+        <section className="registry-panel" aria-label="Task queue table">
         {isLoading && <p className="loading-state">Loading tasks...</p>}
 
         {!isLoading && error && (
@@ -434,7 +452,8 @@ export const TaskQueuePage = () => {
             </table>
           </div>
         )}
-      </section>
+        </section>
+      </CollapsibleSection>
     </main>
   );
 };
