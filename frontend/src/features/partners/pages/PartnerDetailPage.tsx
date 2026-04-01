@@ -56,6 +56,15 @@ const defaultGuidedAnswer: DiscoveryNoteGuidedAnswer = {
   answer: "",
 };
 
+const CLIENT_ALLOWED_ARTIFACT_TYPES = [
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "text/plain",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+const CLIENT_MAX_ARTIFACT_BYTES = 10 * 1024 * 1024;
+
 export const PartnerDetailPage = () => {
   const { partnerId } = useParams();
   const [partner, setPartner] = useState<PartnerRecord | null>(null);
@@ -73,6 +82,9 @@ export const PartnerDetailPage = () => {
   const [artifactDocumentType, setArtifactDocumentType] = useState("proposal");
   const [artifactStatus, setArtifactStatus] = useState<ArtifactStatus>("pending_review");
   const [artifactFile, setArtifactFile] = useState<File | null>(null);
+  const [artifactNameFilter, setArtifactNameFilter] = useState("");
+  const [artifactTypeFilter, setArtifactTypeFilter] = useState("");
+  const [artifactStatusFilter, setArtifactStatusFilter] = useState<"" | ArtifactStatus>("");
   const [artifactMessage, setArtifactMessage] = useState<string | null>(null);
   const [isUploadingArtifact, setIsUploadingArtifact] = useState(false);
   const [workflowPhases, setWorkflowPhases] = useState<WorkflowPhase[]>([]);
@@ -279,6 +291,21 @@ export const PartnerDetailPage = () => {
       return;
     }
 
+    if (!artifactDocumentType.trim()) {
+      setArtifactMessage("Document type is required.");
+      return;
+    }
+
+    if (!CLIENT_ALLOWED_ARTIFACT_TYPES.includes(artifactFile.type)) {
+      setArtifactMessage("Unsupported file type. Upload PDF, PNG, JPG, TXT, or DOCX.");
+      return;
+    }
+
+    if (artifactFile.size > CLIENT_MAX_ARTIFACT_BYTES) {
+      setArtifactMessage("File is too large. Maximum size is 10 MB.");
+      return;
+    }
+
     setIsUploadingArtifact(true);
     setArtifactMessage(null);
     try {
@@ -290,12 +317,18 @@ export const PartnerDetailPage = () => {
       await refreshArtifacts(partnerId);
       await refreshNotesAndTimeline(partnerId);
       setArtifactFile(null);
-      setArtifactMessage("Artifact uploaded.");
+      setArtifactMessage(`Artifact uploaded for ${artifactDocumentType.trim().toLowerCase()}.`);
     } catch (uploadError) {
       setArtifactMessage(uploadError instanceof Error ? uploadError.message : "Failed to upload artifact");
     } finally {
       setIsUploadingArtifact(false);
     }
+  };
+
+  const startReplacementFlow = (documentType: string) => {
+    setArtifactDocumentType(documentType);
+    setArtifactStatus("active");
+    setArtifactMessage(`Replacement mode: upload a new ${documentType} version.`);
   };
 
   const changeArtifactStatus = async (artifactId: string, status: ArtifactStatus) => {
@@ -370,9 +403,26 @@ export const PartnerDetailPage = () => {
     }
   };
 
+  const filteredArtifacts = useMemo(() => {
+    const nameFilter = artifactNameFilter.trim().toLowerCase();
+
+    return artifacts.filter((artifact) => {
+      if (artifactTypeFilter && artifact.documentType !== artifactTypeFilter) {
+        return false;
+      }
+      if (artifactStatusFilter && artifact.status !== artifactStatusFilter) {
+        return false;
+      }
+      if (nameFilter && !artifact.fileName.toLowerCase().includes(nameFilter)) {
+        return false;
+      }
+      return true;
+    });
+  }, [artifactNameFilter, artifactStatusFilter, artifactTypeFilter, artifacts]);
+
   const artifactsByType = useMemo(() => {
     const grouped = new Map<string, ArtifactRecord[]>();
-    for (const artifact of artifacts) {
+    for (const artifact of filteredArtifacts) {
       const key = artifact.documentType || "general";
       if (!grouped.has(key)) {
         grouped.set(key, []);
@@ -384,7 +434,22 @@ export const PartnerDetailPage = () => {
       documentType,
       records: [...records].sort((left, right) => right.versionNumber - left.versionNumber),
     }));
-  }, [artifacts]);
+  }, [filteredArtifacts]);
+
+  const artifactTypeOptions = useMemo(
+    () => [...new Set(artifacts.map((artifact) => artifact.documentType))].sort(),
+    [artifacts],
+  );
+
+  const artifactStatusLabel = (status: ArtifactStatus) => {
+    if (status === "pending_review") {
+      return "Pending Review";
+    }
+    if (status === "active") {
+      return "Active";
+    }
+    return "Archived";
+  };
 
   const subtitle = useMemo(() => {
     if (isLoading) {
@@ -570,6 +635,44 @@ export const PartnerDetailPage = () => {
 
             <div className="artifact-upload-grid">
               <label>
+                Filter by File Name
+                <input
+                  type="text"
+                  value={artifactNameFilter}
+                  onChange={(event) => setArtifactNameFilter(event.target.value)}
+                  placeholder="Search artifacts"
+                />
+              </label>
+              <label>
+                Filter by Type
+                <select
+                  value={artifactTypeFilter}
+                  onChange={(event) => setArtifactTypeFilter(event.target.value)}
+                >
+                  <option value="">All types</option>
+                  {artifactTypeOptions.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Filter by Status
+                <select
+                  value={artifactStatusFilter}
+                  onChange={(event) => setArtifactStatusFilter(event.target.value as "" | ArtifactStatus)}
+                >
+                  <option value="">All statuses</option>
+                  <option value="pending_review">Pending Review</option>
+                  <option value="active">Active</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="artifact-upload-grid">
+              <label>
                 Document Type
                 <input
                   type="text"
@@ -595,8 +698,10 @@ export const PartnerDetailPage = () => {
                 File
                 <input
                   type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.txt,.docx"
                   onChange={(event) => setArtifactFile(event.target.files?.[0] || null)}
                 />
+                {artifactFile && <span className="muted">{artifactFile.name}</span>}
               </label>
 
               <div className="qualification-actions">
@@ -618,7 +723,16 @@ export const PartnerDetailPage = () => {
               <div className="artifact-version-groups">
                 {artifactsByType.map((group) => (
                   <article key={group.documentType} className="artifact-version-card">
-                    <h3>{group.documentType}</h3>
+                    <div className="artifact-group-head">
+                      <h3>{group.documentType}</h3>
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        onClick={() => startReplacementFlow(group.documentType)}
+                      >
+                        Upload Replacement
+                      </button>
+                    </div>
                     <ol>
                       {group.records.map((artifact) => (
                         <li key={artifact.id}>
@@ -626,7 +740,12 @@ export const PartnerDetailPage = () => {
                             <strong>{`v${artifact.versionNumber} - ${artifact.fileName}`}</strong>
                             <span>{new Date(artifact.createdAt).toLocaleString()}</span>
                           </div>
-                          <p>{`${artifact.status} | ${artifact.mimeType} | ${artifact.sizeBytes} bytes`}</p>
+                          <p>
+                            <span className={`artifact-status-chip artifact-status-${artifact.status}`}>
+                              {artifactStatusLabel(artifact.status)}
+                            </span>
+                            {` ${artifact.mimeType} | ${artifact.sizeBytes} bytes`}
+                          </p>
                           <div className="artifact-actions-row">
                             <a
                               href={artifactFileUrl(artifact.id)}
