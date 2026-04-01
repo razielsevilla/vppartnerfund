@@ -41,6 +41,21 @@ const DISCOVERY_NOTE_TEMPLATES = [
   },
 ];
 
+const IMPORT_FIELD_CONFIG = [
+  { key: "organizationName", label: "Organization Name", required: true, defaultColumn: "Organization Name" },
+  { key: "organizationType", label: "Organization Type", required: true, defaultColumn: "Organization Type" },
+  { key: "industryNiche", label: "Industry Niche", required: true, defaultColumn: "Industry Niche" },
+  { key: "currentPhase", label: "Current Phase (Code or ID)", required: false, defaultColumn: "Current Phase" },
+  { key: "impactTier", label: "Impact Tier", required: false, defaultColumn: "Impact Tier" },
+  { key: "location", label: "Location", required: false, defaultColumn: "Location" },
+  { key: "websiteUrl", label: "Website URL", required: false, defaultColumn: "Website" },
+  { key: "pastRelationship", label: "Past Relationship", required: false, defaultColumn: "Past Relationship" },
+  { key: "lastContactDate", label: "Last Contact Date", required: false, defaultColumn: "Last Contact Date" },
+  { key: "nextActionStep", label: "Next Action Step", required: false, defaultColumn: "Next Action Step" },
+];
+
+const ALLOWED_IMPACT_TIERS = new Set(["standard", "major", "lead"]);
+
 function mapPartnerRow(row) {
   if (!row) {
     return null;
@@ -71,6 +86,33 @@ function normalizeName(value) {
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function normalizeColumnKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function readMappedCell(row, columnName) {
+  if (!columnName) {
+    return null;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(row, columnName)) {
+    const value = row[columnName];
+    return value === undefined || value === null ? null : String(value).trim();
+  }
+
+  const wanted = normalizeColumnKey(columnName);
+  const matchKey = Object.keys(row).find((key) => normalizeColumnKey(key) === wanted);
+  if (!matchKey) {
+    return null;
+  }
+
+  const value = row[matchKey];
+  return value === undefined || value === null ? null : String(value).trim();
 }
 
 function canonicalName(value) {
@@ -689,6 +731,214 @@ async function getPartnerTimeline(partnerId) {
   return { entries };
 }
 
+async function getPartnerImportMappingConfig() {
+  const db = getDatabase();
+  const phases = await db("workflow_phases")
+    .where({ is_active: 1 })
+    .whereNot({ code: "archived" })
+    .orderBy("sort_order", "asc")
+    .select("id", "code", "name");
+
+  return {
+    fields: IMPORT_FIELD_CONFIG,
+    phaseOptions: phases.map((phase) => ({
+      id: phase.id,
+      code: phase.code,
+      name: phase.name,
+    })),
+    guidance: [
+      "Map required fields first: Organization Name, Organization Type, and Industry Niche.",
+      "Use dry-run to validate rows before applying writes.",
+      "Current Phase accepts either workflow phase id (phase_lead) or code (lead).",
+    ],
+  };
+}
+
+function toNormalizedString(value) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const normalized = String(value).trim();
+  return normalized || null;
+}
+
+async function importPartnersFromSpreadsheet(payload, actorId) {
+  const db = getDatabase();
+  const nowIso = new Date().toISOString();
+  const rows = payload.rows || [];
+  const mapping = payload.mapping || {};
+  const dryRun = Boolean(payload.dryRun);
+
+  const phaseRows = await db("workflow_phases").select("id", "code");
+  const phaseById = new Map(phaseRows.map((phase) => [phase.id, phase.id]));
+  const phaseByCode = new Map(phaseRows.map((phase) => [phase.code, phase.id]));
+
+  const summary = {
+    totalRows: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
+
+  const results = [];
+
+  const run = async (queryClient) => {
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index] || {};
+      const rowNumber = index + 1;
+
+      const organizationName = toNormalizedString(readMappedCell(row, mapping.organizationName));
+      const organizationType = toNormalizedString(readMappedCell(row, mapping.organizationType));
+      const industryNiche = toNormalizedString(readMappedCell(row, mapping.industryNiche));
+      const location = toNormalizedString(readMappedCell(row, mapping.location));
+      const websiteUrl = toNormalizedString(readMappedCell(row, mapping.websiteUrl));
+      const pastRelationship = toNormalizedString(readMappedCell(row, mapping.pastRelationship));
+      const lastContactDate = toNormalizedString(readMappedCell(row, mapping.lastContactDate));
+      const nextActionStep = toNormalizedString(readMappedCell(row, mapping.nextActionStep));
+
+      let impactTier = toNormalizedString(readMappedCell(row, mapping.impactTier));
+      if (impactTier) {
+        impactTier = impactTier.toLowerCase();
+      }
+
+      let currentPhaseRaw = toNormalizedString(readMappedCell(row, mapping.currentPhase));
+      if (!currentPhaseRaw) {
+        currentPhaseRaw = "phase_lead";
+      }
+      const currentPhaseId =
+        phaseById.get(currentPhaseRaw) || phaseByCode.get(currentPhaseRaw.toLowerCase()) || null;
+
+      const rowErrors = [];
+      if (!organizationName) {
+        rowErrors.push("organizationName is required");
+      }
+      if (!organizationType) {
+        rowErrors.push("organizationType is required");
+      }
+      if (!industryNiche) {
+        rowErrors.push("industryNiche is required");
+      }
+      if (!currentPhaseId) {
+        rowErrors.push(`Invalid currentPhase value: ${currentPhaseRaw}`);
+      }
+      if (impactTier && !ALLOWED_IMPACT_TIERS.has(impactTier)) {
+        rowErrors.push(`Invalid impactTier value: ${impactTier}`);
+      }
+
+      if (rowErrors.length > 0) {
+        summary.failed += 1;
+        results.push({
+          rowNumber,
+          action: "failed",
+          reason: rowErrors.join("; "),
+          organizationName: organizationName || null,
+        });
+        continue;
+      }
+
+      const existing = await queryClient("partners")
+        .whereRaw("lower(organization_name) = ?", [organizationName.toLowerCase()])
+        .whereNull("archived_at")
+        .first();
+
+      if (!existing) {
+        if (!dryRun) {
+          await queryClient("partners").insert({
+            id: crypto.randomUUID(),
+            organization_name: organizationName,
+            organization_type: organizationType,
+            industry_niche: industryNiche,
+            website_url: websiteUrl,
+            location,
+            past_relationship: pastRelationship,
+            current_phase_id: currentPhaseId,
+            last_contact_date: lastContactDate,
+            next_action_step: nextActionStep,
+            impact_tier: impactTier,
+            created_by: actorId,
+            created_at: nowIso,
+            updated_at: nowIso,
+          });
+        }
+
+        summary.created += 1;
+        results.push({
+          rowNumber,
+          action: dryRun ? "would_create" : "created",
+          reason: null,
+          organizationName,
+        });
+        continue;
+      }
+
+      const nextPayload = {
+        organization_name: organizationName,
+        organization_type: organizationType,
+        industry_niche: industryNiche,
+        website_url: websiteUrl,
+        location,
+        past_relationship: pastRelationship,
+        current_phase_id: currentPhaseId,
+        last_contact_date: lastContactDate,
+        next_action_step: nextActionStep,
+        impact_tier: impactTier,
+      };
+
+      const changedFields = Object.entries(nextPayload)
+        .filter(([field, value]) => {
+          const previous = existing[field];
+          const left = previous === undefined || previous === null ? null : String(previous);
+          const right = value === undefined || value === null ? null : String(value);
+          return left !== right;
+        })
+        .map(([field]) => field);
+
+      if (changedFields.length === 0) {
+        summary.skipped += 1;
+        results.push({
+          rowNumber,
+          action: "skipped",
+          reason: "No changes detected",
+          organizationName,
+        });
+        continue;
+      }
+
+      if (!dryRun) {
+        await queryClient("partners").where({ id: existing.id }).update({
+          ...nextPayload,
+          updated_at: nowIso,
+        });
+      }
+
+      summary.updated += 1;
+      results.push({
+        rowNumber,
+        action: dryRun ? "would_update" : "updated",
+        reason: `Updated fields: ${changedFields.join(", ")}`,
+        organizationName,
+      });
+    }
+  };
+
+  if (dryRun) {
+    await run(db);
+  } else {
+    await db.transaction(async (trx) => {
+      await run(trx);
+    });
+  }
+
+  return {
+    dryRun,
+    executedAt: nowIso,
+    summary,
+    results,
+  };
+}
+
 module.exports = {
   PartnerServiceError,
   createPartner,
@@ -703,4 +953,6 @@ module.exports = {
   listDiscoveryNotes,
   createDiscoveryNote,
   updateDiscoveryNote,
+  getPartnerImportMappingConfig,
+  importPartnersFromSpreadsheet,
 };

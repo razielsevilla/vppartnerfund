@@ -135,6 +135,86 @@ test("does not block distinct names that are not similar", async () => {
   assert.equal(secondCreate.status, 201);
 });
 
+test("import mapping config endpoint returns configurable field map metadata", async () => {
+  const response = await agent.get("/api/partners/import/mapping");
+
+  assert.equal(response.status, 200);
+  assert.ok(Array.isArray(response.body.fields));
+  assert.ok(response.body.fields.some((field) => field.key === "organizationName" && field.required));
+  assert.ok(Array.isArray(response.body.phaseOptions));
+  assert.ok(response.body.phaseOptions.some((phase) => phase.id === "phase_lead"));
+});
+
+test("partner import supports dry-run validation and apply summary outcomes", async () => {
+  const seedResponse = await agent.post("/api/partners").send({
+    organizationName: "Import Existing Partner",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(seedResponse.status, 201);
+
+  const payload = {
+    dryRun: true,
+    mapping: {
+      organizationName: "Organization Name",
+      organizationType: "Type",
+      industryNiche: "Industry",
+      currentPhase: "Phase",
+      impactTier: "Impact",
+      location: "Location",
+    },
+    rows: [
+      {
+        "Organization Name": "Import Existing Partner",
+        Type: "Corporate",
+        Industry: "Technology",
+        Phase: "lead",
+        Impact: "major",
+        Location: "Laguna",
+      },
+      {
+        "Organization Name": "Import New Partner",
+        Type: "Startup",
+        Industry: "Education",
+        Phase: "phase_prospecting",
+        Impact: "standard",
+        Location: "Cabuyao",
+      },
+      {
+        "Organization Name": "",
+        Type: "Government",
+        Industry: "Public",
+      },
+    ],
+  };
+
+  const dryRunResponse = await agent.post("/api/partners/import").send(payload);
+  assert.equal(dryRunResponse.status, 200);
+  assert.equal(dryRunResponse.body.dryRun, true);
+  assert.equal(dryRunResponse.body.summary.created, 1);
+  assert.equal(dryRunResponse.body.summary.updated, 1);
+  assert.equal(dryRunResponse.body.summary.failed, 1);
+
+  const countAfterDryRun = await agent.get("/api/partners?status=all");
+  assert.equal(countAfterDryRun.status, 200);
+  assert.equal(countAfterDryRun.body.partners.length, 1);
+
+  const applyResponse = await agent.post("/api/partners/import").send({ ...payload, dryRun: false });
+  assert.equal(applyResponse.status, 200);
+  assert.equal(applyResponse.body.dryRun, false);
+  assert.equal(applyResponse.body.summary.created, 1);
+  assert.equal(applyResponse.body.summary.updated, 1);
+  assert.equal(applyResponse.body.summary.failed, 1);
+
+  const listAfterApply = await agent.get("/api/partners?status=all");
+  assert.equal(listAfterApply.status, 200);
+  assert.equal(listAfterApply.body.partners.length, 2);
+  assert.ok(
+    listAfterApply.body.partners.some((partner) => partner.organizationName === "Import New Partner"),
+  );
+});
+
 test("workflow phases are centrally available through config endpoint", async () => {
   const response = await agent.get("/api/workflow/config");
 

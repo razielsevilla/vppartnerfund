@@ -12,6 +12,8 @@ const {
   updatePartner,
   upsertPartnerQualification,
   archivePartner,
+  getPartnerImportMappingConfig,
+  importPartnersFromSpreadsheet,
 } = require("../services/partners.service");
 const {
   validateCreatePartnerPayload,
@@ -22,6 +24,7 @@ const {
   validateCreateDiscoveryNotePayload,
   validateUpdateDiscoveryNotePayload,
 } = require("../validators/discovery-notes.validator");
+const { validatePartnerImportPayload } = require("../validators/import.validator");
 const { transitionPartnerPhaseHandler } = require("../../workflow/controllers/workflow.controller");
 
 function validationError(res, details) {
@@ -80,6 +83,29 @@ async function listPartnersHandler(req, res) {
       coverageState: req.query.coverageState,
     });
     return res.status(200).json({ partners });
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
+async function getPartnerImportMappingHandler(_req, res) {
+  try {
+    const config = await getPartnerImportMappingConfig();
+    return res.status(200).json(config);
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
+async function importPartnersHandler(req, res) {
+  const validation = validatePartnerImportPayload(req.body);
+  if (!validation.isValid) {
+    return validationError(res, validation.errors);
+  }
+
+  try {
+    const result = await importPartnersFromSpreadsheet(validation.value, req.user.id);
+    return res.status(200).json(result);
   } catch (error) {
     return serviceError(res, error);
   }
@@ -292,6 +318,8 @@ async function archivePartnerHandler(req, res) {
 module.exports = {
   createPartnerHandler,
   listPartnersHandler,
+  getPartnerImportMappingHandler,
+  importPartnersHandler,
   getPartnerHandler,
   getPartnerQualificationHandler,
   getPartnerTimelineHandler,

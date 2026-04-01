@@ -1,8 +1,10 @@
 const express = require("express");
-const { requireAuth } = require("../../../shared/middleware/auth.middleware");
+const { requireAuth, requireRole } = require("../../../shared/middleware/auth.middleware");
 const {
   createPartnerHandler,
   listPartnersHandler,
+  getPartnerImportMappingHandler,
+  importPartnersHandler,
   getPartnerHandler,
   getPartnerQualificationHandler,
   getPartnerTimelineHandler,
@@ -21,6 +23,8 @@ const router = express.Router();
 router.use(requireAuth);
 
 router.get("/", listPartnersHandler);
+router.get("/import/mapping", getPartnerImportMappingHandler);
+router.post("/import", requireRole(["admin"]), importPartnersHandler);
 router.post("/", createPartnerHandler);
 router.get("/:partnerId", getPartnerHandler);
 router.get("/:partnerId/qualification", getPartnerQualificationHandler);

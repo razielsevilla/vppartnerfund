@@ -7,8 +7,12 @@ import {
   DuplicatePartnerError,
   getWorkflowConfigRequest,
   getWorkflowHealthMetricsRequest,
+  getPartnerImportMappingRequest,
+  importPartnersRequest,
   listPartnersRequest,
   type DuplicateCandidate,
+  type PartnerImportMappingConfig,
+  type PartnerImportResult,
   type PartnerRecord,
   type WorkflowConfig,
   type WorkflowHealthMetrics,
@@ -33,6 +37,64 @@ function parseStatus(value: string | null): FilterState["status"] {
   return "active";
 }
 
+function splitDelimitedLine(line: string, delimiter: string): string[] {
+  const cells: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    const next = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === delimiter && !inQuotes) {
+      cells.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  cells.push(current.trim());
+  return cells;
+}
+
+function parseSpreadsheetText(raw: string): Array<Record<string, string>> {
+  const lines = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length < 2) {
+    return [];
+  }
+
+  const delimiter = lines[0].includes("\t") ? "\t" : ",";
+  const headers = splitDelimitedLine(lines[0], delimiter).map((header) => header.trim());
+  if (headers.length === 0) {
+    return [];
+  }
+
+  return lines.slice(1).map((line) => {
+    const values = splitDelimitedLine(line, delimiter);
+    const row: Record<string, string> = {};
+    headers.forEach((header, index) => {
+      row[header] = values[index] || "";
+    });
+    return row;
+  });
+}
+
 export const PartnersPage = () => {
   const { user, logout } = useAuthSession();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -45,6 +107,12 @@ export const PartnersPage = () => {
   const [taskCounters, setTaskCounters] = useState({ open: 0, done: 0, overdue: 0 });
   const [createError, setCreateError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [importMappingConfig, setImportMappingConfig] = useState<PartnerImportMappingConfig | null>(null);
+  const [importMapping, setImportMapping] = useState<Record<string, string>>({});
+  const [sheetText, setSheetText] = useState("");
+  const [importResult, setImportResult] = useState<PartnerImportResult | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
   const [pendingDuplicateCandidates, setPendingDuplicateCandidates] = useState<DuplicateCandidate[]>([]);
   const [pendingCreatePayload, setPendingCreatePayload] = useState<{
     organizationName: string;
@@ -110,13 +178,23 @@ export const PartnersPage = () => {
 
     const loadWorkflowConfig = async () => {
       try {
-        const data = await getWorkflowConfigRequest();
+        const [workflowData, mappingConfig] = await Promise.all([
+          getWorkflowConfigRequest(),
+          getPartnerImportMappingRequest(),
+        ]);
         if (!cancelled) {
-          setWorkflowConfig(data);
+          setWorkflowConfig(workflowData);
+          setImportMappingConfig(mappingConfig);
+          const defaults: Record<string, string> = {};
+          mappingConfig.fields.forEach((field) => {
+            defaults[field.key] = field.defaultColumn;
+          });
+          setImportMapping(defaults);
         }
       } catch {
         if (!cancelled) {
           setWorkflowConfig(null);
+          setImportMappingConfig(null);
         }
       }
     };
@@ -324,6 +402,35 @@ export const PartnersPage = () => {
     setPendingCreatePayload(null);
     setPendingDuplicateCandidates([]);
     await submitCreate(false);
+  };
+
+  const runImport = async (dryRun: boolean) => {
+    setImportError(null);
+    setImportResult(null);
+
+    const rows = parseSpreadsheetText(sheetText);
+    if (rows.length === 0) {
+      setImportError("Paste a sheet with a header row and at least one data row.");
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const result = await importPartnersRequest({
+        dryRun,
+        mapping: importMapping,
+        rows,
+      });
+      setImportResult(result);
+
+      if (!dryRun) {
+        await refreshPartners();
+      }
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Failed to import spreadsheet rows");
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   return (
@@ -544,6 +651,102 @@ export const PartnersPage = () => {
             <button type="button" onClick={() => submitCreate(true)} disabled={isCreating}>
               Confirm Intentional Duplicate
             </button>
+          </div>
+        )}
+      </section>
+
+      <section className="registry-create-panel" aria-label="Spreadsheet import">
+        <h2>Spreadsheet Import</h2>
+        <p className="muted">Paste CSV/TSV exported from Sheets, map columns, and run dry-run before apply.</p>
+
+        <div className="import-grid">
+          <label>
+            Sheet Data
+            <textarea
+              className="import-textarea"
+              value={sheetText}
+              onChange={(event) => setSheetText(event.target.value)}
+              placeholder="Organization Name,Type,Industry,Phase,Impact,Location"
+            />
+          </label>
+
+          <div className="import-mapping-grid">
+            {importMappingConfig?.fields.map((field) => (
+              <label key={field.key}>
+                {field.label}
+                <input
+                  type="text"
+                  required={field.required}
+                  value={importMapping[field.key] || ""}
+                  onChange={(event) =>
+                    setImportMapping((prev) => ({ ...prev, [field.key]: event.target.value }))
+                  }
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="import-actions">
+          <button
+            type="button"
+            className="secondary-btn"
+            disabled={isImporting}
+            onClick={() => runImport(true)}
+          >
+            {isImporting ? "Processing..." : "Dry Run"}
+          </button>
+          <button type="button" disabled={isImporting} onClick={() => runImport(false)}>
+            {isImporting ? "Processing..." : "Apply Import"}
+          </button>
+        </div>
+
+        {importError && <p className="error-text">{importError}</p>}
+
+        {importResult && (
+          <div className="import-summary" role="status">
+            <h3>{importResult.dryRun ? "Dry-Run Summary" : "Import Summary"}</h3>
+            <p className="muted">{`Executed: ${new Date(importResult.executedAt).toLocaleString()}`}</p>
+            <div className="health-cards">
+              <article className="health-card">
+                <h3>Created</h3>
+                <strong>{importResult.summary.created}</strong>
+              </article>
+              <article className="health-card">
+                <h3>Updated</h3>
+                <strong>{importResult.summary.updated}</strong>
+              </article>
+              <article className="health-card">
+                <h3>Skipped</h3>
+                <strong>{importResult.summary.skipped}</strong>
+              </article>
+              <article className="health-card health-card-danger">
+                <h3>Failed</h3>
+                <strong>{importResult.summary.failed}</strong>
+              </article>
+            </div>
+            <div className="registry-table-wrap">
+              <table className="registry-table">
+                <thead>
+                  <tr>
+                    <th>Row</th>
+                    <th>Action</th>
+                    <th>Organization</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importResult.results.slice(0, 20).map((entry) => (
+                    <tr key={`${entry.rowNumber}-${entry.organizationName || "row"}`}>
+                      <td>{entry.rowNumber}</td>
+                      <td>{entry.action}</td>
+                      <td>{entry.organizationName || "-"}</td>
+                      <td>{entry.reason || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </section>

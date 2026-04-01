@@ -201,6 +201,39 @@ export type WorkflowSnapshot = {
   } | null;
 };
 
+export type PartnerImportMappingConfig = {
+  fields: Array<{
+    key: string;
+    label: string;
+    required: boolean;
+    defaultColumn: string;
+  }>;
+  phaseOptions: Array<{
+    id: string;
+    code: string;
+    name: string;
+  }>;
+  guidance: string[];
+};
+
+export type PartnerImportResult = {
+  dryRun: boolean;
+  executedAt: string;
+  summary: {
+    totalRows: number;
+    created: number;
+    updated: number;
+    skipped: number;
+    failed: number;
+  };
+  results: Array<{
+    rowNumber: number;
+    action: string;
+    reason: string | null;
+    organizationName: string | null;
+  }>;
+};
+
 export type CreatePartnerPayload = {
   organizationName: string;
   organizationType: string;
@@ -311,6 +344,40 @@ export const createPartnerRequest = async (payload: CreatePartnerPayload): Promi
   }
 
   return (body as { partner: PartnerRecord }).partner;
+};
+
+export const getPartnerImportMappingRequest = async (): Promise<PartnerImportMappingConfig> => {
+  const response = await fetch(`${API_URL}/partners/import/mapping`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to load partner import mapping config"));
+  }
+
+  return body as PartnerImportMappingConfig;
+};
+
+export const importPartnersRequest = async (payload: {
+  dryRun: boolean;
+  mapping: Record<string, string>;
+  rows: Array<Record<string, string>>;
+}): Promise<PartnerImportResult> => {
+  const response = await fetch(`${API_URL}/partners/import`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to import partners"));
+  }
+
+  return body as PartnerImportResult;
 };
 
 export const getPartnerRequest = async (partnerId: string): Promise<PartnerRecord> => {
