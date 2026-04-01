@@ -1,5 +1,8 @@
 const crypto = require("crypto");
 const { getDatabase } = require("../../../shared/services/database.service");
+const { logPartnerActivity } = require("../../../shared/services/audit-log.service");
+
+const DEFAULT_REMINDER_WINDOW_DAYS = 3;
 
 class TaskServiceError extends Error {
   constructor(message, code, status = 400, details = []) {
@@ -27,6 +30,36 @@ function mapTask(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function toDateOnly(dateString) {
+  const date = new Date(`${dateString}T00:00:00.000Z`);
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function classifyCriticalReminder(task, nowUtc, windowDays) {
+  if (task.priority !== "critical" || task.status === "done") {
+    return null;
+  }
+
+  const dueUtc = toDateOnly(task.dueDate);
+  const diffDays = Math.floor((dueUtc.getTime() - nowUtc.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return {
+      type: "overdue",
+      daysUntilDue: diffDays,
+    };
+  }
+
+  if (diffDays <= windowDays) {
+    return {
+      type: "upcoming",
+      daysUntilDue: diffDays,
+    };
+  }
+
+  return null;
 }
 
 async function assertExists(db, table, id, fieldName) {
@@ -123,11 +156,107 @@ async function deleteTask(taskId) {
   return deleted > 0;
 }
 
+async function getTaskReminderSummary(filters = {}) {
+  const db = getDatabase();
+  const windowDays = Number(filters.windowDays || DEFAULT_REMINDER_WINDOW_DAYS);
+  const query = db("tasks").where("priority", "critical").whereNot("status", "done");
+
+  if (filters.ownerId) {
+    query.where("owner_id", filters.ownerId);
+  }
+
+  const rows = await query.orderBy("due_date", "asc");
+  const tasks = rows.map(mapTask);
+  const nowUtc = toDateOnly(new Date().toISOString().slice(0, 10));
+
+  const reminders = tasks
+    .map((task) => {
+      const classification = classifyCriticalReminder(task, nowUtc, windowDays);
+      if (!classification) {
+        return null;
+      }
+
+      return {
+        taskId: task.id,
+        partnerId: task.partnerId,
+        ownerId: task.ownerId,
+        dueDate: task.dueDate,
+        reminderType: classification.type,
+        daysUntilDue: classification.daysUntilDue,
+        title: task.title,
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    summary: {
+      windowDays,
+      criticalOpenTasks: tasks.length,
+      upcomingCount: reminders.filter((item) => item.reminderType === "upcoming").length,
+      overdueCount: reminders.filter((item) => item.reminderType === "overdue").length,
+    },
+    reminders,
+  };
+}
+
+async function triggerTaskReminders(actorId, filters = {}) {
+  const db = getDatabase();
+  const summary = await getTaskReminderSummary(filters);
+  const nowIso = new Date().toISOString();
+  let insertedEvents = 0;
+
+  for (const reminder of summary.reminders) {
+    const existing = await db("task_reminder_events")
+      .where({
+        task_id: reminder.taskId,
+        reminder_type: reminder.reminderType,
+        due_date: reminder.dueDate,
+      })
+      .first();
+
+    if (existing) {
+      continue;
+    }
+
+    await db("task_reminder_events").insert({
+      id: crypto.randomUUID(),
+      task_id: reminder.taskId,
+      partner_id: reminder.partnerId,
+      reminder_type: reminder.reminderType,
+      due_date: reminder.dueDate,
+      triggered_at: nowIso,
+      triggered_by: actorId,
+    });
+
+    await logPartnerActivity(db, {
+      partnerId: reminder.partnerId,
+      actionType: `task_reminder_${reminder.reminderType}`,
+      actorId,
+      payload: {
+        taskId: reminder.taskId,
+        title: reminder.title,
+        dueDate: reminder.dueDate,
+        daysUntilDue: reminder.daysUntilDue,
+      },
+    });
+
+    insertedEvents += 1;
+  }
+
+  return {
+    ...summary,
+    triggeredEvents: insertedEvents,
+  };
+}
+
 module.exports = {
   TaskServiceError,
+  DEFAULT_REMINDER_WINDOW_DAYS,
   createTask,
   listTasks,
   getTaskById,
   updateTask,
   deleteTask,
+  getTaskReminderSummary,
+  triggerTaskReminders,
 };

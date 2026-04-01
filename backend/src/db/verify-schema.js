@@ -27,6 +27,7 @@ async function verifySchema() {
       'activity_logs',
       'tasks',
       'discovery_notes',
+      'task_reminder_events',
     ];
 
     for (const table of tables) {

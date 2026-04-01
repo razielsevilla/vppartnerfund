@@ -25,6 +25,27 @@ export type TaskListFilters = {
   dueDateTo?: string;
 };
 
+export type TaskReminderItem = {
+  taskId: string;
+  partnerId: string;
+  ownerId: string;
+  dueDate: string;
+  reminderType: "upcoming" | "overdue";
+  daysUntilDue: number;
+  title: string;
+};
+
+export type TaskReminderSummary = {
+  summary: {
+    windowDays: number;
+    criticalOpenTasks: number;
+    upcomingCount: number;
+    overdueCount: number;
+  };
+  reminders: TaskReminderItem[];
+  triggeredEvents?: number;
+};
+
 function extractApiMessage(body: unknown, fallback: string): string {
   if (!body || typeof body !== "object" || !("error" in body)) {
     return fallback;
@@ -89,4 +110,49 @@ export const updateTaskRequest = async (
   }
 
   return (body as { task: TaskRecord }).task;
+};
+
+export const getTaskReminderSummaryRequest = async (params?: {
+  ownerId?: string;
+  windowDays?: number;
+}): Promise<TaskReminderSummary> => {
+  const search = new URLSearchParams();
+  if (params?.ownerId?.trim()) {
+    search.set("ownerId", params.ownerId.trim());
+  }
+  if (params?.windowDays) {
+    search.set("windowDays", String(params.windowDays));
+  }
+
+  const query = search.toString();
+  const response = await fetch(`${API_URL}/tasks/reminders/summary${query ? `?${query}` : ""}`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to load task reminder summary"));
+  }
+
+  return body as TaskReminderSummary;
+};
+
+export const triggerTaskRemindersRequest = async (params?: {
+  ownerId?: string;
+  windowDays?: number;
+}): Promise<TaskReminderSummary> => {
+  const response = await fetch(`${API_URL}/tasks/reminders/trigger`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(params || {}),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to trigger task reminders"));
+  }
+
+  return body as TaskReminderSummary;
 };

@@ -6,12 +6,16 @@ const {
   getTaskHandler,
   updateTaskHandler,
   deleteTaskHandler,
+  getTaskReminderSummaryHandler,
+  triggerTaskRemindersHandler,
 } = require("../controllers/tasks.controller");
 
 const router = express.Router();
 
 router.use(requireAuth);
 
+router.get("/reminders/summary", getTaskReminderSummaryHandler);
+router.post("/reminders/trigger", triggerTaskRemindersHandler);
 router.get("/", listTasksHandler);
 router.post("/", createTaskHandler);
 router.get("/:taskId", getTaskHandler);

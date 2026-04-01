@@ -5,6 +5,8 @@ const {
   getTaskById,
   updateTask,
   deleteTask,
+  getTaskReminderSummary,
+  triggerTaskReminders,
 } = require("../services/tasks.service");
 const {
   validateCreateTaskPayload,
@@ -125,10 +127,36 @@ async function deleteTaskHandler(req, res) {
   }
 }
 
+async function getTaskReminderSummaryHandler(req, res) {
+  try {
+    const reminders = await getTaskReminderSummary({
+      ownerId: req.query.ownerId,
+      windowDays: req.query.windowDays,
+    });
+    return res.status(200).json(reminders);
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
+async function triggerTaskRemindersHandler(req, res) {
+  try {
+    const reminders = await triggerTaskReminders(req.user.id, {
+      ownerId: req.body?.ownerId,
+      windowDays: req.body?.windowDays,
+    });
+    return res.status(200).json(reminders);
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
 module.exports = {
   createTaskHandler,
   listTasksHandler,
   getTaskHandler,
   updateTaskHandler,
   deleteTaskHandler,
+  getTaskReminderSummaryHandler,
+  triggerTaskRemindersHandler,
 };

@@ -38,6 +38,7 @@ test.after(async () => {
 
 test.beforeEach(async () => {
   const db = getDatabase();
+  await db("task_reminder_events").del();
   await db("tasks").del();
   await db("partners").del();
 });
@@ -149,4 +150,68 @@ test("filters tasks by owner, status, and due-date range", async () => {
   assert.equal(filtered.status, 200);
   assert.equal(filtered.body.tasks.length, 1);
   assert.equal(filtered.body.tasks[0].title, "Owner A near due");
+});
+
+test("reminder summary and trigger workflow for critical tasks is defined and logged", async () => {
+  const partner = await createPartner();
+
+  const today = new Date();
+  const twoDays = new Date(today);
+  twoDays.setDate(today.getDate() + 2);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  const toDate = (date) => date.toISOString().slice(0, 10);
+
+  const upcomingCreate = await agent.post("/api/tasks").send({
+    title: "Critical upcoming task",
+    ownerId: "seed-admin-user",
+    partnerId: partner.id,
+    workflowPhaseId: "phase_lead",
+    dueDate: toDate(twoDays),
+    priority: "critical",
+    status: "open",
+  });
+  assert.equal(upcomingCreate.status, 201);
+
+  const overdueCreate = await agent.post("/api/tasks").send({
+    title: "Critical overdue task",
+    ownerId: "seed-admin-user",
+    partnerId: partner.id,
+    workflowPhaseId: "phase_lead",
+    dueDate: toDate(yesterday),
+    priority: "critical",
+    status: "in_progress",
+  });
+  assert.equal(overdueCreate.status, 201);
+
+  const summaryResponse = await agent.get("/api/tasks/reminders/summary?ownerId=seed-admin-user");
+  assert.equal(summaryResponse.status, 200);
+  assert.equal(summaryResponse.body.summary.upcomingCount, 1);
+  assert.equal(summaryResponse.body.summary.overdueCount, 1);
+
+  const triggerResponse = await agent.post("/api/tasks/reminders/trigger").send({
+    ownerId: "seed-admin-user",
+  });
+  assert.equal(triggerResponse.status, 200);
+  assert.equal(triggerResponse.body.triggeredEvents, 2);
+
+  const secondTriggerResponse = await agent.post("/api/tasks/reminders/trigger").send({
+    ownerId: "seed-admin-user",
+  });
+  assert.equal(secondTriggerResponse.status, 200);
+  assert.equal(secondTriggerResponse.body.triggeredEvents, 0);
+
+  const timelineResponse = await agent.get(`/api/partners/${partner.id}/timeline`);
+  assert.equal(timelineResponse.status, 200);
+
+  const upcomingReminderEntry = timelineResponse.body.entries.find(
+    (entry) => entry.actionType === "task_reminder_upcoming",
+  );
+  const overdueReminderEntry = timelineResponse.body.entries.find(
+    (entry) => entry.actionType === "task_reminder_overdue",
+  );
+
+  assert.ok(upcomingReminderEntry);
+  assert.ok(overdueReminderEntry);
 });

@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
-import { listTasksRequest, updateTaskRequest, type TaskRecord, type TaskStatus } from "../services/tasks-api";
+import {
+  getTaskReminderSummaryRequest,
+  listTasksRequest,
+  triggerTaskRemindersRequest,
+  updateTaskRequest,
+  type TaskRecord,
+  type TaskReminderSummary,
+  type TaskStatus,
+} from "../services/tasks-api";
 
 type QueueMode = "personal" | "team";
 
@@ -38,6 +46,9 @@ export const TaskQueuePage = () => {
     dueDateTo: "",
   });
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
+  const [reminderSummary, setReminderSummary] = useState<TaskReminderSummary | null>(null);
+  const [isTriggeringReminders, setIsTriggeringReminders] = useState(false);
+  const [triggerMessage, setTriggerMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCompletingById, setIsCompletingById] = useState<Record<string, boolean>>({});
@@ -51,15 +62,21 @@ export const TaskQueuePage = () => {
 
       try {
         const ownerId = queueMode === "personal" ? user?.id || "" : filters.ownerId;
-        const data = await listTasksRequest({
-          ownerId: ownerId || undefined,
-          status: filters.status || undefined,
-          dueDateFrom: filters.dueDateFrom || undefined,
-          dueDateTo: filters.dueDateTo || undefined,
-        });
+        const [data, reminders] = await Promise.all([
+          listTasksRequest({
+            ownerId: ownerId || undefined,
+            status: filters.status || undefined,
+            dueDateFrom: filters.dueDateFrom || undefined,
+            dueDateTo: filters.dueDateTo || undefined,
+          }),
+          getTaskReminderSummaryRequest({
+            ownerId: ownerId || undefined,
+          }),
+        ]);
 
         if (!cancelled) {
           setTasks(data);
+          setReminderSummary(reminders);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -97,8 +114,13 @@ export const TaskQueuePage = () => {
     const blocked = tasks.filter((task) => task.status === "blocked").length;
     const overdue = tasks.filter((task) => isOverdue(task)).length;
 
-    return { total, done, open, inProgress, blocked, overdue };
-  }, [tasks]);
+    const reminderByTaskId = new Map(
+      (reminderSummary?.reminders || []).map((item) => [item.taskId, item.reminderType]),
+    );
+    const upcoming = tasks.filter((task) => reminderByTaskId.get(task.id) === "upcoming").length;
+
+    return { total, done, open, inProgress, blocked, overdue, upcoming, reminderByTaskId };
+  }, [reminderSummary?.reminders, tasks]);
 
   const subtitle = useMemo(() => {
     if (isLoading) {
@@ -126,6 +148,24 @@ export const TaskQueuePage = () => {
         delete next[taskId];
         return next;
       });
+    }
+  };
+
+  const triggerReminders = async () => {
+    const ownerId = queueMode === "personal" ? user?.id || "" : filters.ownerId;
+    setIsTriggeringReminders(true);
+    setTriggerMessage(null);
+    try {
+      const response = await triggerTaskRemindersRequest({ ownerId: ownerId || undefined });
+      setReminderSummary(response);
+      setTriggerMessage(`${response.triggeredEvents || 0} reminder event(s) logged.`);
+      window.dispatchEvent(new Event("task:updated"));
+    } catch (triggerError) {
+      setTriggerMessage(
+        triggerError instanceof Error ? triggerError.message : "Failed to trigger reminders",
+      );
+    } finally {
+      setIsTriggeringReminders(false);
     }
   };
 
@@ -172,9 +212,24 @@ export const TaskQueuePage = () => {
             <strong>{summary.done}</strong>
           </article>
           <article className="health-card health-card-warning">
+            <h3>Upcoming</h3>
+            <strong>{summary.upcoming}</strong>
+          </article>
+          <article className="health-card health-card-warning">
             <h3>Overdue</h3>
             <strong>{summary.overdue}</strong>
           </article>
+        </div>
+        <div className="task-reminder-actions">
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={triggerReminders}
+            disabled={isTriggeringReminders}
+          >
+            {isTriggeringReminders ? "Triggering..." : "Trigger Critical Reminders"}
+          </button>
+          {triggerMessage && <p className="muted">{triggerMessage}</p>}
         </div>
       </section>
 
@@ -281,6 +336,7 @@ export const TaskQueuePage = () => {
               <tbody>
                 {tasks.map((task) => {
                   const overdue = isOverdue(task);
+                  const reminderType = summary.reminderByTaskId.get(task.id);
                   return (
                     <tr key={task.id} className={overdue ? "task-row-overdue" : ""}>
                       <td>
@@ -296,6 +352,7 @@ export const TaskQueuePage = () => {
                         <span className={`task-status-chip task-status-${task.status}`}>
                           {STATUS_LABELS[task.status]}
                         </span>
+                        {reminderType === "upcoming" && <span className="task-upcoming-flag">Upcoming</span>}
                         {overdue && <span className="task-overdue-flag">Overdue</span>}
                       </td>
                       <td>

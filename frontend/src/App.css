@@ -584,6 +584,21 @@ body {
   font-weight: 700;
 }
 
+.task-upcoming-flag {
+  display: inline-flex;
+  margin-left: 0.45rem;
+  color: #4338ca;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.task-reminder-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .task-complete-btn {
   border: 0;
   border-radius: 10px;
