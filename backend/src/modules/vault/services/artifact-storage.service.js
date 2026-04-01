@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const { getDatabase } = require("../../../shared/services/database.service");
 const { logPartnerActivity } = require("../../../shared/services/audit-log.service");
 const localAdapter = require("./storage-adapters/local.adapter");
+const cloudinaryAdapter = require("./storage-adapters/cloudinary.adapter");
 
 const ALLOWED_ARTIFACT_STATUSES = ["active", "pending_review", "archived"];
 
@@ -18,6 +19,9 @@ function getStorageAdapter() {
   const provider = (process.env.ARTIFACT_STORAGE_PROVIDER || "local").toLowerCase();
   if (provider === "local") {
     return localAdapter;
+  }
+  if (provider === "cloudinary") {
+    return cloudinaryAdapter;
   }
 
   throw new ArtifactStorageError("Unsupported artifact storage provider", "ARTIFACT_STORAGE_PROVIDER_INVALID", 500, [

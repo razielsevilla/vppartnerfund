@@ -175,8 +175,12 @@ async function initializeDatabase() {
     if (!db) {
       db = knex(config);
       
-      // Run migrations
-      await db.migrate.latest();
+      // Run migrations unless explicitly skipped
+      if (process.env.SKIP_DB_MIGRATIONS !== 'true') {
+        await db.migrate.latest();
+      } else {
+        console.log('Skipping automatic database migrations (SKIP_DB_MIGRATIONS=true)');
+      }
       
       // Seed initial data if not already present
       const rolesCount = await db('roles').count('* as count').first();
