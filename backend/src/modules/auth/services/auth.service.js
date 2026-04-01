@@ -1,55 +1,12 @@
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
+const { getDatabase } = require("../../../shared/services/database.service");
+const { ALL_ROLE_CODES } = require("../../../shared/constants/roles");
 
 const sessions = new Map();
-const users = new Map();
 
 const isProduction = process.env.NODE_ENV === "production";
 const bcryptRounds = Number(process.env.AUTH_BCRYPT_ROUNDS || 10);
-
-const userRecord = ({ id, email, role, displayName, passwordHash }) => ({
-  id,
-  email,
-  role,
-  displayName,
-  passwordHash,
-  createdAt: new Date().toISOString(),
-});
-
-const seedUsers = () => {
-  if (isProduction) {
-    return;
-  }
-
-  const adminEmail = process.env.AUTH_ADMIN_EMAIL || "admin@devconlaguna.internal";
-  const adminPassword = process.env.AUTH_ADMIN_PASSWORD || "changeme";
-  const teamEmail = process.env.AUTH_TEAM_EMAIL || "team@devconlaguna.internal";
-  const teamPassword = process.env.AUTH_TEAM_PASSWORD || "changeme";
-
-  users.set(
-    adminEmail,
-    userRecord({
-      id: "seed-admin-user",
-      email: adminEmail,
-      role: "admin",
-      displayName: "VP Partnerships",
-      passwordHash: bcrypt.hashSync(adminPassword, bcryptRounds),
-    }),
-  );
-
-  users.set(
-    teamEmail,
-    userRecord({
-      id: "seed-team-user",
-      email: teamEmail,
-      role: "team_member",
-      displayName: "Partnerships Team Member",
-      passwordHash: bcrypt.hashSync(teamPassword, bcryptRounds),
-    }),
-  );
-};
-
-seedUsers();
 
 const safeUser = (user) => {
   if (!user) {
@@ -61,21 +18,52 @@ const safeUser = (user) => {
     email: user.email,
     role: user.role,
     displayName: user.displayName,
+    lastLoginAt: user.lastLoginAt || null,
   };
 };
 
 const validateCredentials = async (email, password) => {
-  const user = users.get(email);
-  if (!user) {
+  const db = getDatabase();
+  const matchingAccounts = await db("users")
+    .join("roles", "roles.id", "users.role_id")
+    .select(
+      "users.id",
+      "users.email",
+      "users.full_name as displayName",
+      "users.password_hash as passwordHash",
+      "users.last_login_at as lastLoginAt",
+      "users.is_active as isActive",
+      "roles.code as role",
+    )
+    .whereRaw("LOWER(users.email) = LOWER(?)", [email]);
+
+  if (!matchingAccounts.length) {
     return null;
   }
 
-  const passwordMatches = await bcrypt.compare(password, user.passwordHash);
-  if (!passwordMatches) {
-    return null;
+  for (const account of matchingAccounts) {
+    if (!account.isActive) {
+      continue;
+    }
+
+    const passwordMatches = await bcrypt.compare(password, account.passwordHash);
+    if (!passwordMatches) {
+      continue;
+    }
+
+    const nowIso = new Date().toISOString();
+    await db("users").where({ id: account.id }).update({
+      last_login_at: nowIso,
+      updated_at: nowIso,
+    });
+
+    return safeUser({
+      ...account,
+      lastLoginAt: nowIso,
+    });
   }
 
-  return safeUser(user);
+  return null;
 };
 
 const createSession = (user) => {
@@ -106,26 +94,61 @@ const provisionUser = async ({ email, password, role, displayName }) => {
     throw new Error("email, password, role, and displayName are required");
   }
 
-  if (!["admin", "team_member"].includes(role)) {
-    throw new Error("role must be either admin or team_member");
+  if (!ALL_ROLE_CODES.includes(role)) {
+    throw new Error(`role must be one of: ${ALL_ROLE_CODES.join(", ")}`);
   }
 
-  if (users.has(email)) {
-    throw new Error("user already exists");
+  const db = getDatabase();
+  const roleRow = await db("roles").select("id").where({ code: role }).first();
+  if (!roleRow) {
+    throw new Error("role not configured in database");
   }
 
   const passwordHash = await bcrypt.hash(password, bcryptRounds);
+  const nowIso = new Date().toISOString();
 
-  const user = userRecord({
+  const user = {
     id: crypto.randomUUID(),
+    role_id: roleRow.id,
+    full_name: displayName,
     email,
+    password_hash: passwordHash,
+    is_active: true,
+    must_reset_password: false,
+    created_at: nowIso,
+    updated_at: nowIso,
+    last_login_at: null,
+  };
+
+  await db("users").insert(user);
+
+  return safeUser({
+    id: user.id,
+    email: user.email,
     role,
     displayName,
-    passwordHash,
+    lastLoginAt: null,
   });
+};
 
-  users.set(email, user);
-  return safeUser(user);
+const listCredentialOwners = async () => {
+  const db = getDatabase();
+  const rows = await db("users")
+    .join("roles", "roles.id", "users.role_id")
+    .select(
+      "users.id",
+      "users.full_name as displayName",
+      "users.email",
+      "users.last_login_at as lastLoginAt",
+      "users.is_active as isActive",
+      "users.created_at as createdAt",
+      "roles.code as role",
+      "roles.name as roleName",
+    )
+    .orderBy("roles.code", "asc")
+    .orderBy("users.full_name", "asc");
+
+  return rows;
 };
 
 module.exports = {
@@ -134,5 +157,6 @@ module.exports = {
   findSession,
   revokeSession,
   provisionUser,
+  listCredentialOwners,
   isProduction,
 };

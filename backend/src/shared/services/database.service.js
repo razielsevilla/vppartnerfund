@@ -202,8 +202,10 @@ async function initializeDatabase() {
 
 async function seedRoles() {
   const roles = [
-    { id: 'role_admin', code: 'admin', name: 'Administrator' },
-    { id: 'role_team_member', code: 'team_member', name: 'Team Member' }
+    { id: 'role_vp_head', code: 'vp_head', name: 'VP Partnerships Head' },
+    { id: 'role_liaison_officer', code: 'liaison_officer', name: 'Liaison Officer' },
+    { id: 'role_compliance_officer', code: 'compliance_officer', name: 'Compliance Officer' },
+    { id: 'role_devcon_officer', code: 'devcon_officer', name: 'DevCon Officer' }
   ];
   
   await db('roles').insert(roles);
@@ -236,27 +238,55 @@ async function seedUsersIfNeeded() {
   }
 
   const rounds = Number(process.env.AUTH_BCRYPT_ROUNDS || 10);
-  const adminPassword = process.env.AUTH_ADMIN_PASSWORD || 'changeme';
-  const teamPassword = process.env.AUTH_TEAM_PASSWORD || 'changeme';
+  const vpPassword = process.env.AUTH_VP_PASSWORD || process.env.AUTH_ADMIN_PASSWORD || 'changeme';
+  const liaisonPassword = process.env.AUTH_LIAISON_PASSWORD || process.env.AUTH_TEAM_PASSWORD || 'changeme';
+  const compliancePassword = process.env.AUTH_COMPLIANCE_PASSWORD || 'changeme-compliance';
+  const devconPassword = process.env.AUTH_DEVCON_PASSWORD || 'changeme-devcon';
+  const vpEmail = process.env.AUTH_VP_EMAIL || process.env.AUTH_ADMIN_EMAIL || 'admin@devconlaguna.internal';
+  const liaisonEmail = process.env.AUTH_LIAISON_EMAIL || process.env.AUTH_TEAM_EMAIL || 'team@devconlaguna.internal';
+  const complianceEmail = process.env.AUTH_COMPLIANCE_EMAIL || liaisonEmail;
+  const devconEmail = process.env.AUTH_DEVCON_EMAIL || liaisonEmail;
 
   const users = [
     {
       id: 'seed-admin-user',
-      role_id: 'role_admin',
+      role_id: 'role_vp_head',
       full_name: 'VP Partnerships',
-      email: process.env.AUTH_ADMIN_EMAIL || 'admin@devconlaguna.internal',
-      password_hash: bcrypt.hashSync(adminPassword, rounds),
+      email: vpEmail,
+      password_hash: bcrypt.hashSync(vpPassword, rounds),
       is_active: true,
       must_reset_password: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
     {
-      id: 'seed-team-user',
-      role_id: 'role_team_member',
-      full_name: 'Partnerships Team Member',
-      email: process.env.AUTH_TEAM_EMAIL || 'team@devconlaguna.internal',
-      password_hash: bcrypt.hashSync(teamPassword, rounds),
+      id: 'seed-liaison-user',
+      role_id: 'role_liaison_officer',
+      full_name: 'Lead Liaison Officer',
+      email: liaisonEmail,
+      password_hash: bcrypt.hashSync(liaisonPassword, rounds),
+      is_active: true,
+      must_reset_password: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: 'seed-compliance-user',
+      role_id: 'role_compliance_officer',
+      full_name: 'Lead Compliance Officer',
+      email: complianceEmail,
+      password_hash: bcrypt.hashSync(compliancePassword, rounds),
+      is_active: true,
+      must_reset_password: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: 'seed-devcon-user',
+      role_id: 'role_devcon_officer',
+      full_name: 'Lead DevCon Officer',
+      email: devconEmail,
+      password_hash: bcrypt.hashSync(devconPassword, rounds),
       is_active: true,
       must_reset_password: false,
       created_at: new Date().toISOString(),

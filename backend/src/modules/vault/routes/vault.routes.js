@@ -1,5 +1,6 @@
 const express = require("express");
 const { requireAuth, requireRole } = require("../../../shared/middleware/auth.middleware");
+const { ALL_ROLE_CODES } = require("../../../shared/constants/roles");
 const {
   uploadArtifactHandler,
   listArtifactsHandler,
@@ -10,7 +11,7 @@ const {
 const router = express.Router();
 
 router.use(requireAuth);
-router.use(requireRole(["admin", "team_member"]));
+router.use(requireRole(ALL_ROLE_CODES));
 
 router.post("/partners/:partnerId/artifacts", uploadArtifactHandler);
 router.get("/partners/:partnerId/artifacts", listArtifactsHandler);

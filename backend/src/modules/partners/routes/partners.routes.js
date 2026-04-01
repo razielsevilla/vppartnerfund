@@ -1,5 +1,6 @@
 const express = require("express");
 const { requireAuth, requireRole } = require("../../../shared/middleware/auth.middleware");
+const { ALL_ROLE_CODES, ROLE_CODES } = require("../../../shared/constants/roles");
 const {
   createPartnerHandler,
   listPartnersHandler,
@@ -26,20 +27,20 @@ router.use(requireAuth);
 
 router.get("/", listPartnersHandler);
 router.get("/import/mapping", getPartnerImportMappingHandler);
-router.post("/import", requireRole(["admin"]), importPartnersHandler);
-router.post("/", requireRole(["admin", "team_member"]), createPartnerHandler);
+router.post("/import", requireRole([ROLE_CODES.VP_HEAD]), importPartnersHandler);
+router.post("/", requireRole(ALL_ROLE_CODES), createPartnerHandler);
 router.get("/:partnerId", getPartnerHandler);
 router.get("/:partnerId/qualification", getPartnerQualificationHandler);
 router.get("/:partnerId/contacts", listPartnerContactsHandler);
 router.get("/:partnerId/timeline", getPartnerTimelineHandler);
 router.get("/:partnerId/discovery-notes/templates", listDiscoveryNoteTemplatesHandler);
 router.get("/:partnerId/discovery-notes", listDiscoveryNotesHandler);
-router.post("/:partnerId/contacts", requireRole(["admin", "team_member"]), createPartnerContactHandler);
-router.post("/:partnerId/discovery-notes", requireRole(["admin", "team_member"]), createDiscoveryNoteHandler);
-router.put("/:partnerId/discovery-notes/:noteId", requireRole(["admin", "team_member"]), updateDiscoveryNoteHandler);
-router.put("/:partnerId/qualification", requireRole(["admin", "team_member"]), upsertPartnerQualificationHandler);
-router.put("/:partnerId", requireRole(["admin", "team_member"]), updatePartnerHandler);
-router.post("/:partnerId/transition", requireRole(["admin", "team_member"]), transitionPartnerHandler);
-router.post("/:partnerId/archive", requireRole(["admin", "team_member"]), archivePartnerHandler);
+router.post("/:partnerId/contacts", requireRole(ALL_ROLE_CODES), createPartnerContactHandler);
+router.post("/:partnerId/discovery-notes", requireRole(ALL_ROLE_CODES), createDiscoveryNoteHandler);
+router.put("/:partnerId/discovery-notes/:noteId", requireRole(ALL_ROLE_CODES), updateDiscoveryNoteHandler);
+router.put("/:partnerId/qualification", requireRole(ALL_ROLE_CODES), upsertPartnerQualificationHandler);
+router.put("/:partnerId", requireRole(ALL_ROLE_CODES), updatePartnerHandler);
+router.post("/:partnerId/transition", requireRole(ALL_ROLE_CODES), transitionPartnerHandler);
+router.post("/:partnerId/archive", requireRole(ALL_ROLE_CODES), archivePartnerHandler);
 
 module.exports = router;

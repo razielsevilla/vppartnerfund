@@ -11,6 +11,17 @@ export type LoginResponse = {
   user: AuthUser;
 };
 
+export type AuthAccountRecord = {
+  id: string;
+  displayName: string;
+  email: string;
+  role: string;
+  roleName: string;
+  isActive: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+};
+
 export const loginRequest = async (email: string, password: string): Promise<LoginResponse> => {
   const response = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
@@ -45,4 +56,19 @@ export const logoutRequest = async (): Promise<void> => {
     method: "POST",
     credentials: "include",
   });
+};
+
+export const listAuthAccountsRequest = async (): Promise<AuthAccountRecord[]> => {
+  const response = await fetch(`${API_URL}/auth/accounts`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || "Failed to load auth accounts");
+  }
+
+  const payload = await response.json();
+  return payload.accounts || [];
 };

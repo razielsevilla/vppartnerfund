@@ -1,5 +1,6 @@
 const express = require("express");
 const { requireAuth, requireRole } = require("../../../shared/middleware/auth.middleware");
+const { ALL_ROLE_CODES } = require("../../../shared/constants/roles");
 const {
   createTaskHandler,
   listTasksHandler,
@@ -15,11 +16,11 @@ const router = express.Router();
 router.use(requireAuth);
 
 router.get("/reminders/summary", getTaskReminderSummaryHandler);
-router.post("/reminders/trigger", requireRole(["admin", "team_member"]), triggerTaskRemindersHandler);
+router.post("/reminders/trigger", requireRole(ALL_ROLE_CODES), triggerTaskRemindersHandler);
 router.get("/", listTasksHandler);
-router.post("/", requireRole(["admin", "team_member"]), createTaskHandler);
+router.post("/", requireRole(ALL_ROLE_CODES), createTaskHandler);
 router.get("/:taskId", getTaskHandler);
-router.put("/:taskId", requireRole(["admin", "team_member"]), updateTaskHandler);
-router.delete("/:taskId", requireRole(["admin", "team_member"]), deleteTaskHandler);
+router.put("/:taskId", requireRole(ALL_ROLE_CODES), updateTaskHandler);
+router.delete("/:taskId", requireRole(ALL_ROLE_CODES), deleteTaskHandler);
 
 module.exports = router;

@@ -3,6 +3,7 @@ const {
   createSession,
   revokeSession,
   provisionUser,
+  listCredentialOwners,
   isProduction,
 } = require("../services/auth.service");
 const { logFailedLoginEvent } = require("../../../shared/utils/auth-audit-log");
@@ -69,9 +70,15 @@ const provision = async (req, res) => {
   }
 };
 
+const listAccounts = async (_req, res) => {
+  const accounts = await listCredentialOwners();
+  return res.status(200).json({ accounts });
+};
+
 module.exports = {
   login,
   session,
   logout,
   provision,
+  listAccounts,
 };
