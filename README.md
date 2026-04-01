@@ -59,3 +59,21 @@ The repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`.
 ## Environment Variables
 
 Use `.env.example` as the source of required variables for local development.
+
+## Internal User Provisioning
+
+Non-production behavior:
+
+- Admin and Team Member accounts are seeded from `.env` values.
+- Default seeded credentials are intended for local and staging only.
+
+Manual provisioning (non-production only):
+
+1. Login as Admin using `POST /api/auth/login`.
+2. Call `POST /api/auth/provision` with bearer token and payload:
+   `{"email":"member@devconlaguna.internal","password":"<temporary>","role":"team_member","displayName":"Team Member"}`
+
+Production provisioning path:
+
+- Runtime provisioning endpoint is intentionally disabled in production.
+- Provision production users through controlled deployment-time account setup (secrets-managed seed values and approved credential rotation process).
