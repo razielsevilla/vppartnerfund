@@ -62,7 +62,7 @@ This document defines the phase-by-phase implementation plan for the DEVCON Lagu
 | P7-T01  | KPI Aggregation Layer       | Build backend aggregation endpoints for executive dashboard metrics. | - [x] KPI endpoints return current, accurate metrics.<br>- [x] Metrics include stage counts, conversion, and overdue actions.<br>- [x] Endpoint performance meets acceptable response targets.      |
 | P7-T02  | Executive Dashboard UI      | Implement dashboard widgets and visual summaries.                    | - [x] KPI cards match agreed definitions from features spec.<br>- [x] Drill-down links navigate to filtered operational views.<br>- [x] Dashboard handles empty and partial-data states gracefully. |
 | P7-T03  | Strategic Coverage Insights | Add views for value proposition demand and coverage gaps.            | - [x] Demand distribution is visible by category.<br>- [x] Coverage gap indicators are actionable.<br>- [x] Insights reflect live underlying data.                                                  |
-| P7-T04  | Snapshot Reporting          | Enable weekly and monthly operational snapshots.                     | - [ ] Snapshot generation can be triggered reliably.<br>- [ ] Snapshot outputs are consistent and timestamped.<br>- [ ] Historical snapshots can be reviewed later.                                 |
+| P7-T04  | Snapshot Reporting          | Enable weekly and monthly operational snapshots.                     | - [x] Snapshot generation can be triggered reliably.<br>- [x] Snapshot outputs are consistent and timestamped.<br>- [x] Historical snapshots can be reviewed later.                                 |
 
 ## Phase 8 - Import, Settings, Hardening, and Release
 

@@ -27,6 +27,7 @@ test.after(async () => {
 
 test.beforeEach(async () => {
   const db = getDatabase();
+  await db("workflow_snapshots").del();
   await db("artifact_records").del();
   await db("discovery_notes").del();
   await db("partners").del();
@@ -582,6 +583,42 @@ test("coverage insights expose demand distribution and actionable gap drill-down
   assert.equal(gapPartners.status, 200);
   assert.equal(gapPartners.body.partners.length, 1);
   assert.equal(gapPartners.body.partners[0].organizationName, "Coverage Alpha");
+});
+
+test("workflow snapshots can be triggered and retrieved as timestamped history", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Snapshot Partner",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createResponse.status, 201);
+
+  const weeklySnapshotResponse = await agent.post("/api/workflow/snapshots").send({
+    periodType: "weekly",
+  });
+  assert.equal(weeklySnapshotResponse.status, 201);
+  assert.equal(weeklySnapshotResponse.body.snapshot.periodType, "weekly");
+  assert.ok(weeklySnapshotResponse.body.snapshot.generatedAt);
+  assert.ok(weeklySnapshotResponse.body.snapshot.periodStart);
+  assert.ok(weeklySnapshotResponse.body.snapshot.periodEnd);
+  assert.ok(weeklySnapshotResponse.body.snapshot.metrics.kpi);
+  assert.ok(weeklySnapshotResponse.body.snapshot.metrics.coverage);
+
+  const monthlySnapshotResponse = await agent.post("/api/workflow/snapshots").send({
+    periodType: "monthly",
+  });
+  assert.equal(monthlySnapshotResponse.status, 201);
+  assert.equal(monthlySnapshotResponse.body.snapshot.periodType, "monthly");
+
+  const historyResponse = await agent.get("/api/workflow/snapshots?limit=5");
+  assert.equal(historyResponse.status, 200);
+  assert.ok(Array.isArray(historyResponse.body.snapshots));
+  assert.equal(historyResponse.body.snapshots.length, 2);
+  assert.ok(historyResponse.body.snapshots[0].createdAt);
+  assert.ok(historyResponse.body.snapshots[0].generatedAt);
+  assert.ok(historyResponse.body.snapshots.some((entry) => entry.periodType === "weekly"));
+  assert.ok(historyResponse.body.snapshots.some((entry) => entry.periodType === "monthly"));
 });
 
 test("discovery note templates are available during discovery sessions", async () => {

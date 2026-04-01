@@ -64,6 +64,18 @@ function parseJsonArray(value) {
   }
 }
 
+function parseJsonObject(value) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
 async function getWorkflowConfig() {
   const db = getDatabase();
   const phases = await db("workflow_phases").orderBy("sort_order", "asc");
@@ -620,6 +632,96 @@ async function getWorkflowCoverageInsights() {
   };
 }
 
+function resolveSnapshotWindow(periodType, nowDate = new Date()) {
+  const endDate = new Date(nowDate);
+  endDate.setUTCHours(23, 59, 59, 999);
+
+  const startDate = new Date(nowDate);
+  if (periodType === "weekly") {
+    startDate.setUTCDate(startDate.getUTCDate() - 6);
+  } else {
+    startDate.setUTCDate(1);
+  }
+  startDate.setUTCHours(0, 0, 0, 0);
+
+  return {
+    periodStart: startDate.toISOString().slice(0, 10),
+    periodEnd: endDate.toISOString().slice(0, 10),
+  };
+}
+
+async function createWorkflowSnapshot(periodType, actorId) {
+  const normalizedPeriodType = String(periodType || "").trim().toLowerCase();
+  if (!["weekly", "monthly"].includes(normalizedPeriodType)) {
+    throw new PartnerServiceError(
+      "Invalid snapshot period type",
+      "WORKFLOW_INVALID_SNAPSHOT_PERIOD",
+      400,
+      [{ field: "periodType", message: "periodType must be one of: weekly, monthly" }],
+    );
+  }
+
+  const db = getDatabase();
+  const nowIso = new Date().toISOString();
+  const window = resolveSnapshotWindow(normalizedPeriodType, new Date(nowIso));
+  const [kpi, coverage] = await Promise.all([
+    getWorkflowKpiMetrics(),
+    getWorkflowCoverageInsights(),
+  ]);
+
+  const snapshot = {
+    id: crypto.randomUUID(),
+    periodType: normalizedPeriodType,
+    periodStart: window.periodStart,
+    periodEnd: window.periodEnd,
+    generatedAt: nowIso,
+    metrics: {
+      kpi,
+      coverage,
+    },
+  };
+
+  await db("workflow_snapshots").insert({
+    id: snapshot.id,
+    period_type: snapshot.periodType,
+    period_start: snapshot.periodStart,
+    period_end: snapshot.periodEnd,
+    snapshot_payload: JSON.stringify(snapshot),
+    created_by: actorId,
+    created_at: nowIso,
+  });
+
+  return snapshot;
+}
+
+async function listWorkflowSnapshots(filters = {}) {
+  const db = getDatabase();
+  const query = db("workflow_snapshots").orderBy("created_at", "desc");
+
+  if (filters.periodType) {
+    query.where("period_type", String(filters.periodType).toLowerCase());
+  }
+
+  const limit = Number(filters.limit || 20);
+  query.limit(Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 100) : 20);
+
+  const rows = await query.select("id", "period_type", "period_start", "period_end", "snapshot_payload", "created_by", "created_at");
+
+  return rows.map((row) => {
+    const payload = parseJsonObject(row.snapshot_payload) || {};
+    return {
+      id: row.id,
+      periodType: row.period_type,
+      periodStart: row.period_start,
+      periodEnd: row.period_end,
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+      generatedAt: payload.generatedAt || row.created_at,
+      metrics: payload.metrics || null,
+    };
+  });
+}
+
 module.exports = {
   getWorkflowConfig,
   replaceTransitionRules,
@@ -629,4 +731,6 @@ module.exports = {
   getWorkflowHealthMetrics,
   getWorkflowKpiMetrics,
   getWorkflowCoverageInsights,
+  createWorkflowSnapshot,
+  listWorkflowSnapshots,
 };

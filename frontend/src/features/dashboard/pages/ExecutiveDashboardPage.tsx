@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
 import {
+  createWorkflowSnapshotRequest,
   getWorkflowCoverageInsightsRequest,
   getWorkflowKpiMetricsRequest,
+  listWorkflowSnapshotsRequest,
   type WorkflowCoverageInsights,
   type WorkflowKpiMetrics,
+  type WorkflowSnapshot,
 } from "../../partners/services/partners-api";
 
 function formatPct(value: number | null | undefined): string {
@@ -24,6 +27,9 @@ export const ExecutiveDashboardPage = () => {
   const { user, logout } = useAuthSession();
   const [metrics, setMetrics] = useState<WorkflowKpiMetrics | null>(null);
   const [coverage, setCoverage] = useState<WorkflowCoverageInsights | null>(null);
+  const [snapshots, setSnapshots] = useState<WorkflowSnapshot[]>([]);
+  const [snapshotMessage, setSnapshotMessage] = useState<string | null>(null);
+  const [isTriggeringPeriod, setIsTriggeringPeriod] = useState<"weekly" | "monthly" | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,9 +45,11 @@ export const ExecutiveDashboardPage = () => {
           getWorkflowKpiMetricsRequest(),
           getWorkflowCoverageInsightsRequest(),
         ]);
+        const snapshotData = await listWorkflowSnapshotsRequest({ limit: 8 });
         if (!cancelled) {
           setMetrics(kpiData);
           setCoverage(coverageData);
+          setSnapshots(snapshotData);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -70,6 +78,29 @@ export const ExecutiveDashboardPage = () => {
   const hasConversionData = stageConversion.length > 0;
   const demandDistribution = coverage?.demandDistribution ?? [];
   const coverageGaps = coverage?.coverageGaps ?? [];
+
+  const refreshSnapshotHistory = async () => {
+    const history = await listWorkflowSnapshotsRequest({ limit: 8 });
+    setSnapshots(history);
+  };
+
+  const triggerSnapshot = async (periodType: "weekly" | "monthly") => {
+    setSnapshotMessage(null);
+    setIsTriggeringPeriod(periodType);
+    try {
+      const snapshot = await createWorkflowSnapshotRequest(periodType);
+      await refreshSnapshotHistory();
+      setSnapshotMessage(
+        `${snapshot.periodType} snapshot generated at ${new Date(snapshot.generatedAt).toLocaleString()}.`,
+      );
+    } catch (triggerError) {
+      setSnapshotMessage(
+        triggerError instanceof Error ? triggerError.message : "Failed to trigger snapshot",
+      );
+    } finally {
+      setIsTriggeringPeriod(null);
+    }
+  };
 
   return (
     <main className="page-layout">
@@ -321,6 +352,70 @@ export const ExecutiveDashboardPage = () => {
                     </div>
                   </article>
                 ))}
+              </div>
+            )}
+          </section>
+
+          <section className="dashboard-panel" aria-label="Snapshot reporting">
+            <div className="dashboard-panel-head">
+              <h2>Snapshot Reporting</h2>
+              <p className="muted">Generate weekly or monthly snapshots and review historical outputs.</p>
+            </div>
+
+            <div className="snapshot-actions">
+              <button
+                type="button"
+                className="secondary-btn"
+                disabled={isTriggeringPeriod === "weekly"}
+                onClick={() => triggerSnapshot("weekly")}
+              >
+                {isTriggeringPeriod === "weekly" ? "Generating Weekly..." : "Generate Weekly Snapshot"}
+              </button>
+              <button
+                type="button"
+                className="secondary-btn"
+                disabled={isTriggeringPeriod === "monthly"}
+                onClick={() => triggerSnapshot("monthly")}
+              >
+                {isTriggeringPeriod === "monthly" ? "Generating Monthly..." : "Generate Monthly Snapshot"}
+              </button>
+            </div>
+
+            {snapshotMessage && <p className="muted snapshot-feedback">{snapshotMessage}</p>}
+
+            {snapshots.length === 0 && (
+              <div className="status-card status-empty">
+                <h2>No snapshots yet</h2>
+                <p>Trigger weekly or monthly generation to start snapshot history.</p>
+              </div>
+            )}
+
+            {snapshots.length > 0 && (
+              <div className="registry-table-wrap">
+                <table className="registry-table">
+                  <thead>
+                    <tr>
+                      <th>Period</th>
+                      <th>Window Start</th>
+                      <th>Window End</th>
+                      <th>Generated At</th>
+                      <th>Active Partners</th>
+                      <th>Coverage Gap Categories</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {snapshots.map((snapshot) => (
+                      <tr key={snapshot.id}>
+                        <td>{snapshot.periodType}</td>
+                        <td>{snapshot.periodStart}</td>
+                        <td>{snapshot.periodEnd}</td>
+                        <td>{new Date(snapshot.generatedAt).toLocaleString()}</td>
+                        <td>{snapshot.metrics?.kpi.summary.totalActivePartners ?? "--"}</td>
+                        <td>{snapshot.metrics?.coverage.summary.categoriesWithGaps ?? "--"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </section>

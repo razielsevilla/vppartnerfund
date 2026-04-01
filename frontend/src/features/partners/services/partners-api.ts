@@ -187,6 +187,20 @@ export type WorkflowCoverageInsights = {
   }>;
 };
 
+export type WorkflowSnapshot = {
+  id: string;
+  periodType: "weekly" | "monthly";
+  periodStart: string;
+  periodEnd: string;
+  createdBy: string;
+  createdAt: string;
+  generatedAt: string;
+  metrics: {
+    kpi: WorkflowKpiMetrics;
+    coverage: WorkflowCoverageInsights;
+  } | null;
+};
+
 export type CreatePartnerPayload = {
   organizationName: string;
   organizationType: string;
@@ -471,6 +485,50 @@ export const getWorkflowCoverageInsightsRequest = async (): Promise<WorkflowCove
   }
 
   return body as WorkflowCoverageInsights;
+};
+
+export const createWorkflowSnapshotRequest = async (
+  periodType: "weekly" | "monthly",
+): Promise<WorkflowSnapshot> => {
+  const response = await fetch(`${API_URL}/workflow/snapshots`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ periodType }),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to create workflow snapshot"));
+  }
+
+  return (body as { snapshot: WorkflowSnapshot }).snapshot;
+};
+
+export const listWorkflowSnapshotsRequest = async (filters?: {
+  periodType?: "weekly" | "monthly";
+  limit?: number;
+}): Promise<WorkflowSnapshot[]> => {
+  const params = new URLSearchParams();
+  if (filters?.periodType) {
+    params.set("periodType", filters.periodType);
+  }
+  if (typeof filters?.limit === "number") {
+    params.set("limit", String(filters.limit));
+  }
+
+  const query = params.toString();
+  const response = await fetch(`${API_URL}/workflow/snapshots${query ? `?${query}` : ""}`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to load workflow snapshots"));
+  }
+
+  return (body as { snapshots: WorkflowSnapshot[] }).snapshots;
 };
 
 export type WorkflowPhase = {

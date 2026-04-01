@@ -6,6 +6,8 @@ const {
   getWorkflowHealthMetricsHandler,
   getWorkflowKpiMetricsHandler,
   getWorkflowCoverageInsightsHandler,
+  createWorkflowSnapshotHandler,
+  listWorkflowSnapshotsHandler,
   replaceTransitionRulesHandler,
   updateWorkflowHealthConfigHandler,
 } = require("../controllers/workflow.controller");
@@ -21,5 +23,7 @@ router.put("/health/config", requireRole(["admin"]), updateWorkflowHealthConfigH
 router.get("/health/metrics", getWorkflowHealthMetricsHandler);
 router.get("/kpi/metrics", getWorkflowKpiMetricsHandler);
 router.get("/kpi/coverage-insights", getWorkflowCoverageInsightsHandler);
+router.post("/snapshots", requireRole(["admin"]), createWorkflowSnapshotHandler);
+router.get("/snapshots", listWorkflowSnapshotsHandler);
 
 module.exports = router;

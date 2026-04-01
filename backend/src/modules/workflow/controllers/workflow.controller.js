@@ -8,6 +8,8 @@ const {
   getWorkflowHealthMetrics,
   getWorkflowKpiMetrics,
   getWorkflowCoverageInsights,
+  createWorkflowSnapshot,
+  listWorkflowSnapshots,
 } = require("../services/workflow-engine.service");
 const {
   validateRuleReplacementPayload,
@@ -137,6 +139,32 @@ async function getWorkflowCoverageInsightsHandler(_req, res) {
   }
 }
 
+async function createWorkflowSnapshotHandler(req, res) {
+  const periodType = req.body?.periodType;
+  if (!periodType) {
+    return validationError(res, [{ field: "periodType", message: "periodType is required" }]);
+  }
+
+  try {
+    const snapshot = await createWorkflowSnapshot(periodType, req.user.id);
+    return res.status(201).json({ snapshot });
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
+async function listWorkflowSnapshotsHandler(req, res) {
+  try {
+    const snapshots = await listWorkflowSnapshots({
+      periodType: req.query.periodType,
+      limit: req.query.limit,
+    });
+    return res.status(200).json({ snapshots });
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
 module.exports = {
   getWorkflowConfigHandler,
   replaceTransitionRulesHandler,
@@ -146,4 +174,6 @@ module.exports = {
   getWorkflowHealthMetricsHandler,
   getWorkflowKpiMetricsHandler,
   getWorkflowCoverageInsightsHandler,
+  createWorkflowSnapshotHandler,
+  listWorkflowSnapshotsHandler,
 };
