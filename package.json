@@ -20,7 +20,9 @@
     "ci": "npm run ci:lint && npm run ci:test && npm run ci:build",
     "db:migrate": "node backend/src/db/migrate.js latest",
     "db:rollback": "node backend/src/db/migrate.js rollback",
-    "db:reset": "node backend/src/db/migrate.js reset"
+    "db:reset": "node backend/src/db/migrate.js reset",
+    "db:backup": "node backend/src/db/backup.js",
+    "db:restore": "node backend/src/db/restore.js"
   },
   "keywords": [],
   "author": "",

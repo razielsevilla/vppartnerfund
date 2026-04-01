@@ -1,6 +1,7 @@
 const dotenv = require("dotenv");
 const { initializeDatabase, closeDatabase } = require("./shared/services/database.service");
 const { createApp } = require("./app");
+const logger = require("./shared/utils/logger");
 
 dotenv.config();
 
@@ -12,20 +13,33 @@ async function startServer() {
     await initializeDatabase();
     
     app.listen(PORT, () => {
-      // eslint-disable-next-line no-console
-      console.log(`Backend running on http://localhost:${PORT}`);
+      logger.info("server_started", { port: Number(PORT) });
     });
 
     // Handle graceful shutdown
     process.on("SIGTERM", async () => {
-      // eslint-disable-next-line no-console
-      console.log("SIGTERM received, closing database connection");
+      logger.warn("server_sigterm", { message: "SIGTERM received, closing database connection" });
       await closeDatabase();
       process.exit(0);
     });
+
+    process.on("uncaughtException", (error) => {
+      logger.error("uncaught_exception", {
+        message: error?.message || "Unknown uncaught exception",
+        stack: error?.stack || null,
+      });
+    });
+
+    process.on("unhandledRejection", (reason) => {
+      logger.error("unhandled_rejection", {
+        reason: reason instanceof Error ? reason.message : String(reason),
+      });
+    });
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("Failed to start server:", err);
+    logger.error("server_start_failed", {
+      message: err?.message || "Failed to start server",
+      stack: err?.stack || null,
+    });
     process.exit(1);
   }
 }

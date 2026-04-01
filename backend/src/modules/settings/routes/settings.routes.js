@@ -12,7 +12,7 @@ const router = express.Router();
 router.use(requireAuth);
 
 router.get("/master-data", getMasterDataHandler);
-router.get("/audit-log", listAuditLogsHandler);
+router.get("/audit-log", requireRole(["admin"]), listAuditLogsHandler);
 router.put("/workflow-phases", requireRole(["admin"]), updateWorkflowPhasesHandler);
 router.put("/taxonomies/:taxonomyKey", requireRole(["admin"]), updateTaxonomyHandler);
 
