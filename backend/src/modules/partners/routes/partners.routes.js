@@ -6,6 +6,7 @@ const {
   getPartnerHandler,
   updatePartnerHandler,
   archivePartnerHandler,
+  transitionPartnerHandler,
 } = require("../controllers/partners.controller");
 
 const router = express.Router();
@@ -16,6 +17,7 @@ router.get("/", listPartnersHandler);
 router.post("/", createPartnerHandler);
 router.get("/:partnerId", getPartnerHandler);
 router.put("/:partnerId", updatePartnerHandler);
+router.post("/:partnerId/transition", transitionPartnerHandler);
 router.post("/:partnerId/archive", archivePartnerHandler);
 
 module.exports = router;

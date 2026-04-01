@@ -10,6 +10,7 @@ const {
   validateCreatePartnerPayload,
   validateUpdatePartnerPayload,
 } = require("../validators/partner.validator");
+const { transitionPartnerPhaseHandler } = require("../../workflow/controllers/workflow.controller");
 
 function validationError(res, details) {
   return res.status(400).json({
@@ -94,6 +95,21 @@ async function updatePartnerHandler(req, res) {
     return validationError(res, validation.errors);
   }
 
+  if (validation.value.currentPhaseId !== undefined) {
+    return res.status(400).json({
+      error: {
+        code: "PARTNER_PHASE_UPDATE_BLOCKED",
+        message: "Use the dedicated transition endpoint to change workflow phase",
+        details: [
+          {
+            field: "currentPhaseId",
+            message: "Submit phase changes via POST /api/partners/:partnerId/transition",
+          },
+        ],
+      },
+    });
+  }
+
   try {
     const partner = await updatePartner(req.params.partnerId, validation.value);
     if (!partner) {
@@ -110,6 +126,8 @@ async function updatePartnerHandler(req, res) {
     return serviceError(res, error);
   }
 }
+
+const transitionPartnerHandler = transitionPartnerPhaseHandler;
 
 async function archivePartnerHandler(req, res) {
   try {
@@ -135,5 +153,6 @@ module.exports = {
   listPartnersHandler,
   getPartnerHandler,
   updatePartnerHandler,
+  transitionPartnerHandler,
   archivePartnerHandler,
 };

@@ -3,6 +3,7 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const authRoutes = require("./modules/auth/routes/auth.routes");
 const partnerRoutes = require("./modules/partners/routes/partners.routes");
+const workflowRoutes = require("./modules/workflow/routes/workflow.routes");
 
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
 
@@ -15,6 +16,7 @@ function createApp() {
 
   app.use("/api/auth", authRoutes);
   app.use("/api/partners", partnerRoutes);
+  app.use("/api/workflow", workflowRoutes);
 
   app.get("/api/health", (_req, res) => {
     res

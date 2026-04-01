@@ -131,3 +131,86 @@ test("does not block distinct names that are not similar", async () => {
   });
   assert.equal(secondCreate.status, 201);
 });
+
+test("workflow phases are centrally available through config endpoint", async () => {
+  const response = await agent.get("/api/workflow/config");
+
+  assert.equal(response.status, 200);
+  assert.ok(Array.isArray(response.body.phases));
+  assert.ok(response.body.phases.length > 0);
+  assert.ok(Array.isArray(response.body.transitionRules));
+  assert.ok(response.body.transitionRules.length > 0);
+});
+
+test("blocks invalid workflow transition with clear allowed targets", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Phase Test Partner",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createResponse.status, 201);
+
+  const transitionResponse = await agent
+    .post(`/api/partners/${createResponse.body.partner.id}/transition`)
+    .send({ toPhaseId: "phase_proposal", reason: "Trying to skip phases" });
+
+  assert.equal(transitionResponse.status, 400);
+  assert.equal(transitionResponse.body.error.code, "WORKFLOW_INVALID_TRANSITION");
+  assert.ok(Array.isArray(transitionResponse.body.error.details[0].allowedToPhaseIds));
+  assert.ok(transitionResponse.body.error.details[0].allowedToPhaseIds.includes("phase_prospecting"));
+});
+
+test("enforces required fields for transition rules", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Rule Gate Partner",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createResponse.status, 201);
+
+  const partnerId = createResponse.body.partner.id;
+
+  const toProspecting = await agent
+    .post(`/api/partners/${partnerId}/transition`)
+    .send({ toPhaseId: "phase_prospecting" });
+  assert.equal(toProspecting.status, 200);
+
+  const blockedToQualification = await agent
+    .post(`/api/partners/${partnerId}/transition`)
+    .send({ toPhaseId: "phase_qualification" });
+  assert.equal(blockedToQualification.status, 400);
+  assert.equal(blockedToQualification.body.error.code, "WORKFLOW_REQUIREMENTS_NOT_MET");
+  assert.ok(blockedToQualification.body.error.details[0].requiredFields.includes("lastContactDate"));
+  assert.ok(blockedToQualification.body.error.details[0].requiredFields.includes("nextActionStep"));
+
+  const updateResponse = await agent.put(`/api/partners/${partnerId}`).send({
+    lastContactDate: "2026-04-01",
+    nextActionStep: "Schedule qualification call",
+  });
+  assert.equal(updateResponse.status, 200);
+
+  const allowedToQualification = await agent
+    .post(`/api/partners/${partnerId}/transition`)
+    .send({ toPhaseId: "phase_qualification", reason: "Fields now complete" });
+  assert.equal(allowedToQualification.status, 200);
+  assert.equal(allowedToQualification.body.partner.currentPhaseId, "phase_qualification");
+});
+
+test("blocks phase change through generic partner update endpoint", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Direct Update Block Partner",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createResponse.status, 201);
+
+  const updateResponse = await agent.put(`/api/partners/${createResponse.body.partner.id}`).send({
+    currentPhaseId: "phase_prospecting",
+  });
+
+  assert.equal(updateResponse.status, 400);
+  assert.equal(updateResponse.body.error.code, "PARTNER_PHASE_UPDATE_BLOCKED");
+});

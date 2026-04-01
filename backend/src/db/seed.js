@@ -8,6 +8,91 @@ const environment = process.env.NODE_ENV || 'development';
 const config = knexConfig[environment];
 const db = knex(config);
 
+function defaultTransitionRules() {
+  return [
+    {
+      id: 'rule_lead_to_prospecting',
+      from_phase_id: 'phase_lead',
+      to_phase_id: 'phase_prospecting',
+      requires_last_contact_date: false,
+      requires_next_action_step: false,
+      is_active: true,
+    },
+    {
+      id: 'rule_prospecting_to_qualification',
+      from_phase_id: 'phase_prospecting',
+      to_phase_id: 'phase_qualification',
+      requires_last_contact_date: true,
+      requires_next_action_step: true,
+      is_active: true,
+    },
+    {
+      id: 'rule_qualification_to_proposal',
+      from_phase_id: 'phase_qualification',
+      to_phase_id: 'phase_proposal',
+      requires_last_contact_date: false,
+      requires_next_action_step: true,
+      is_active: true,
+    },
+    {
+      id: 'rule_proposal_to_negotiation',
+      from_phase_id: 'phase_proposal',
+      to_phase_id: 'phase_negotiation',
+      requires_last_contact_date: false,
+      requires_next_action_step: true,
+      is_active: true,
+    },
+    {
+      id: 'rule_negotiation_to_won',
+      from_phase_id: 'phase_negotiation',
+      to_phase_id: 'phase_won',
+      requires_last_contact_date: false,
+      requires_next_action_step: false,
+      is_active: true,
+    },
+    {
+      id: 'rule_lead_to_archived',
+      from_phase_id: 'phase_lead',
+      to_phase_id: 'phase_archived',
+      requires_last_contact_date: false,
+      requires_next_action_step: false,
+      is_active: true,
+    },
+    {
+      id: 'rule_prospecting_to_archived',
+      from_phase_id: 'phase_prospecting',
+      to_phase_id: 'phase_archived',
+      requires_last_contact_date: false,
+      requires_next_action_step: false,
+      is_active: true,
+    },
+    {
+      id: 'rule_qualification_to_archived',
+      from_phase_id: 'phase_qualification',
+      to_phase_id: 'phase_archived',
+      requires_last_contact_date: false,
+      requires_next_action_step: false,
+      is_active: true,
+    },
+    {
+      id: 'rule_proposal_to_archived',
+      from_phase_id: 'phase_proposal',
+      to_phase_id: 'phase_archived',
+      requires_last_contact_date: false,
+      requires_next_action_step: false,
+      is_active: true,
+    },
+    {
+      id: 'rule_negotiation_to_archived',
+      from_phase_id: 'phase_negotiation',
+      to_phase_id: 'phase_archived',
+      requires_last_contact_date: false,
+      requires_next_action_step: false,
+      is_active: true,
+    },
+  ];
+}
+
 async function seed() {
   try {
     // Check if roles already exist
@@ -76,6 +161,20 @@ async function seed() {
       ];
       await db('workflow_phases').insert(phases);
       console.log('✓ Workflow phases seeded');
+    }
+
+    const rulesCount = await db('workflow_transition_rules').count('* as count').first();
+    if (rulesCount.count > 0) {
+      console.log('✓ Workflow transition rules already seeded, skipping');
+    } else {
+      const nowIso = new Date().toISOString();
+      const rules = defaultTransitionRules().map((rule) => ({
+        ...rule,
+        created_at: nowIso,
+        updated_at: nowIso,
+      }));
+      await db('workflow_transition_rules').insert(rules);
+      console.log('✓ Workflow transition rules seeded');
     }
 
     console.log('✓ Seeding completed');

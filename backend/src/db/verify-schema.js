@@ -16,6 +16,7 @@ async function verifySchema() {
       'users',
       'user_sessions',
       'workflow_phases',
+      'workflow_transition_rules',
       'partners',
       'partner_contacts',
       'partner_relationship_notes',
