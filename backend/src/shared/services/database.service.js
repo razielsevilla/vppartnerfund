@@ -1,4 +1,5 @@
 const knex = require('knex');
+const bcrypt = require('bcryptjs');
 const knexConfig = require('../../../knexfile');
 
 const environment = process.env.NODE_ENV || 'development';
@@ -18,8 +19,10 @@ async function initializeDatabase() {
       const rolesCount = await db('roles').count('* as count').first();
       if (rolesCount.count === 0) {
         await seedRoles();
-        await seedWorkflowPhases();
       }
+
+      await seedUsersIfNeeded();
+      await seedWorkflowPhasesIfNeeded();
 
       console.log('Database initialized successfully');
     }
@@ -53,6 +56,56 @@ async function seedWorkflowPhases() {
 
   await db('workflow_phases').insert(phases);
   console.log('Workflow phases seeded');
+}
+
+async function seedUsersIfNeeded() {
+  if (process.env.NODE_ENV === 'production') {
+    return;
+  }
+
+  const usersCount = await db('users').count('* as count').first();
+  if (usersCount.count > 0) {
+    return;
+  }
+
+  const rounds = Number(process.env.AUTH_BCRYPT_ROUNDS || 10);
+  const adminPassword = process.env.AUTH_ADMIN_PASSWORD || 'changeme';
+  const teamPassword = process.env.AUTH_TEAM_PASSWORD || 'changeme';
+
+  const users = [
+    {
+      id: 'seed-admin-user',
+      role_id: 'role_admin',
+      full_name: 'VP Partnerships',
+      email: process.env.AUTH_ADMIN_EMAIL || 'admin@devconlaguna.internal',
+      password_hash: bcrypt.hashSync(adminPassword, rounds),
+      is_active: true,
+      must_reset_password: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: 'seed-team-user',
+      role_id: 'role_team_member',
+      full_name: 'Partnerships Team Member',
+      email: process.env.AUTH_TEAM_EMAIL || 'team@devconlaguna.internal',
+      password_hash: bcrypt.hashSync(teamPassword, rounds),
+      is_active: true,
+      must_reset_password: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  ];
+
+  await db('users').insert(users);
+  console.log('Users seeded');
+}
+
+async function seedWorkflowPhasesIfNeeded() {
+  const phasesCount = await db('workflow_phases').count('* as count').first();
+  if (phasesCount.count === 0) {
+    await seedWorkflowPhases();
+  }
 }
 
 function getDatabase() {
