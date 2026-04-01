@@ -47,6 +47,23 @@ function percentage(numerator, denominator) {
   return Number(((numerator / denominator) * 100).toFixed(2));
 }
 
+function parseJsonArray(value) {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.map((item) => String(item).trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 async function getWorkflowConfig() {
   const db = getDatabase();
   const phases = await db("workflow_phases").orderBy("sort_order", "asc");
@@ -531,6 +548,78 @@ async function getWorkflowKpiMetrics() {
   };
 }
 
+async function getWorkflowCoverageInsights() {
+  const db = getDatabase();
+  const startedAt = Date.now();
+
+  const rows = await db("partners as p")
+    .leftJoin("partner_qualification_profiles as q", "q.partner_id", "p.id")
+    .whereNull("p.archived_at")
+    .select(
+      "p.id",
+      "p.organization_name",
+      "q.potential_value_props",
+      "q.confirmed_value_props",
+    );
+
+  const demandByCategory = new Map();
+  const coverageByCategory = new Map();
+
+  rows.forEach((row) => {
+    const potential = new Set(parseJsonArray(row.potential_value_props));
+    const confirmed = new Set(parseJsonArray(row.confirmed_value_props));
+
+    potential.forEach((category) => {
+      demandByCategory.set(category, (demandByCategory.get(category) || 0) + 1);
+    });
+
+    confirmed.forEach((category) => {
+      coverageByCategory.set(category, (coverageByCategory.get(category) || 0) + 1);
+    });
+  });
+
+  const categories = new Set([...demandByCategory.keys(), ...coverageByCategory.keys()]);
+  const demandDistribution = [...categories]
+    .map((category) => {
+      const demandCount = demandByCategory.get(category) || 0;
+      const confirmedCount = coverageByCategory.get(category) || 0;
+      const gapCount = Math.max(0, demandCount - confirmedCount);
+
+      return {
+        category,
+        demandCount,
+        confirmedCount,
+        gapCount,
+        coverageRatePct: percentage(confirmedCount, demandCount),
+      };
+    })
+    .sort((left, right) => right.demandCount - left.demandCount || left.category.localeCompare(right.category));
+
+  const coverageGaps = demandDistribution
+    .filter((entry) => entry.gapCount > 0)
+    .map((entry) => ({
+      ...entry,
+      severity: entry.gapCount >= 3 ? "high" : entry.gapCount >= 2 ? "medium" : "low",
+      recommendedAction:
+        entry.gapCount >= 3
+          ? "Prioritize qualification follow-ups for this category this week"
+          : "Review open discovery notes and confirm proposition fit",
+    }))
+    .sort((left, right) => right.gapCount - left.gapCount || right.demandCount - left.demandCount);
+
+  return {
+    summary: {
+      totalActivePartners: rows.length,
+      categoriesTracked: categories.size,
+      categoriesWithGaps: coverageGaps.length,
+      generatedAt: new Date().toISOString(),
+      responseTimeMs: Date.now() - startedAt,
+    },
+    demandDistribution,
+    coverageGaps,
+  };
+}
+
 module.exports = {
   getWorkflowConfig,
   replaceTransitionRules,
@@ -539,4 +628,5 @@ module.exports = {
   updateWorkflowHealthConfig,
   getWorkflowHealthMetrics,
   getWorkflowKpiMetrics,
+  getWorkflowCoverageInsights,
 };

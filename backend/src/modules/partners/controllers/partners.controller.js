@@ -76,6 +76,8 @@ async function listPartnersHandler(req, res) {
       industryNiche: req.query.industryNiche,
       impactTier: req.query.impactTier,
       status: req.query.status,
+      valueProp: req.query.valueProp,
+      coverageState: req.query.coverageState,
     });
     return res.status(200).json({ partners });
   } catch (error) {

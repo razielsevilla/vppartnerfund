@@ -232,7 +232,71 @@ async function listPartners(filters) {
   }
 
   const rows = await query.orderBy("created_at", "desc");
-  return rows.map(mapPartnerRow);
+
+  if (!filters.valueProp && !filters.coverageState) {
+    return rows.map(mapPartnerRow);
+  }
+
+  const qualificationRows = await db("partner_qualification_profiles")
+    .whereIn(
+      "partner_id",
+      rows.map((row) => row.id),
+    )
+    .select("partner_id", "potential_value_props", "confirmed_value_props");
+
+  const qualificationByPartnerId = new Map(
+    qualificationRows.map((row) => [
+      row.partner_id,
+      {
+        potential: new Set(parseJsonArray(row.potential_value_props)),
+        confirmed: new Set(parseJsonArray(row.confirmed_value_props)),
+      },
+    ]),
+  );
+
+  const normalizedValueProp = String(filters.valueProp || "").trim().toLowerCase();
+  const filteredRows = rows.filter((row) => {
+    const profile = qualificationByPartnerId.get(row.id) || {
+      potential: new Set(),
+      confirmed: new Set(),
+    };
+
+    const hasValueProp =
+      !normalizedValueProp ||
+      [...profile.potential, ...profile.confirmed].some(
+        (item) => String(item).toLowerCase() === normalizedValueProp,
+      );
+
+    if (!hasValueProp) {
+      return false;
+    }
+
+    if (filters.coverageState === "gap") {
+      if (!normalizedValueProp) {
+        return profile.potential.size > profile.confirmed.size;
+      }
+
+      const hasPotential = [...profile.potential].some(
+        (item) => String(item).toLowerCase() === normalizedValueProp,
+      );
+      const hasConfirmed = [...profile.confirmed].some(
+        (item) => String(item).toLowerCase() === normalizedValueProp,
+      );
+      return hasPotential && !hasConfirmed;
+    }
+
+    if (filters.coverageState === "covered") {
+      if (!normalizedValueProp) {
+        return profile.confirmed.size > 0;
+      }
+
+      return [...profile.confirmed].some((item) => String(item).toLowerCase() === normalizedValueProp);
+    }
+
+    return true;
+  });
+
+  return filteredRows.map(mapPartnerRow);
 }
 
 async function getPartnerById(partnerId) {

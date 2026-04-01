@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
 import {
+  getWorkflowCoverageInsightsRequest,
   getWorkflowKpiMetricsRequest,
+  type WorkflowCoverageInsights,
   type WorkflowKpiMetrics,
 } from "../../partners/services/partners-api";
 
@@ -21,6 +23,7 @@ function toPhaseParam(phaseCode: string): string {
 export const ExecutiveDashboardPage = () => {
   const { user, logout } = useAuthSession();
   const [metrics, setMetrics] = useState<WorkflowKpiMetrics | null>(null);
+  const [coverage, setCoverage] = useState<WorkflowCoverageInsights | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,9 +35,13 @@ export const ExecutiveDashboardPage = () => {
       setError(null);
 
       try {
-        const data = await getWorkflowKpiMetricsRequest();
+        const [kpiData, coverageData] = await Promise.all([
+          getWorkflowKpiMetricsRequest(),
+          getWorkflowCoverageInsightsRequest(),
+        ]);
         if (!cancelled) {
-          setMetrics(data);
+          setMetrics(kpiData);
+          setCoverage(coverageData);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -61,6 +68,8 @@ export const ExecutiveDashboardPage = () => {
   const hasStageData = stageCounts.length > 0;
   const stageConversion = metrics?.conversion.stageConversion ?? [];
   const hasConversionData = stageConversion.length > 0;
+  const demandDistribution = coverage?.demandDistribution ?? [];
+  const coverageGaps = coverage?.coverageGaps ?? [];
 
   return (
     <main className="page-layout">
@@ -224,6 +233,94 @@ export const ExecutiveDashboardPage = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </section>
+
+          <section className="dashboard-panel" aria-label="Strategic coverage insights">
+            <div className="dashboard-panel-head">
+              <h2>Strategic Coverage Insights</h2>
+              <p className="muted">Demand distribution and actionable proposition coverage gaps.</p>
+            </div>
+
+            <div className="dashboard-kpi-grid">
+              <article className="dashboard-kpi-card">
+                <h2>Categories Tracked</h2>
+                <strong>{coverage?.summary.categoriesTracked || 0}</strong>
+                <p>Distinct value proposition categories in active qualification profiles.</p>
+              </article>
+              <article className="dashboard-kpi-card dashboard-kpi-warning">
+                <h2>Categories With Gaps</h2>
+                <strong>{coverage?.summary.categoriesWithGaps || 0}</strong>
+                <p>Potential demand exists but confirmation is still incomplete.</p>
+              </article>
+            </div>
+
+            {demandDistribution.length === 0 && (
+              <div className="status-card status-empty">
+                <h2>No value proposition demand yet</h2>
+                <p>Insights appear once teams map potential and confirmed value propositions.</p>
+              </div>
+            )}
+
+            {demandDistribution.length > 0 && (
+              <div className="registry-table-wrap">
+                <table className="registry-table">
+                  <thead>
+                    <tr>
+                      <th>Category</th>
+                      <th>Demand</th>
+                      <th>Confirmed</th>
+                      <th>Gap</th>
+                      <th>Coverage</th>
+                      <th>Drill Down</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {demandDistribution.map((entry) => (
+                      <tr key={entry.category}>
+                        <td>{entry.category}</td>
+                        <td>{entry.demandCount}</td>
+                        <td>{entry.confirmedCount}</td>
+                        <td>{entry.gapCount}</td>
+                        <td>{formatPct(entry.coverageRatePct)}</td>
+                        <td>
+                          <Link
+                            className="table-link"
+                            to={`/partners?status=active&valueProp=${encodeURIComponent(entry.category)}&coverageState=gap`}
+                          >
+                            Open gap partners
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {coverageGaps.length > 0 && (
+              <div className="coverage-gap-list">
+                {coverageGaps.slice(0, 5).map((gap) => (
+                  <article key={`gap-${gap.category}`} className="coverage-gap-item">
+                    <div>
+                      <h3>{gap.category}</h3>
+                      <p>{gap.recommendedAction}</p>
+                    </div>
+                    <div className="coverage-gap-meta">
+                      <span className={`coverage-severity coverage-severity-${gap.severity}`}>
+                        {gap.severity.toUpperCase()}
+                      </span>
+                      <span>{`Gap: ${gap.gapCount}`}</span>
+                      <Link
+                        className="table-link"
+                        to={`/partners?status=active&valueProp=${encodeURIComponent(gap.category)}&coverageState=gap`}
+                      >
+                        Review Partners
+                      </Link>
+                    </div>
+                  </article>
+                ))}
               </div>
             )}
           </section>

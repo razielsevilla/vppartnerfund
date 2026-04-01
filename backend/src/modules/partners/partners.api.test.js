@@ -524,6 +524,66 @@ test("kpi metrics endpoint returns stage counts, conversion, and overdue actions
   assert.ok(metricsResponse.body.summary.generatedAt);
 });
 
+test("coverage insights expose demand distribution and actionable gap drill-downs", async () => {
+  const createAlpha = await agent.post("/api/partners").send({
+    organizationName: "Coverage Alpha",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createAlpha.status, 201);
+
+  const createBeta = await agent.post("/api/partners").send({
+    organizationName: "Coverage Beta",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_prospecting",
+  });
+  assert.equal(createBeta.status, 201);
+
+  const alphaId = createAlpha.body.partner.id;
+  const betaId = createBeta.body.partner.id;
+
+  const saveAlphaQualification = await agent.put(`/api/partners/${alphaId}/qualification`).send({
+    durationCategory: "mid_term",
+    impactLevel: "high",
+    functionalRole: "Strategic Sponsor",
+    potentialValuePropositions: ["Talent Pipeline", "Brand Visibility"],
+    confirmedValuePropositions: ["Brand Visibility"],
+  });
+  assert.equal(saveAlphaQualification.status, 200);
+
+  const saveBetaQualification = await agent.put(`/api/partners/${betaId}/qualification`).send({
+    durationCategory: "long_term",
+    impactLevel: "transformational",
+    functionalRole: "Innovation Partner",
+    potentialValuePropositions: ["Talent Pipeline"],
+    confirmedValuePropositions: ["Talent Pipeline"],
+  });
+  assert.equal(saveBetaQualification.status, 200);
+
+  const insightsResponse = await agent.get("/api/workflow/kpi/coverage-insights");
+  assert.equal(insightsResponse.status, 200);
+  assert.equal(typeof insightsResponse.body.summary.categoriesTracked, "number");
+  assert.ok(Array.isArray(insightsResponse.body.demandDistribution));
+  assert.ok(Array.isArray(insightsResponse.body.coverageGaps));
+
+  const talentPipeline = insightsResponse.body.demandDistribution.find(
+    (entry) => entry.category === "Talent Pipeline",
+  );
+  assert.ok(talentPipeline);
+  assert.equal(talentPipeline.demandCount, 2);
+  assert.equal(talentPipeline.confirmedCount, 1);
+  assert.equal(talentPipeline.gapCount, 1);
+
+  const gapPartners = await agent.get(
+    "/api/partners?status=active&valueProp=Talent%20Pipeline&coverageState=gap",
+  );
+  assert.equal(gapPartners.status, 200);
+  assert.equal(gapPartners.body.partners.length, 1);
+  assert.equal(gapPartners.body.partners[0].organizationName, "Coverage Alpha");
+});
+
 test("discovery note templates are available during discovery sessions", async () => {
   const createResponse = await agent.post("/api/partners").send({
     organizationName: "Template Partner",

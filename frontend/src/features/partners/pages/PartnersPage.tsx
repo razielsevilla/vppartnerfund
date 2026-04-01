@@ -21,6 +21,8 @@ type FilterState = {
   status: "active" | "archived" | "all";
   impactTier: "" | "standard" | "major" | "lead";
   phaseCode: string;
+  valueProp: string;
+  coverageState: "" | "gap" | "covered";
 };
 
 function parseStatus(value: string | null): FilterState["status"] {
@@ -67,6 +69,8 @@ export const PartnersPage = () => {
     status: parseStatus(searchParams.get("status")),
     impactTier: (searchParams.get("impactTier") as FilterState["impactTier"]) || "",
     phaseCode: searchParams.get("phaseCode") || "",
+    valueProp: searchParams.get("valueProp") || "",
+    coverageState: (searchParams.get("coverageState") as FilterState["coverageState"]) || "",
   }));
 
   useEffect(() => {
@@ -88,6 +92,12 @@ export const PartnersPage = () => {
     }
     if (filters.phaseCode.trim()) {
       params.set("phaseCode", filters.phaseCode.trim());
+    }
+    if (filters.valueProp.trim()) {
+      params.set("valueProp", filters.valueProp.trim());
+    }
+    if (filters.coverageState) {
+      params.set("coverageState", filters.coverageState);
     }
 
     if (params.toString() !== searchParams.toString()) {
@@ -392,6 +402,28 @@ export const PartnersPage = () => {
                 {phase.label}
               </option>
             ))}
+          </select>
+        </label>
+        <label>
+          Value Proposition
+          <input
+            type="text"
+            placeholder="e.g. Talent Pipeline"
+            value={filters.valueProp}
+            onChange={(event) => onFilterChange("valueProp", event.target.value)}
+          />
+        </label>
+        <label>
+          Coverage
+          <select
+            value={filters.coverageState}
+            onChange={(event) =>
+              onFilterChange("coverageState", event.target.value as FilterState["coverageState"])
+            }
+          >
+            <option value="">Any</option>
+            <option value="gap">Gap (Potential not Confirmed)</option>
+            <option value="covered">Covered (Confirmed)</option>
           </select>
         </label>
         <label>

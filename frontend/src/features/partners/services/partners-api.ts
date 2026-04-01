@@ -157,6 +157,34 @@ export type PartnerListFilters = {
   industryNiche?: string;
   status?: "active" | "archived" | "all";
   impactTier?: string;
+  valueProp?: string;
+  coverageState?: "" | "gap" | "covered";
+};
+
+export type WorkflowCoverageInsights = {
+  summary: {
+    totalActivePartners: number;
+    categoriesTracked: number;
+    categoriesWithGaps: number;
+    generatedAt: string;
+    responseTimeMs: number;
+  };
+  demandDistribution: Array<{
+    category: string;
+    demandCount: number;
+    confirmedCount: number;
+    gapCount: number;
+    coverageRatePct: number | null;
+  }>;
+  coverageGaps: Array<{
+    category: string;
+    demandCount: number;
+    confirmedCount: number;
+    gapCount: number;
+    coverageRatePct: number | null;
+    severity: "high" | "medium" | "low";
+    recommendedAction: string;
+  }>;
 };
 
 export type CreatePartnerPayload = {
@@ -214,6 +242,12 @@ export const listPartnersRequest = async (filters: PartnerListFilters): Promise<
   }
   if (filters.impactTier?.trim()) {
     params.set("impactTier", filters.impactTier.trim().toLowerCase());
+  }
+  if (filters.valueProp?.trim()) {
+    params.set("valueProp", filters.valueProp.trim());
+  }
+  if (filters.coverageState) {
+    params.set("coverageState", filters.coverageState);
   }
 
   const query = params.toString();
@@ -423,6 +457,20 @@ export const getWorkflowKpiMetricsRequest = async (): Promise<WorkflowKpiMetrics
   }
 
   return body as WorkflowKpiMetrics;
+};
+
+export const getWorkflowCoverageInsightsRequest = async (): Promise<WorkflowCoverageInsights> => {
+  const response = await fetch(`${API_URL}/workflow/kpi/coverage-insights`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to load workflow coverage insights"));
+  }
+
+  return body as WorkflowCoverageInsights;
 };
 
 export type WorkflowPhase = {
