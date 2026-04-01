@@ -24,7 +24,8 @@ async function verifySchema() {
       'partner_contacts',
       'partner_relationship_notes',
       'workflow_transitions',
-      'activity_logs'
+      'activity_logs',
+      'tasks',
     ];
 
     for (const table of tables) {

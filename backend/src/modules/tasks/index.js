@@ -1,1 +1,5 @@
-module.exports = {};
+const taskRoutes = require("./routes/tasks.routes");
+
+module.exports = {
+	taskRoutes,
+};
