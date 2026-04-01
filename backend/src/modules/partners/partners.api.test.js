@@ -444,6 +444,86 @@ test("stalled stage thresholds are configurable and reflected in metrics", async
   );
 });
 
+test("kpi metrics endpoint returns stage counts, conversion, and overdue actions", async () => {
+  const seedPartners = [
+    {
+      organizationName: "Lead Alpha",
+      currentPhaseId: "phase_lead",
+      lastContactDate: "2026-01-01",
+      nextActionStep: "Follow up call",
+    },
+    {
+      organizationName: "Lead Beta",
+      currentPhaseId: "phase_lead",
+    },
+    {
+      organizationName: "Prospecting Org",
+      currentPhaseId: "phase_prospecting",
+    },
+    {
+      organizationName: "Qualification Org",
+      currentPhaseId: "phase_qualification",
+    },
+    {
+      organizationName: "Proposal Org",
+      currentPhaseId: "phase_proposal",
+    },
+    {
+      organizationName: "Negotiation Org",
+      currentPhaseId: "phase_negotiation",
+    },
+    {
+      organizationName: "Won Org",
+      currentPhaseId: "phase_won",
+    },
+  ];
+
+  for (const partner of seedPartners) {
+    const createResponse = await agent.post("/api/partners").send({
+      organizationName: partner.organizationName,
+      organizationType: "Corporate",
+      industryNiche: "Technology",
+      currentPhaseId: partner.currentPhaseId,
+      lastContactDate: partner.lastContactDate,
+      nextActionStep: partner.nextActionStep,
+    });
+    assert.equal(createResponse.status, 201);
+  }
+
+  const metricsResponse = await agent.get("/api/workflow/kpi/metrics");
+  assert.equal(metricsResponse.status, 200);
+
+  const stageCountsByCode = new Map(
+    metricsResponse.body.stageCounts.map((entry) => [entry.phaseCode, entry.count]),
+  );
+
+  assert.equal(metricsResponse.body.summary.totalActivePartners, 7);
+  assert.equal(stageCountsByCode.get("lead"), 2);
+  assert.equal(stageCountsByCode.get("prospecting"), 1);
+  assert.equal(stageCountsByCode.get("qualification"), 1);
+  assert.equal(stageCountsByCode.get("proposal"), 1);
+  assert.equal(stageCountsByCode.get("negotiation"), 1);
+  assert.equal(stageCountsByCode.get("won"), 1);
+
+  assert.equal(metricsResponse.body.conversion.overallWinRatePct, 14.29);
+  const leadToProspecting = metricsResponse.body.conversion.stageConversion.find(
+    (entry) => entry.fromPhaseCode === "lead" && entry.toPhaseCode === "prospecting",
+  );
+  assert.ok(leadToProspecting);
+  assert.equal(leadToProspecting.conversionRatePct, 50);
+
+  assert.equal(metricsResponse.body.overdueActions.count, 1);
+  assert.ok(
+    metricsResponse.body.overdueActions.partners.some(
+      (partner) => partner.organizationName === "Lead Alpha",
+    ),
+  );
+
+  assert.equal(typeof metricsResponse.body.summary.responseTimeMs, "number");
+  assert.ok(metricsResponse.body.summary.responseTimeMs >= 0);
+  assert.ok(metricsResponse.body.summary.generatedAt);
+});
+
 test("discovery note templates are available during discovery sessions", async () => {
   const createResponse = await agent.post("/api/partners").send({
     organizationName: "Template Partner",

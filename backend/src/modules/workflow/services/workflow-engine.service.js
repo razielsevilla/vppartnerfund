@@ -39,6 +39,14 @@ function daysBetween(fromIso, toIso) {
   return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
 }
 
+function percentage(numerator, denominator) {
+  if (!denominator) {
+    return null;
+  }
+
+  return Number(((numerator / denominator) * 100).toFixed(2));
+}
+
 async function getWorkflowConfig() {
   const db = getDatabase();
   const phases = await db("workflow_phases").orderBy("sort_order", "asc");
@@ -428,6 +436,101 @@ async function getWorkflowHealthMetrics() {
   };
 }
 
+async function getWorkflowKpiMetrics() {
+  const db = getDatabase();
+  const startedAt = Date.now();
+  const nowIso = new Date().toISOString();
+
+  const config = await getWorkflowHealthConfig();
+
+  const stageRows = await db("workflow_phases as wp")
+    .leftJoin("partners as p", "p.current_phase_id", "wp.id")
+    .where({ "wp.is_active": 1 })
+    .whereNot({ "wp.code": "archived" })
+    .whereNull("p.archived_at")
+    .groupBy("wp.id", "wp.code", "wp.name", "wp.sort_order")
+    .orderBy("wp.sort_order", "asc")
+    .select(
+      "wp.id",
+      "wp.code",
+      "wp.name",
+      db.raw("COUNT(p.id) as partner_count"),
+    );
+
+  const stageCounts = stageRows.map((row) => ({
+    phaseId: row.id,
+    phaseCode: row.code,
+    phaseName: row.name,
+    count: Number(row.partner_count || 0),
+  }));
+
+  const stageCountMap = new Map(stageCounts.map((entry) => [entry.phaseCode, entry.count]));
+  const totalActivePartners = stageCounts.reduce((sum, entry) => sum + entry.count, 0);
+  const wonCount = stageCountMap.get("won") || 0;
+
+  const activePartners = await db("partners")
+    .whereNull("archived_at")
+    .select("id", "organization_name", "current_phase_id", "last_contact_date", "created_at", "next_action_step");
+
+  const overduePartners = [];
+  activePartners.forEach((partner) => {
+    if (!partner.next_action_step) {
+      return;
+    }
+
+    const anchorDate = partner.last_contact_date || partner.created_at;
+    const overdueDays = daysBetween(anchorDate, nowIso);
+    if (overdueDays > config.overdueNextActionDays) {
+      overduePartners.push({
+        partnerId: partner.id,
+        organizationName: partner.organization_name,
+        currentPhaseId: partner.current_phase_id,
+        daysSinceAnchor: overdueDays,
+        overdueByDays: overdueDays - config.overdueNextActionDays,
+      });
+    }
+  });
+
+  const transitionPairs = [
+    ["lead", "prospecting"],
+    ["prospecting", "qualification"],
+    ["qualification", "proposal"],
+    ["proposal", "negotiation"],
+    ["negotiation", "won"],
+  ];
+
+  const stageConversion = transitionPairs.map(([fromPhaseCode, toPhaseCode]) => {
+    const fromCount = stageCountMap.get(fromPhaseCode) || 0;
+    const toCount = stageCountMap.get(toPhaseCode) || 0;
+    return {
+      fromPhaseCode,
+      toPhaseCode,
+      fromCount,
+      toCount,
+      conversionRatePct: percentage(toCount, fromCount),
+    };
+  });
+
+  return {
+    summary: {
+      totalActivePartners,
+      overdueNextActionCount: overduePartners.length,
+      generatedAt: nowIso,
+      responseTimeMs: Date.now() - startedAt,
+    },
+    stageCounts,
+    conversion: {
+      overallWinRatePct: percentage(wonCount, totalActivePartners),
+      stageConversion,
+    },
+    overdueActions: {
+      thresholdDays: config.overdueNextActionDays,
+      count: overduePartners.length,
+      partners: overduePartners,
+    },
+  };
+}
+
 module.exports = {
   getWorkflowConfig,
   replaceTransitionRules,
@@ -435,4 +538,5 @@ module.exports = {
   getWorkflowHealthConfig,
   updateWorkflowHealthConfig,
   getWorkflowHealthMetrics,
+  getWorkflowKpiMetrics,
 };

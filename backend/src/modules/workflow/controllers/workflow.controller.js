@@ -6,6 +6,7 @@ const {
   getWorkflowHealthConfig,
   updateWorkflowHealthConfig,
   getWorkflowHealthMetrics,
+  getWorkflowKpiMetrics,
 } = require("../services/workflow-engine.service");
 const {
   validateRuleReplacementPayload,
@@ -117,6 +118,15 @@ async function getWorkflowHealthMetricsHandler(_req, res) {
   }
 }
 
+async function getWorkflowKpiMetricsHandler(_req, res) {
+  try {
+    const metrics = await getWorkflowKpiMetrics();
+    return res.status(200).json(metrics);
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
 module.exports = {
   getWorkflowConfigHandler,
   replaceTransitionRulesHandler,
@@ -124,4 +134,5 @@ module.exports = {
   getWorkflowHealthConfigHandler,
   updateWorkflowHealthConfigHandler,
   getWorkflowHealthMetricsHandler,
+  getWorkflowKpiMetricsHandler,
 };
