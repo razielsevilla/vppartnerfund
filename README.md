@@ -67,6 +67,10 @@ This repository includes a one-service early-access deployment path:
 - Deployment guide: `docs/deployment-early-access.md`
 - Render blueprint: `render.yaml`
 
+For completely free deployment using Vercel (frontend + backend as two projects), use:
+
+- `docs/deployment-vercel-free.md`
+
 The early-access path serves frontend and backend from one Node service and uses persistent SQLite + local artifact disk.
 
 ## Internal User Provisioning
