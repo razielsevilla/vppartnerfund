@@ -11,6 +11,36 @@ class PartnerServiceError extends Error {
   }
 }
 
+const DISCOVERY_NOTE_TEMPLATES = [
+  {
+    id: "initial_discovery",
+    name: "Initial Discovery",
+    questions: [
+      "What problem is the partner trying to solve?",
+      "What outcomes do they consider success in 90 days?",
+      "Who are the decision makers and champions?",
+    ],
+  },
+  {
+    id: "value_alignment",
+    name: "Value Alignment",
+    questions: [
+      "Which value propositions resonate most with the partner?",
+      "What concerns or objections were raised?",
+      "What evidence is needed to validate mutual value?",
+    ],
+  },
+  {
+    id: "partnership_readiness",
+    name: "Partnership Readiness",
+    questions: [
+      "What dependencies could block execution?",
+      "What internal approvals are still pending?",
+      "What is the next concrete step and owner?",
+    ],
+  },
+];
+
 function mapPartnerRow(row) {
   if (!row) {
     return null;
@@ -330,6 +360,135 @@ function mapQualificationRow(row) {
   };
 }
 
+function mapDiscoveryNoteRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    partnerId: row.partner_id,
+    templateId: row.template_id,
+    templateName: row.template_name,
+    guidedAnswers: parseJson(row.guided_answers) || [],
+    freeformText: row.freeform_text,
+    createdBy: row.created_by,
+    updatedBy: row.updated_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function discoveryNoteTemplateById(templateId) {
+  if (!templateId) {
+    return null;
+  }
+
+  return DISCOVERY_NOTE_TEMPLATES.find((template) => template.id === templateId) || null;
+}
+
+async function assertPartnerExists(db, partnerId) {
+  const partner = await db("partners").where({ id: partnerId }).first();
+  if (!partner) {
+    throw new PartnerServiceError("Partner was not found", "PARTNER_NOT_FOUND", 404, [
+      { field: "partnerId", message: "No partner exists with this id" },
+    ]);
+  }
+
+  return partner;
+}
+
+async function listDiscoveryNoteTemplates(partnerId) {
+  const db = getDatabase();
+  await assertPartnerExists(db, partnerId);
+  return DISCOVERY_NOTE_TEMPLATES;
+}
+
+async function listDiscoveryNotes(partnerId) {
+  const db = getDatabase();
+  await assertPartnerExists(db, partnerId);
+
+  const rows = await db("discovery_notes").where({ partner_id: partnerId }).orderBy("created_at", "desc");
+  return rows.map(mapDiscoveryNoteRow);
+}
+
+async function createDiscoveryNote(partnerId, payload, actorId) {
+  const db = getDatabase();
+  await assertPartnerExists(db, partnerId);
+
+  const nowIso = new Date().toISOString();
+  const noteId = crypto.randomUUID();
+  const template = discoveryNoteTemplateById(payload.templateId);
+
+  await db("discovery_notes").insert({
+    id: noteId,
+    partner_id: partnerId,
+    template_id: payload.templateId,
+    template_name: payload.templateName || template?.name || null,
+    guided_answers: JSON.stringify(payload.guidedAnswers || []),
+    freeform_text: payload.freeformText,
+    created_by: actorId,
+    updated_by: actorId,
+    created_at: nowIso,
+    updated_at: nowIso,
+  });
+
+  await logPartnerActivity(db, {
+    partnerId,
+    actionType: "discovery_note_created",
+    actorId,
+    payload: {
+      noteId,
+      templateId: payload.templateId,
+      templateName: payload.templateName || template?.name || null,
+      hasGuidedAnswers: (payload.guidedAnswers || []).length > 0,
+      hasFreeformText: Boolean(payload.freeformText),
+    },
+  });
+
+  const saved = await db("discovery_notes").where({ id: noteId }).first();
+  return mapDiscoveryNoteRow(saved);
+}
+
+async function updateDiscoveryNote(partnerId, noteId, updates, actorId) {
+  const db = getDatabase();
+  await assertPartnerExists(db, partnerId);
+
+  const existing = await db("discovery_notes").where({ id: noteId, partner_id: partnerId }).first();
+  if (!existing) {
+    return null;
+  }
+
+  const nextTemplateId = updates.templateId === undefined ? existing.template_id : updates.templateId;
+  const template = discoveryNoteTemplateById(nextTemplateId);
+  const payload = {
+    updated_at: new Date().toISOString(),
+    updated_by: actorId,
+  };
+
+  if (updates.templateId !== undefined) payload.template_id = updates.templateId;
+  if (updates.templateName !== undefined) {
+    payload.template_name = updates.templateName || template?.name || null;
+  }
+  if (updates.guidedAnswers !== undefined) payload.guided_answers = JSON.stringify(updates.guidedAnswers);
+  if (updates.freeformText !== undefined) payload.freeform_text = updates.freeformText;
+
+  await db("discovery_notes").where({ id: noteId, partner_id: partnerId }).update(payload);
+
+  await logPartnerActivity(db, {
+    partnerId,
+    actionType: "discovery_note_updated",
+    actorId,
+    payload: {
+      noteId,
+      changedFields: Object.keys(payload).filter((field) => !["updated_at", "updated_by"].includes(field)),
+    },
+  });
+
+  const saved = await db("discovery_notes").where({ id: noteId, partner_id: partnerId }).first();
+  return mapDiscoveryNoteRow(saved);
+}
+
 async function getPartnerQualification(partnerId) {
   const db = getDatabase();
   const partner = await db("partners").where({ id: partnerId }).first();
@@ -476,4 +635,8 @@ module.exports = {
   upsertPartnerQualification,
   archivePartner,
   getPartnerTimeline,
+  listDiscoveryNoteTemplates,
+  listDiscoveryNotes,
+  createDiscoveryNote,
+  updateDiscoveryNote,
 };

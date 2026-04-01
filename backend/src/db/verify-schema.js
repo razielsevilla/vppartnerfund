@@ -26,6 +26,7 @@ async function verifySchema() {
       'workflow_transitions',
       'activity_logs',
       'tasks',
+      'discovery_notes',
     ];
 
     for (const table of tables) {

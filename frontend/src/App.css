@@ -360,6 +360,40 @@ body {
   background: #f8fafc;
 }
 
+.discovery-note-composer {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.discovery-note-composer label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.discovery-note-composer select,
+.discovery-note-composer textarea {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  background: #f8fafc;
+  font: inherit;
+}
+
+.discovery-guided-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.discovery-guided-preview p {
+  margin: 0.35rem 0;
+}
+
 .value-prop-columns {
   margin-top: 0.85rem;
   display: grid;
@@ -392,6 +426,16 @@ body {
   border-radius: 10px;
   background: #0f766e;
   color: #ffffff;
+  font-weight: 600;
+  padding: 0.55rem 0.85rem;
+  cursor: pointer;
+}
+
+.secondary-btn {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
   font-weight: 600;
   padding: 0.55rem 0.85rem;
   cursor: pointer;

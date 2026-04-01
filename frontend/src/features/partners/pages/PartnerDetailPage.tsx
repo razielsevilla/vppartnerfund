@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
+  createDiscoveryNoteRequest,
   getPartnerRequest,
   getPartnerQualificationRequest,
   getPartnerTimelineRequest,
+  listDiscoveryNotesRequest,
+  listDiscoveryNoteTemplatesRequest,
+  updateDiscoveryNoteRequest,
   upsertPartnerQualificationRequest,
+  type DiscoveryNoteGuidedAnswer,
+  type DiscoveryNoteRecord,
+  type DiscoveryNoteTemplate,
   type PartnerRecord,
   type QualificationProfile,
   type TimelineEntry,
@@ -32,11 +39,24 @@ const defaultQualification: QualificationProfile = {
   updatedAt: null,
 };
 
+const defaultGuidedAnswer: DiscoveryNoteGuidedAnswer = {
+  question: "",
+  answer: "",
+};
+
 export const PartnerDetailPage = () => {
   const { partnerId } = useParams();
   const [partner, setPartner] = useState<PartnerRecord | null>(null);
   const [qualification, setQualification] = useState<QualificationProfile>(defaultQualification);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
+  const [discoveryTemplates, setDiscoveryTemplates] = useState<DiscoveryNoteTemplate[]>([]);
+  const [discoveryNotes, setDiscoveryNotes] = useState<DiscoveryNoteRecord[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [guidedAnswers, setGuidedAnswers] = useState<DiscoveryNoteGuidedAnswer[]>([]);
+  const [freeformText, setFreeformText] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [notesMessage, setNotesMessage] = useState<string | null>(null);
+  const [isSavingNote, setIsSavingNote] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [qualificationMessage, setQualificationMessage] = useState<string | null>(null);
@@ -60,10 +80,16 @@ export const PartnerDetailPage = () => {
           getPartnerQualificationRequest(partnerId),
           getPartnerTimelineRequest(partnerId),
         ]);
+        const [templatesData, notesData] = await Promise.all([
+          listDiscoveryNoteTemplatesRequest(partnerId),
+          listDiscoveryNotesRequest(partnerId),
+        ]);
         if (!cancelled) {
           setPartner(partnerData);
           setQualification(qualificationData || defaultQualification);
           setTimeline(timelineData);
+          setDiscoveryTemplates(templatesData);
+          setDiscoveryNotes(notesData);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -102,6 +128,27 @@ export const PartnerDetailPage = () => {
     });
   };
 
+  const selectedTemplate = discoveryTemplates.find((template) => template.id === selectedTemplateId) || null;
+
+  const applyTemplateQuestions = (templateId: string) => {
+    const template = discoveryTemplates.find((item) => item.id === templateId);
+    if (!template) {
+      setGuidedAnswers([]);
+      return;
+    }
+
+    setGuidedAnswers(template.questions.map((question) => ({ question, answer: "" })));
+  };
+
+  const refreshNotesAndTimeline = async (targetPartnerId: string) => {
+    const [timelineData, notesData] = await Promise.all([
+      getPartnerTimelineRequest(targetPartnerId),
+      listDiscoveryNotesRequest(targetPartnerId),
+    ]);
+    setTimeline(timelineData);
+    setDiscoveryNotes(notesData);
+  };
+
   const saveQualification = async () => {
     if (!partnerId) {
       return;
@@ -125,6 +172,71 @@ export const PartnerDetailPage = () => {
       );
     } finally {
       setIsSavingQualification(false);
+    }
+  };
+
+  const updateGuidedAnswer = (index: number, nextAnswer: string) => {
+    setGuidedAnswers((prev) =>
+      prev.map((entry, currentIndex) =>
+        currentIndex === index ? { ...entry, answer: nextAnswer } : entry,
+      ),
+    );
+  };
+
+  const beginEditNote = (note: DiscoveryNoteRecord) => {
+    setEditingNoteId(note.id);
+    setSelectedTemplateId(note.templateId || "");
+    setGuidedAnswers(
+      note.guidedAnswers.length > 0 ? note.guidedAnswers : [{ ...defaultGuidedAnswer }],
+    );
+    setFreeformText(note.freeformText || "");
+    setNotesMessage(null);
+  };
+
+  const resetNoteComposer = () => {
+    setEditingNoteId(null);
+    setSelectedTemplateId("");
+    setGuidedAnswers([]);
+    setFreeformText("");
+  };
+
+  const saveDiscoveryNote = async () => {
+    if (!partnerId) {
+      return;
+    }
+
+    const nonEmptyGuidedAnswers = guidedAnswers.filter(
+      (item) => item.question.trim() && item.answer.trim(),
+    );
+
+    if (nonEmptyGuidedAnswers.length === 0 && !freeformText.trim()) {
+      setNotesMessage("Provide at least one guided answer or freeform note.");
+      return;
+    }
+
+    setIsSavingNote(true);
+    setNotesMessage(null);
+    try {
+      const payload = {
+        templateId: selectedTemplateId || undefined,
+        templateName: selectedTemplate?.name,
+        guidedAnswers: nonEmptyGuidedAnswers,
+        freeformText: freeformText.trim() || undefined,
+      };
+
+      if (editingNoteId) {
+        await updateDiscoveryNoteRequest(partnerId, editingNoteId, payload);
+      } else {
+        await createDiscoveryNoteRequest(partnerId, payload);
+      }
+
+      await refreshNotesAndTimeline(partnerId);
+      setNotesMessage(editingNoteId ? "Discovery note updated." : "Discovery note saved.");
+      resetNoteComposer();
+    } catch (saveError) {
+      setNotesMessage(saveError instanceof Error ? saveError.message : "Failed to save discovery note");
+    } finally {
+      setIsSavingNote(false);
     }
   };
 
@@ -254,6 +366,110 @@ export const PartnerDetailPage = () => {
               </button>
               {qualificationMessage && <p className="muted">{qualificationMessage}</p>}
             </div>
+          </section>
+
+          <section className="timeline-panel">
+            <h2>Discovery Notes</h2>
+            <p className="muted">Capture guided discovery answers and freeform context.</p>
+
+            <div className="discovery-note-composer">
+              <label>
+                Guided Template
+                <select
+                  value={selectedTemplateId}
+                  onChange={(event) => {
+                    const nextTemplateId = event.target.value;
+                    setSelectedTemplateId(nextTemplateId);
+                    applyTemplateQuestions(nextTemplateId);
+                  }}
+                >
+                  <option value="">No template</option>
+                  {discoveryTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {guidedAnswers.length > 0 && (
+                <div className="discovery-guided-list">
+                  {guidedAnswers.map((guided, index) => (
+                    <label key={`${guided.question}:${index}`}>
+                      {guided.question || `Guided Answer ${index + 1}`}
+                      <textarea
+                        value={guided.answer}
+                        onChange={(event) => updateGuidedAnswer(index, event.target.value)}
+                        rows={2}
+                        placeholder="Enter response"
+                      />
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              <label>
+                Freeform Notes
+                <textarea
+                  value={freeformText}
+                  onChange={(event) => setFreeformText(event.target.value)}
+                  rows={4}
+                  placeholder="Capture additional discovery notes, risks, and follow-ups"
+                />
+              </label>
+
+              <div className="qualification-actions">
+                <button type="button" onClick={saveDiscoveryNote} disabled={isSavingNote}>
+                  {isSavingNote
+                    ? "Saving..."
+                    : editingNoteId
+                      ? "Update Discovery Note"
+                      : "Save Discovery Note"}
+                </button>
+                {editingNoteId && (
+                  <button type="button" className="secondary-btn" onClick={resetNoteComposer}>
+                    Cancel Edit
+                  </button>
+                )}
+                {notesMessage && <p className="muted">{notesMessage}</p>}
+              </div>
+            </div>
+
+            {discoveryNotes.length === 0 && (
+              <div className="status-card status-empty">
+                <h2>No discovery notes yet</h2>
+                <p>Use the form above to add guided responses and freeform notes.</p>
+              </div>
+            )}
+
+            {discoveryNotes.length > 0 && (
+              <ol className="timeline-list">
+                {discoveryNotes.map((note) => (
+                  <li key={note.id} className="timeline-item">
+                    <div className="timeline-item-head">
+                      <strong>{note.templateName || "Freeform Discovery Note"}</strong>
+                      <span>{new Date(note.updatedAt).toLocaleString()}</span>
+                    </div>
+
+                    {note.guidedAnswers.length > 0 && (
+                      <div className="discovery-guided-preview">
+                        {note.guidedAnswers.map((guided) => (
+                          <p key={`${note.id}:${guided.question}`}>
+                            <strong>{guided.question}</strong>: {guided.answer}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                    {note.freeformText && <p>{note.freeformText}</p>}
+
+                    <button type="button" className="secondary-btn" onClick={() => beginEditNote(note)}>
+                      Edit Note
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            )}
           </section>
 
           <section className="timeline-panel">

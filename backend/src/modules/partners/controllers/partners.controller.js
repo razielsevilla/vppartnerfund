@@ -5,6 +5,10 @@ const {
   getPartnerById,
   getPartnerQualification,
   getPartnerTimeline,
+  listDiscoveryNoteTemplates,
+  listDiscoveryNotes,
+  createDiscoveryNote,
+  updateDiscoveryNote,
   updatePartner,
   upsertPartnerQualification,
   archivePartner,
@@ -14,6 +18,10 @@ const {
   validateUpdatePartnerPayload,
 } = require("../validators/partner.validator");
 const { validateQualificationPayload } = require("../validators/qualification.validator");
+const {
+  validateCreateDiscoveryNotePayload,
+  validateUpdateDiscoveryNotePayload,
+} = require("../validators/discovery-notes.validator");
 const { transitionPartnerPhaseHandler } = require("../../workflow/controllers/workflow.controller");
 
 function validationError(res, details) {
@@ -131,6 +139,67 @@ async function getPartnerQualificationHandler(req, res) {
   }
 }
 
+async function listDiscoveryNoteTemplatesHandler(req, res) {
+  try {
+    const templates = await listDiscoveryNoteTemplates(req.params.partnerId);
+    return res.status(200).json({ templates });
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
+async function listDiscoveryNotesHandler(req, res) {
+  try {
+    const notes = await listDiscoveryNotes(req.params.partnerId);
+    return res.status(200).json({ notes });
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
+async function createDiscoveryNoteHandler(req, res) {
+  const validation = validateCreateDiscoveryNotePayload(req.body);
+  if (!validation.isValid) {
+    return validationError(res, validation.errors);
+  }
+
+  try {
+    const note = await createDiscoveryNote(req.params.partnerId, validation.value, req.user.id);
+    return res.status(201).json({ note });
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
+async function updateDiscoveryNoteHandler(req, res) {
+  const validation = validateUpdateDiscoveryNotePayload(req.body);
+  if (!validation.isValid) {
+    return validationError(res, validation.errors);
+  }
+
+  try {
+    const note = await updateDiscoveryNote(
+      req.params.partnerId,
+      req.params.noteId,
+      validation.value,
+      req.user.id,
+    );
+    if (!note) {
+      return res.status(404).json({
+        error: {
+          code: "DISCOVERY_NOTE_NOT_FOUND",
+          message: "Discovery note was not found",
+          details: [{ field: "noteId", message: "No discovery note exists with this id" }],
+        },
+      });
+    }
+
+    return res.status(200).json({ note });
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
 async function upsertPartnerQualificationHandler(req, res) {
   const validation = validateQualificationPayload(req.body);
   if (!validation.isValid) {
@@ -225,6 +294,10 @@ module.exports = {
   getPartnerQualificationHandler,
   getPartnerTimelineHandler,
   upsertPartnerQualificationHandler,
+  listDiscoveryNoteTemplatesHandler,
+  listDiscoveryNotesHandler,
+  createDiscoveryNoteHandler,
+  updateDiscoveryNoteHandler,
   updatePartnerHandler,
   transitionPartnerHandler,
   archivePartnerHandler,

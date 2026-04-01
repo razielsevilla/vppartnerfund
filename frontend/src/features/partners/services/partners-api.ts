@@ -30,6 +30,30 @@ export type TimelineEntry = {
   metadata: Record<string, unknown> | null;
 };
 
+export type DiscoveryNoteTemplate = {
+  id: string;
+  name: string;
+  questions: string[];
+};
+
+export type DiscoveryNoteGuidedAnswer = {
+  question: string;
+  answer: string;
+};
+
+export type DiscoveryNoteRecord = {
+  id: string;
+  partnerId: string;
+  templateId: string | null;
+  templateName: string | null;
+  guidedAnswers: DiscoveryNoteGuidedAnswer[];
+  freeformText: string | null;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type QualificationProfile = {
   durationCategory: "short_term" | "mid_term" | "long_term" | null;
   impactLevel: "low" | "medium" | "high" | "transformational" | null;
@@ -47,6 +71,13 @@ export type QualificationPayload = {
   functionalRole: string | null;
   potentialValuePropositions: string[];
   confirmedValuePropositions: string[];
+};
+
+export type DiscoveryNotePayload = {
+  templateId?: string;
+  templateName?: string;
+  guidedAnswers?: DiscoveryNoteGuidedAnswer[];
+  freeformText?: string;
 };
 
 export type WorkflowHealthMetrics = {
@@ -224,6 +255,75 @@ export const getPartnerTimelineRequest = async (partnerId: string): Promise<Time
   }
 
   return (body as { entries: TimelineEntry[] }).entries;
+};
+
+export const listDiscoveryNoteTemplatesRequest = async (
+  partnerId: string,
+): Promise<DiscoveryNoteTemplate[]> => {
+  const response = await fetch(`${API_URL}/partners/${partnerId}/discovery-notes/templates`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to load discovery note templates"));
+  }
+
+  return (body as { templates: DiscoveryNoteTemplate[] }).templates;
+};
+
+export const listDiscoveryNotesRequest = async (partnerId: string): Promise<DiscoveryNoteRecord[]> => {
+  const response = await fetch(`${API_URL}/partners/${partnerId}/discovery-notes`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to load discovery notes"));
+  }
+
+  return (body as { notes: DiscoveryNoteRecord[] }).notes;
+};
+
+export const createDiscoveryNoteRequest = async (
+  partnerId: string,
+  payload: DiscoveryNotePayload,
+): Promise<DiscoveryNoteRecord> => {
+  const response = await fetch(`${API_URL}/partners/${partnerId}/discovery-notes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to create discovery note"));
+  }
+
+  return (body as { note: DiscoveryNoteRecord }).note;
+};
+
+export const updateDiscoveryNoteRequest = async (
+  partnerId: string,
+  noteId: string,
+  payload: DiscoveryNotePayload,
+): Promise<DiscoveryNoteRecord> => {
+  const response = await fetch(`${API_URL}/partners/${partnerId}/discovery-notes/${noteId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to update discovery note"));
+  }
+
+  return (body as { note: DiscoveryNoteRecord }).note;
 };
 
 export const getPartnerQualificationRequest = async (

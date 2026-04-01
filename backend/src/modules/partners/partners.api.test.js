@@ -27,6 +27,7 @@ test.after(async () => {
 
 test.beforeEach(async () => {
   const db = getDatabase();
+  await db("discovery_notes").del();
   await db("partners").del();
 });
 
@@ -388,4 +389,96 @@ test("stalled stage thresholds are configurable and reflected in metrics", async
       (partner) => partner.organizationName === "Stalled Prospect Partner",
     ),
   );
+});
+
+test("discovery note templates are available during discovery sessions", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Template Partner",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createResponse.status, 201);
+
+  const response = await agent.get(
+    `/api/partners/${createResponse.body.partner.id}/discovery-notes/templates`,
+  );
+  assert.equal(response.status, 200);
+  assert.ok(Array.isArray(response.body.templates));
+  assert.ok(response.body.templates.length >= 3);
+  assert.ok(Array.isArray(response.body.templates[0].questions));
+});
+
+test("supports creating and editing guided and freeform discovery notes", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Discovery Notes Partner",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createResponse.status, 201);
+  const partnerId = createResponse.body.partner.id;
+
+  const createNoteResponse = await agent.post(`/api/partners/${partnerId}/discovery-notes`).send({
+    templateId: "initial_discovery",
+    templateName: "Initial Discovery",
+    guidedAnswers: [
+      {
+        question: "What problem is the partner trying to solve?",
+        answer: "They need better developer pipeline visibility.",
+      },
+    ],
+    freeformText: "Partner is open to a pilot in the next quarter.",
+  });
+  assert.equal(createNoteResponse.status, 201);
+  assert.equal(createNoteResponse.body.note.templateId, "initial_discovery");
+  assert.equal(createNoteResponse.body.note.guidedAnswers.length, 1);
+
+  const noteId = createNoteResponse.body.note.id;
+  const updateResponse = await agent
+    .put(`/api/partners/${partnerId}/discovery-notes/${noteId}`)
+    .send({
+      freeformText: "Pilot conversation moved to next month due to budget review.",
+    });
+  assert.equal(updateResponse.status, 200);
+  assert.equal(
+    updateResponse.body.note.freeformText,
+    "Pilot conversation moved to next month due to budget review.",
+  );
+
+  const listResponse = await agent.get(`/api/partners/${partnerId}/discovery-notes`);
+  assert.equal(listResponse.status, 200);
+  assert.equal(listResponse.body.notes.length, 1);
+  assert.equal(listResponse.body.notes[0].id, noteId);
+});
+
+test("discovery note activity appears in chronological partner timeline", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Discovery Timeline Partner",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createResponse.status, 201);
+  const partnerId = createResponse.body.partner.id;
+
+  const createNoteResponse = await agent.post(`/api/partners/${partnerId}/discovery-notes`).send({
+    templateId: "value_alignment",
+    guidedAnswers: [
+      {
+        question: "Which value propositions resonate most with the partner?",
+        answer: "Community access and event activation",
+      },
+    ],
+  });
+  assert.equal(createNoteResponse.status, 201);
+
+  const timelineResponse = await agent.get(`/api/partners/${partnerId}/timeline`);
+  assert.equal(timelineResponse.status, 200);
+
+  const noteEntry = timelineResponse.body.entries.find(
+    (entry) => entry.kind === "activity" && entry.actionType === "discovery_note_created",
+  );
+  assert.ok(noteEntry);
+  assert.equal(noteEntry.actorId, "seed-admin-user");
 });
