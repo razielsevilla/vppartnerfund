@@ -28,6 +28,7 @@ async function verifySchema() {
       'tasks',
       'discovery_notes',
       'task_reminder_events',
+      'artifact_records',
     ];
 
     for (const table of tables) {
