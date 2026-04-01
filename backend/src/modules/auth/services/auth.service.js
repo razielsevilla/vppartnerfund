@@ -1,16 +1,18 @@
 const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 
 const sessions = new Map();
 const users = new Map();
 
 const isProduction = process.env.NODE_ENV === "production";
+const bcryptRounds = Number(process.env.AUTH_BCRYPT_ROUNDS || 10);
 
-const userRecord = ({ id, email, role, displayName, password }) => ({
+const userRecord = ({ id, email, role, displayName, passwordHash }) => ({
   id,
   email,
   role,
   displayName,
-  password,
+  passwordHash,
   createdAt: new Date().toISOString(),
 });
 
@@ -31,7 +33,7 @@ const seedUsers = () => {
       email: adminEmail,
       role: "admin",
       displayName: "VP Partnerships",
-      password: adminPassword,
+      passwordHash: bcrypt.hashSync(adminPassword, bcryptRounds),
     }),
   );
 
@@ -42,7 +44,7 @@ const seedUsers = () => {
       email: teamEmail,
       role: "team_member",
       displayName: "Partnerships Team Member",
-      password: teamPassword,
+      passwordHash: bcrypt.hashSync(teamPassword, bcryptRounds),
     }),
   );
 };
@@ -62,13 +64,14 @@ const safeUser = (user) => {
   };
 };
 
-const validateCredentials = (email, password) => {
+const validateCredentials = async (email, password) => {
   const user = users.get(email);
   if (!user) {
     return null;
   }
 
-  if (user.password !== password) {
+  const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+  if (!passwordMatches) {
     return null;
   }
 
@@ -98,7 +101,7 @@ const revokeSession = (token) => {
   return sessions.delete(token);
 };
 
-const provisionUser = ({ email, password, role, displayName }) => {
+const provisionUser = async ({ email, password, role, displayName }) => {
   if (!email || !password || !role || !displayName) {
     throw new Error("email, password, role, and displayName are required");
   }
@@ -111,12 +114,14 @@ const provisionUser = ({ email, password, role, displayName }) => {
     throw new Error("user already exists");
   }
 
+  const passwordHash = await bcrypt.hash(password, bcryptRounds);
+
   const user = userRecord({
     id: crypto.randomUUID(),
     email,
     role,
     displayName,
-    password,
+    passwordHash,
   });
 
   users.set(email, user);

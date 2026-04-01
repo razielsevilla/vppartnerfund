@@ -17,7 +17,7 @@ This document defines the phase-by-phase implementation plan for the DEVCON Lagu
 | P2-T01  | Login-Only Flow              | Implement login route and prevent public registration.                         | - [x] Login page is functional.<br>- [x] No sign-up route exists in UI or API.<br>- [x] Unauthorized users are redirected to login.                                                       |
 | P2-T02  | Preset User Provisioning     | Implement seeded or admin-provisioned user records for internal team accounts. | - [x] Admin and Team Member accounts can be provisioned manually.<br>- [x] Default seeded users work in non-production only.<br>- [x] Production provisioning path is documented.         |
 | P2-T03  | Session and Role Enforcement | Add secure session handling and role-based route protection.                   | - [x] Sessions use secure, HTTP-only cookies (or equivalent secure token flow).<br>- [x] Role middleware protects restricted routes.<br>- [x] Logout invalidates active session reliably. |
-| P2-T04  | Login Hardening              | Add security controls around authentication.                                   | - [ ] Passwords are hashed and never stored in plaintext.<br>- [ ] Login attempts are rate-limited.<br>- [ ] Failed login and auth events are logged.                                     |
+| P2-T04  | Login Hardening              | Add security controls around authentication.                                   | - [x] Passwords are hashed and never stored in plaintext.<br>- [x] Login attempts are rate-limited.<br>- [x] Failed login and auth events are logged.                                     |
 
 ## Phase 3 - Partner CRM Core
 
