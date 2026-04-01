@@ -35,13 +35,8 @@ function createAllowedOrigins() {
   return new Set([CLIENT_ORIGIN, ...configured]);
 }
 
-function isAllowedVercelPreviewOrigin(origin, primaryOriginUrl) {
-  if (!origin || !primaryOriginUrl) {
-    return false;
-  }
-
-  const primaryHost = primaryOriginUrl.hostname;
-  if (!primaryHost.endsWith(".vercel.app")) {
+function isAllowedVercelPreviewOrigin(origin) {
+  if (!origin) {
     return false;
   }
 
@@ -50,10 +45,7 @@ function isAllowedVercelPreviewOrigin(origin, primaryOriginUrl) {
     return false;
   }
 
-  const primaryProjectSlug = primaryHost.replace(/\.vercel\.app$/, "");
   const originHost = originUrl.hostname;
-
-  // Accept any vercel.app origin in production as a fallback for initial setup.
   return originHost.endsWith(".vercel.app");
 }
 
@@ -63,7 +55,6 @@ function createApp() {
   const frontendDistPath = path.resolve(__dirname, "../../frontend/dist");
   const hasFrontendDist = fs.existsSync(frontendDistPath);
   const allowedOrigins = createAllowedOrigins();
-  const primaryOriginUrl = safeParseUrl(CLIENT_ORIGIN);
 
   app.use(
     cors({
@@ -72,7 +63,7 @@ function createApp() {
           return callback(null, true);
         }
 
-        if (allowedOrigins.has(origin) || isAllowedVercelPreviewOrigin(origin, primaryOriginUrl)) {
+        if (allowedOrigins.has(origin) || isAllowedVercelPreviewOrigin(origin)) {
           return callback(null, true);
         }
 
