@@ -55,6 +55,49 @@ const IMPORT_FIELD_CONFIG = [
 ];
 
 const ALLOWED_IMPACT_TIERS = new Set(["standard", "major", "lead"]);
+const ROLE_PACKAGE_IMPACTS = new Set([
+  "standard",
+  "major",
+  "lead",
+  "low",
+  "medium",
+  "high",
+  "transformational",
+]);
+const FUNCTIONAL_BENEFIT_OPTIONS_BY_ORG_TYPE = {
+  "Tech Corporate": [
+    "Brand Visibility",
+    "Product Adoption",
+    "Developer Community Access",
+    "Talent Pipeline",
+  ],
+  "IT-BPO": ["Talent Pipeline", "Brand Visibility", "Developer Community Access"],
+  Startup: ["Product Adoption", "Market Expansion", "Research Collaboration"],
+  "Manufacturing / Industrial": ["Market Expansion", "Brand Visibility", "CSR Impact"],
+  "Local Government Unit": ["CSR Impact", "Brand Visibility", "Research Collaboration"],
+  "National Government Agency": ["CSR Impact", "Research Collaboration", "Brand Visibility"],
+  Academe: ["Research Collaboration", "Talent Pipeline", "Developer Community Access"],
+  "Academic Organization": ["Research Collaboration", "Talent Pipeline", "Event Activation"],
+  "Community / Non-Profit": ["CSR Impact", "Event Activation", "Brand Visibility"],
+  "Incubator / Accelerator": ["Talent Pipeline", "Product Adoption", "Market Expansion"],
+  "Media/Marketing": ["Brand Visibility", "Event Activation", "Market Expansion"],
+  "Food and Hospitality": ["Event Activation", "Brand Visibility", "CSR Impact"],
+};
+
+function getFunctionalBenefitOptions(organizationType) {
+  return (
+    FUNCTIONAL_BENEFIT_OPTIONS_BY_ORG_TYPE[organizationType] || [
+      "Brand Visibility",
+      "Developer Community Access",
+      "Talent Pipeline",
+      "Product Adoption",
+      "Research Collaboration",
+      "Event Activation",
+      "CSR Impact",
+      "Market Expansion",
+    ]
+  );
+}
 
 function mapPartnerRow(row) {
   if (!row) {
@@ -75,6 +118,25 @@ function mapPartnerRow(row) {
     impactTier: row.impact_tier,
     archivedAt: row.archived_at,
     createdBy: row.created_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapPartnerContactRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    partnerId: row.partner_id,
+    fullName: row.full_name,
+    jobTitle: row.job_title,
+    email: row.email,
+    phone: row.phone,
+    linkUrl: row.link_url,
+    isPrimary: Boolean(row.is_primary),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -444,6 +506,8 @@ function mapQualificationRow(row) {
   if (!row) {
     return {
       durationCategory: null,
+      rolePackages: [],
+      functionalBenefits: [],
       impactLevel: null,
       functionalRole: null,
       potentialValuePropositions: [],
@@ -454,12 +518,48 @@ function mapQualificationRow(row) {
     };
   }
 
+  const parsedRolePackages = parseJson(row.role_packages);
+  const rolePackages = (Array.isArray(parsedRolePackages) ? parsedRolePackages : [])
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return null;
+      }
+
+      const impactLevel = String(entry.impactLevel || "").trim().toLowerCase();
+      const functionalRole = String(entry.functionalRole || "").trim();
+      if (!impactLevel || !functionalRole) {
+        return null;
+      }
+
+      return { impactLevel, functionalRole };
+    })
+    .filter(Boolean);
+
+  const functionalBenefits = parseJsonArray(row.benefit_packages)
+    .map((item) => String(item).trim())
+    .filter(Boolean);
+
+  const fallbackImpact = row.impact_level ? String(row.impact_level).trim().toLowerCase() : null;
+  const fallbackRole = row.functional_role ? String(row.functional_role).trim() : null;
+  const legacyPotential = parseJsonArray(row.potential_value_props);
+  const legacyConfirmed = parseJsonArray(row.confirmed_value_props);
+  const legacyImpact = rolePackages[0]?.impactLevel || fallbackImpact;
+  const legacyRole = rolePackages[0]?.functionalRole || fallbackRole;
+  const resolvedBenefits =
+    functionalBenefits.length > 0
+      ? functionalBenefits
+      : legacyConfirmed.length > 0
+        ? legacyConfirmed
+        : legacyPotential;
+
   return {
     durationCategory: row.duration_category,
-    impactLevel: row.impact_level,
-    functionalRole: row.functional_role,
-    potentialValuePropositions: parseJsonArray(row.potential_value_props),
-    confirmedValuePropositions: parseJsonArray(row.confirmed_value_props),
+    rolePackages,
+    functionalBenefits: resolvedBenefits,
+    impactLevel: legacyImpact,
+    functionalRole: legacyRole,
+    potentialValuePropositions: legacyPotential,
+    confirmedValuePropositions: legacyConfirmed,
     updatedBy: row.updated_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -606,7 +706,22 @@ async function getPartnerQualification(partnerId) {
   return mapQualificationRow(row);
 }
 
-async function upsertPartnerQualification(partnerId, payload, actorId) {
+async function listPartnerContacts(partnerId) {
+  const db = getDatabase();
+  const partner = await db("partners").where({ id: partnerId }).first();
+  if (!partner) {
+    return null;
+  }
+
+  const rows = await db("partner_contacts")
+    .where({ partner_id: partnerId })
+    .orderBy("is_primary", "desc")
+    .orderBy("created_at", "desc");
+
+  return rows.map(mapPartnerContactRow);
+}
+
+async function createPartnerContact(partnerId, payload, actorId) {
   const db = getDatabase();
   const partner = await db("partners").where({ id: partnerId }).first();
   if (!partner) {
@@ -614,13 +729,129 @@ async function upsertPartnerQualification(partnerId, payload, actorId) {
   }
 
   const nowIso = new Date().toISOString();
+  const contactId = crypto.randomUUID();
+
+  if (payload.isPrimary) {
+    await db("partner_contacts").where({ partner_id: partnerId }).update({ is_primary: false });
+  }
+
+  await db("partner_contacts").insert({
+    id: contactId,
+    partner_id: partnerId,
+    full_name: payload.fullName,
+    job_title: payload.jobTitle,
+    email: payload.email,
+    phone: payload.phone,
+    link_url: payload.linkUrl,
+    is_primary: Boolean(payload.isPrimary),
+    created_at: nowIso,
+    updated_at: nowIso,
+  });
+
+  await logPartnerActivity(db, {
+    partnerId,
+    actionType: "partner_contact_created",
+    actorId,
+    payload: {
+      fullName: payload.fullName,
+      isPrimary: Boolean(payload.isPrimary),
+    },
+  });
+
+  const saved = await db("partner_contacts").where({ id: contactId }).first();
+  return mapPartnerContactRow(saved);
+}
+
+async function upsertPartnerQualification(partnerId, payload, actorId) {
+  const db = getDatabase();
+  const partner = await db("partners").where({ id: partnerId }).first();
+  if (!partner) {
+    return null;
+  }
+
+  const rolePackages = Array.isArray(payload.rolePackages) ? payload.rolePackages : [];
+  const functionalBenefits = Array.isArray(payload.functionalBenefits) ? payload.functionalBenefits : [];
+  const legacyPotentialValues = Array.isArray(payload.potentialValuePropositions)
+    ? payload.potentialValuePropositions
+    : [];
+  const legacyConfirmedValues = Array.isArray(payload.confirmedValuePropositions)
+    ? payload.confirmedValuePropositions
+    : [];
+  const effectivePotentialValues =
+    legacyPotentialValues.length > 0 ? legacyPotentialValues : functionalBenefits;
+  const effectiveConfirmedValues =
+    legacyConfirmedValues.length > 0 ? legacyConfirmedValues : functionalBenefits;
+  const maxBenefitSlots = rolePackages.length + Math.floor(rolePackages.length / 3);
+
+  if (rolePackages.length > 0) {
+    for (const item of rolePackages) {
+      const normalizedImpact = String(item.impactLevel || "").trim().toLowerCase();
+      const normalizedRole = String(item.functionalRole || "").trim();
+      if (!ROLE_PACKAGE_IMPACTS.has(normalizedImpact)) {
+        throw new PartnerServiceError(
+          `Invalid role package impact: ${normalizedImpact || "(empty)"}`,
+          "PARTNER_QUALIFICATION_INVALID_PACKAGE",
+          400,
+          [{ field: "rolePackages", message: "Each role package must use standard, major, or lead impact" }],
+        );
+      }
+
+      if (!normalizedRole) {
+        throw new PartnerServiceError(
+          "Functional role is required for each role package",
+          "PARTNER_QUALIFICATION_INVALID_PACKAGE",
+          400,
+          [{ field: "rolePackages", message: "Each role package must include a functional role" }],
+        );
+      }
+    }
+  }
+
+  const allowedBenefits = new Set(getFunctionalBenefitOptions(partner.organization_type));
+  const shouldValidatePresetBenefits =
+    Array.isArray(payload.functionalBenefits) && payload.functionalBenefits.length > 0;
+  if (shouldValidatePresetBenefits) {
+    for (const benefit of functionalBenefits) {
+      if (!allowedBenefits.has(benefit)) {
+        throw new PartnerServiceError(
+          `Invalid functional benefit for organization type: ${benefit}`,
+          "PARTNER_QUALIFICATION_INVALID_BENEFIT",
+          400,
+          [
+            {
+              field: "functionalBenefits",
+              message: `Functional benefit must match preset options for ${partner.organization_type}`,
+            },
+          ],
+        );
+      }
+    }
+  }
+
+  if (functionalBenefits.length > maxBenefitSlots) {
+    throw new PartnerServiceError(
+      "Functional benefit package count exceeds allowed slots",
+      "PARTNER_QUALIFICATION_BENEFIT_LIMIT_EXCEEDED",
+      400,
+      [
+        {
+          field: "functionalBenefits",
+          message: `Allowed benefit slots: ${maxBenefitSlots} for ${rolePackages.length} role packages`,
+        },
+      ],
+    );
+  }
+
+  const nowIso = new Date().toISOString();
   const row = {
     partner_id: partnerId,
     duration_category: payload.durationCategory,
-    impact_level: payload.impactLevel,
-    functional_role: payload.functionalRole,
-    potential_value_props: JSON.stringify(payload.potentialValuePropositions || []),
-    confirmed_value_props: JSON.stringify(payload.confirmedValuePropositions || []),
+    impact_level: rolePackages[0]?.impactLevel || payload.impactLevel || null,
+    functional_role: rolePackages[0]?.functionalRole || payload.functionalRole || null,
+    role_packages: JSON.stringify(rolePackages),
+    benefit_packages: JSON.stringify(functionalBenefits),
+    potential_value_props: JSON.stringify(effectivePotentialValues),
+    confirmed_value_props: JSON.stringify(effectiveConfirmedValues),
     updated_by: actorId,
     updated_at: nowIso,
   };
@@ -644,10 +875,10 @@ async function upsertPartnerQualification(partnerId, payload, actorId) {
       previous: mapQualificationRow(existing),
       next: {
         durationCategory: payload.durationCategory,
-        impactLevel: payload.impactLevel,
-        functionalRole: payload.functionalRole,
-        potentialValuePropositions: payload.potentialValuePropositions || [],
-        confirmedValuePropositions: payload.confirmedValuePropositions || [],
+        rolePackages,
+        functionalBenefits,
+        impactLevel: rolePackages[0]?.impactLevel || payload.impactLevel || null,
+        functionalRole: rolePackages[0]?.functionalRole || payload.functionalRole || null,
       },
     },
   });
@@ -944,8 +1175,11 @@ module.exports = {
   createPartner,
   listPartners,
   getPartnerById,
+  getFunctionalBenefitOptions,
   getPartnerQualification,
+  listPartnerContacts,
   updatePartner,
+  createPartnerContact,
   upsertPartnerQualification,
   archivePartner,
   getPartnerTimeline,

@@ -56,7 +56,12 @@ export type DiscoveryNoteRecord = {
 
 export type QualificationProfile = {
   durationCategory: "short_term" | "mid_term" | "long_term" | null;
-  impactLevel: "low" | "medium" | "high" | "transformational" | null;
+  rolePackages: Array<{
+    impactLevel: "standard" | "major" | "lead";
+    functionalRole: string;
+  }>;
+  functionalBenefits: string[];
+  impactLevel: string | null;
   functionalRole: string | null;
   potentialValuePropositions: string[];
   confirmedValuePropositions: string[];
@@ -67,10 +72,33 @@ export type QualificationProfile = {
 
 export type QualificationPayload = {
   durationCategory: "short_term" | "mid_term" | "long_term" | null;
-  impactLevel: "low" | "medium" | "high" | "transformational" | null;
-  functionalRole: string | null;
-  potentialValuePropositions: string[];
-  confirmedValuePropositions: string[];
+  rolePackages: Array<{
+    impactLevel: "standard" | "major" | "lead";
+    functionalRole: string;
+  }>;
+  functionalBenefits: string[];
+};
+
+export type PartnerContactRecord = {
+  id: string;
+  partnerId: string;
+  fullName: string;
+  jobTitle: string | null;
+  email: string | null;
+  phone: string | null;
+  linkUrl: string | null;
+  isPrimary: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreatePartnerContactPayload = {
+  fullName: string;
+  jobTitle?: string;
+  email?: string;
+  phone?: string;
+  linkUrl?: string;
+  isPrimary?: boolean;
 };
 
 export type DiscoveryNotePayload = {
@@ -241,6 +269,7 @@ export type CreatePartnerPayload = {
   currentPhaseId: string;
   impactTier?: "standard" | "major" | "lead" | "";
   location?: string;
+  websiteUrl?: string;
   confirmDuplicate?: boolean;
 };
 
@@ -479,7 +508,7 @@ export const updateDiscoveryNoteRequest = async (
 
 export const getPartnerQualificationRequest = async (
   partnerId: string,
-): Promise<QualificationProfile> => {
+): Promise<{ qualification: QualificationProfile; functionalBenefitOptions: string[] }> => {
   const response = await fetch(`${API_URL}/partners/${partnerId}/qualification`, {
     method: "GET",
     credentials: "include",
@@ -490,7 +519,7 @@ export const getPartnerQualificationRequest = async (
     throw new Error(extractApiMessage(body, "Failed to load qualification profile"));
   }
 
-  return (body as { qualification: QualificationProfile }).qualification;
+  return body as { qualification: QualificationProfile; functionalBenefitOptions: string[] };
 };
 
 export const upsertPartnerQualificationRequest = async (
@@ -510,6 +539,39 @@ export const upsertPartnerQualificationRequest = async (
   }
 
   return (body as { qualification: QualificationProfile }).qualification;
+};
+
+export const listPartnerContactsRequest = async (partnerId: string): Promise<PartnerContactRecord[]> => {
+  const response = await fetch(`${API_URL}/partners/${partnerId}/contacts`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to load partner contacts"));
+  }
+
+  return (body as { contacts: PartnerContactRecord[] }).contacts;
+};
+
+export const createPartnerContactRequest = async (
+  partnerId: string,
+  payload: CreatePartnerContactPayload,
+): Promise<PartnerContactRecord> => {
+  const response = await fetch(`${API_URL}/partners/${partnerId}/contacts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to create partner contact"));
+  }
+
+  return (body as { contact: PartnerContactRecord }).contact;
 };
 
 export const getWorkflowHealthMetricsRequest = async (): Promise<WorkflowHealthMetrics> => {

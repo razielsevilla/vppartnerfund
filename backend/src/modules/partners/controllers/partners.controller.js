@@ -3,13 +3,16 @@ const {
   createPartner,
   listPartners,
   getPartnerById,
+  getFunctionalBenefitOptions,
   getPartnerQualification,
+  listPartnerContacts,
   getPartnerTimeline,
   listDiscoveryNoteTemplates,
   listDiscoveryNotes,
   createDiscoveryNote,
   updateDiscoveryNote,
   updatePartner,
+  createPartnerContact,
   upsertPartnerQualification,
   archivePartner,
   getPartnerImportMappingConfig,
@@ -20,6 +23,7 @@ const {
   validateUpdatePartnerPayload,
 } = require("../validators/partner.validator");
 const { validateQualificationPayload } = require("../validators/qualification.validator");
+const { validateCreatePartnerContactPayload } = require("../validators/contact.validator");
 const {
   validateCreateDiscoveryNotePayload,
   validateUpdateDiscoveryNotePayload,
@@ -150,6 +154,17 @@ async function getPartnerTimelineHandler(req, res) {
 
 async function getPartnerQualificationHandler(req, res) {
   try {
+    const partner = await getPartnerById(req.params.partnerId);
+    if (!partner) {
+      return res.status(404).json({
+        error: {
+          code: "PARTNER_NOT_FOUND",
+          message: "Partner was not found",
+          details: [{ field: "partnerId", message: "No partner exists with this id" }],
+        },
+      });
+    }
+
     const qualification = await getPartnerQualification(req.params.partnerId);
     if (!qualification) {
       return res.status(404).json({
@@ -161,7 +176,53 @@ async function getPartnerQualificationHandler(req, res) {
       });
     }
 
-    return res.status(200).json({ qualification });
+    return res.status(200).json({
+      qualification,
+      functionalBenefitOptions: getFunctionalBenefitOptions(partner.organizationType),
+    });
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
+async function listPartnerContactsHandler(req, res) {
+  try {
+    const contacts = await listPartnerContacts(req.params.partnerId);
+    if (!contacts) {
+      return res.status(404).json({
+        error: {
+          code: "PARTNER_NOT_FOUND",
+          message: "Partner was not found",
+          details: [{ field: "partnerId", message: "No partner exists with this id" }],
+        },
+      });
+    }
+
+    return res.status(200).json({ contacts });
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
+async function createPartnerContactHandler(req, res) {
+  const validation = validateCreatePartnerContactPayload(req.body);
+  if (!validation.isValid) {
+    return validationError(res, validation.errors);
+  }
+
+  try {
+    const contact = await createPartnerContact(req.params.partnerId, validation.value, req.user.id);
+    if (!contact) {
+      return res.status(404).json({
+        error: {
+          code: "PARTNER_NOT_FOUND",
+          message: "Partner was not found",
+          details: [{ field: "partnerId", message: "No partner exists with this id" }],
+        },
+      });
+    }
+
+    return res.status(201).json({ contact });
   } catch (error) {
     return serviceError(res, error);
   }
@@ -322,6 +383,8 @@ module.exports = {
   importPartnersHandler,
   getPartnerHandler,
   getPartnerQualificationHandler,
+  listPartnerContactsHandler,
+  createPartnerContactHandler,
   getPartnerTimelineHandler,
   upsertPartnerQualificationHandler,
   listDiscoveryNoteTemplatesHandler,

@@ -515,6 +515,68 @@ test("qualification mapping persists and rehydrates on reload", async () => {
   assert.ok(reload.body.qualification.confirmedValuePropositions.includes("Research Collaboration"));
 });
 
+test("qualification mapping supports role packages and functional benefit packages", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Package Menu Partner",
+    organizationType: "Tech Corporate",
+    industryNiche: "Developer tools",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createResponse.status, 201);
+
+  const partnerId = createResponse.body.partner.id;
+
+  const saveResponse = await agent.put(`/api/partners/${partnerId}/qualification`).send({
+    durationCategory: "mid_term",
+    rolePackages: [
+      { impactLevel: "standard", functionalRole: "Technology Partner" },
+      { impactLevel: "major", functionalRole: "Mentorship Partner" },
+      { impactLevel: "lead", functionalRole: "Knowledge Partner" },
+    ],
+    functionalBenefits: [
+      "Brand Visibility",
+      "Product Adoption",
+      "Talent Pipeline",
+      "Developer Community Access",
+    ],
+  });
+
+  assert.equal(saveResponse.status, 200);
+  assert.equal(saveResponse.body.qualification.rolePackages.length, 3);
+  assert.equal(saveResponse.body.qualification.functionalBenefits.length, 4);
+});
+
+test("partner contacts can be added and listed", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Contact Partner",
+    organizationType: "Tech Corporate",
+    industryNiche: "Cloud solutions",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createResponse.status, 201);
+
+  const partnerId = createResponse.body.partner.id;
+
+  const createContactResponse = await agent.post(`/api/partners/${partnerId}/contacts`).send({
+    fullName: "Maria Santos",
+    jobTitle: "Partnership Manager",
+    email: "maria@example.com",
+    phone: "+639171234567",
+    linkUrl: "https://linkedin.com/in/maria-santos",
+    isPrimary: true,
+  });
+
+  assert.equal(createContactResponse.status, 201);
+  assert.equal(createContactResponse.body.contact.fullName, "Maria Santos");
+  assert.equal(createContactResponse.body.contact.isPrimary, true);
+
+  const listResponse = await agent.get(`/api/partners/${partnerId}/contacts`);
+  assert.equal(listResponse.status, 200);
+  assert.ok(Array.isArray(listResponse.body.contacts));
+  assert.equal(listResponse.body.contacts.length, 1);
+  assert.equal(listResponse.body.contacts[0].email, "maria@example.com");
+});
+
 test("workflow health metrics flag overdue next actions", async () => {
   const createResponse = await agent.post("/api/partners").send({
     organizationName: "Overdue Partner",

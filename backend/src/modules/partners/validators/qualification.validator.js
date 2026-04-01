@@ -1,5 +1,5 @@
 const ALLOWED_DURATION = ["short_term", "mid_term", "long_term"];
-const ALLOWED_IMPACT = ["low", "medium", "high", "transformational"];
+const ALLOWED_IMPACT = ["standard", "major", "lead", "low", "medium", "high", "transformational"];
 
 function normalizeString(value) {
   if (value === undefined || value === null || value === "") {
@@ -15,6 +15,31 @@ function normalizeArray(values) {
   return [...new Set(values.map((item) => String(item).trim()).filter(Boolean))];
 }
 
+function normalizeRolePackages(values) {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  return values
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return null;
+      }
+
+      const impactLevel = normalizeString(entry.impactLevel)?.toLowerCase() || null;
+      const functionalRole = normalizeString(entry.functionalRole);
+      if (!impactLevel || !functionalRole) {
+        return null;
+      }
+
+      return {
+        impactLevel,
+        functionalRole,
+      };
+    })
+    .filter(Boolean);
+}
+
 function validateQualificationPayload(payload) {
   const data = payload || {};
   const errors = [];
@@ -22,8 +47,23 @@ function validateQualificationPayload(payload) {
   const durationCategory = normalizeString(data.durationCategory);
   const impactLevel = normalizeString(data.impactLevel);
   const functionalRole = normalizeString(data.functionalRole);
+  const rolePackages = normalizeRolePackages(data.rolePackages);
+  const functionalBenefits = normalizeArray(data.functionalBenefits);
   const potentialValuePropositions = normalizeArray(data.potentialValuePropositions);
   const confirmedValuePropositions = normalizeArray(data.confirmedValuePropositions);
+
+  const effectiveRolePackages =
+    rolePackages.length > 0
+      ? rolePackages
+      : impactLevel && functionalRole
+        ? [{ impactLevel: impactLevel.toLowerCase(), functionalRole }]
+        : [];
+  const effectiveFunctionalBenefits =
+    functionalBenefits.length > 0
+      ? functionalBenefits
+      : confirmedValuePropositions.length > 0
+        ? confirmedValuePropositions
+        : potentialValuePropositions;
 
   if (durationCategory && !ALLOWED_DURATION.includes(durationCategory)) {
     errors.push({
@@ -32,11 +72,35 @@ function validateQualificationPayload(payload) {
     });
   }
 
-  if (impactLevel && !ALLOWED_IMPACT.includes(impactLevel)) {
+  if (impactLevel && !ALLOWED_IMPACT.includes(impactLevel.toLowerCase())) {
     errors.push({
       field: "impactLevel",
       message: `impactLevel must be one of: ${ALLOWED_IMPACT.join(", ")}`,
     });
+  }
+
+  if (data.rolePackages !== undefined && !Array.isArray(data.rolePackages)) {
+    errors.push({
+      field: "rolePackages",
+      message: "rolePackages must be an array",
+    });
+  }
+
+  if (data.functionalBenefits !== undefined && !Array.isArray(data.functionalBenefits)) {
+    errors.push({
+      field: "functionalBenefits",
+      message: "functionalBenefits must be an array",
+    });
+  }
+
+  for (const rolePackage of effectiveRolePackages) {
+    if (!ALLOWED_IMPACT.includes(String(rolePackage.impactLevel).toLowerCase())) {
+      errors.push({
+        field: "rolePackages",
+        message: `rolePackages impactLevel must be one of: ${ALLOWED_IMPACT.join(", ")}`,
+      });
+      break;
+    }
   }
 
   if (data.potentialValuePropositions !== undefined && !Array.isArray(data.potentialValuePropositions)) {
@@ -58,7 +122,9 @@ function validateQualificationPayload(payload) {
     errors,
     value: {
       durationCategory,
-      impactLevel,
+      rolePackages: effectiveRolePackages,
+      functionalBenefits: effectiveFunctionalBenefits,
+      impactLevel: impactLevel ? impactLevel.toLowerCase() : null,
       functionalRole,
       potentialValuePropositions,
       confirmedValuePropositions,

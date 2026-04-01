@@ -7,6 +7,8 @@ const {
   importPartnersHandler,
   getPartnerHandler,
   getPartnerQualificationHandler,
+  listPartnerContactsHandler,
+  createPartnerContactHandler,
   getPartnerTimelineHandler,
   upsertPartnerQualificationHandler,
   listDiscoveryNoteTemplatesHandler,
@@ -28,9 +30,11 @@ router.post("/import", requireRole(["admin"]), importPartnersHandler);
 router.post("/", requireRole(["admin", "team_member"]), createPartnerHandler);
 router.get("/:partnerId", getPartnerHandler);
 router.get("/:partnerId/qualification", getPartnerQualificationHandler);
+router.get("/:partnerId/contacts", listPartnerContactsHandler);
 router.get("/:partnerId/timeline", getPartnerTimelineHandler);
 router.get("/:partnerId/discovery-notes/templates", listDiscoveryNoteTemplatesHandler);
 router.get("/:partnerId/discovery-notes", listDiscoveryNotesHandler);
+router.post("/:partnerId/contacts", requireRole(["admin", "team_member"]), createPartnerContactHandler);
 router.post("/:partnerId/discovery-notes", requireRole(["admin", "team_member"]), createDiscoveryNoteHandler);
 router.put("/:partnerId/discovery-notes/:noteId", requireRole(["admin", "team_member"]), updateDiscoveryNoteHandler);
 router.put("/:partnerId/qualification", requireRole(["admin", "team_member"]), upsertPartnerQualificationHandler);

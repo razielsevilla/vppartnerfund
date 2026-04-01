@@ -135,6 +135,7 @@ export const PartnersPage = () => {
     industryNiche: string;
     currentPhaseId: string;
     location: string;
+    websiteUrl: string;
   } | null>(null);
   const [createForm, setCreateForm] = useState({
     organizationName: "",
@@ -143,6 +144,7 @@ export const PartnersPage = () => {
     currentPhaseId: "phase_lead",
     locationScope: "laguna" as "laguna" | "non_laguna",
     nonLagunaLocation: "",
+    websiteUrl: "",
   });
   const [filters, setFilters] = useState<FilterState>(() => ({
     search: searchParams.get("search") || "",
@@ -378,6 +380,7 @@ export const PartnersPage = () => {
       industryNiche: string;
       currentPhaseId: string;
       location: string;
+      websiteUrl: string;
     },
   ) => {
     const payloadSource = payloadOverride || pendingCreatePayload;
@@ -396,6 +399,7 @@ export const PartnersPage = () => {
         industryNiche: payloadSource.industryNiche,
         currentPhaseId: payloadSource.currentPhaseId,
         location: payloadSource.location,
+        websiteUrl: payloadSource.websiteUrl,
         confirmDuplicate,
       });
 
@@ -408,6 +412,7 @@ export const PartnersPage = () => {
         currentPhaseId: "phase_lead",
         locationScope: "laguna",
         nonLagunaLocation: "",
+        websiteUrl: "",
       });
       await refreshPartners();
     } catch (error) {
@@ -444,6 +449,7 @@ export const PartnersPage = () => {
       industryNiche: createForm.industryNiche,
       currentPhaseId: createForm.currentPhaseId,
       location,
+      websiteUrl: createForm.websiteUrl,
     };
     setPendingCreatePayload(payload);
     await submitCreate(false, payload);
@@ -687,6 +693,12 @@ export const PartnersPage = () => {
               }
             />
           )}
+          <input
+            type="url"
+            placeholder="Website or social media link"
+            value={createForm.websiteUrl}
+            onChange={(event) => setCreateForm((prev) => ({ ...prev, websiteUrl: event.target.value }))}
+          />
           <button type="submit" disabled={isCreating}>
             {isCreating ? "Creating..." : "Create Partner"}
           </button>

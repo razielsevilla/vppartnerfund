@@ -9,16 +9,19 @@ import {
   type ArtifactStatus,
 } from "../../vault/services/vault-api";
 import {
+  createPartnerContactRequest,
   createDiscoveryNoteRequest,
   getPartnerRequest,
   getPartnerQualificationRequest,
   getPartnerTimelineRequest,
   getWorkflowConfigRequest,
+  listPartnerContactsRequest,
   listDiscoveryNotesRequest,
   listDiscoveryNoteTemplatesRequest,
   transitionPartnerPhaseRequest,
   updateDiscoveryNoteRequest,
   upsertPartnerQualificationRequest,
+  type PartnerContactRecord,
   type DiscoveryNoteGuidedAnswer,
   type DiscoveryNoteRecord,
   type DiscoveryNoteTemplate,
@@ -29,19 +32,31 @@ import {
   WorkflowTransitionError,
 } from "../services/partners-api";
 
-const VALUE_PROPOSITION_OPTIONS = [
-  "Brand Visibility",
-  "Developer Community Access",
-  "Talent Pipeline",
-  "Product Adoption",
-  "Research Collaboration",
-  "Event Activation",
-  "CSR Impact",
-  "Market Expansion",
+const ROLE_PACKAGE_FUNCTION_OPTIONS = [
+  "Technology Partner",
+  "Knowledge Partner",
+  "Mentorship Partner",
+  "Venue Partner",
+  "Logistics Partner",
+  "F&B Partner",
+  "Swag Partner",
+  "Media Partner",
+  "Community Partner",
+  "Ecosystem Partner",
+  "Resource Partner",
+  "Grant Partner",
+];
+
+const IMPACT_PACKAGE_OPTIONS: Array<"standard" | "major" | "lead"> = [
+  "standard",
+  "major",
+  "lead",
 ];
 
 const defaultQualification: QualificationProfile = {
   durationCategory: null,
+  rolePackages: [],
+  functionalBenefits: [],
   impactLevel: null,
   functionalRole: null,
   potentialValuePropositions: [],
@@ -54,6 +69,15 @@ const defaultQualification: QualificationProfile = {
 const defaultGuidedAnswer: DiscoveryNoteGuidedAnswer = {
   question: "",
   answer: "",
+};
+
+const defaultContactForm = {
+  fullName: "",
+  jobTitle: "",
+  email: "",
+  phone: "",
+  linkUrl: "",
+  isPrimary: false,
 };
 
 const CLIENT_ALLOWED_ARTIFACT_TYPES = [
@@ -69,6 +93,15 @@ export const PartnerDetailPage = () => {
   const { partnerId } = useParams();
   const [partner, setPartner] = useState<PartnerRecord | null>(null);
   const [qualification, setQualification] = useState<QualificationProfile>(defaultQualification);
+  const [functionalBenefitOptions, setFunctionalBenefitOptions] = useState<string[]>([]);
+  const [selectedPackageImpact, setSelectedPackageImpact] = useState<"standard" | "major" | "lead">(
+    "standard",
+  );
+  const [selectedPackageRole, setSelectedPackageRole] = useState(ROLE_PACKAGE_FUNCTION_OPTIONS[0]);
+  const [contacts, setContacts] = useState<PartnerContactRecord[]>([]);
+  const [contactForm, setContactForm] = useState(defaultContactForm);
+  const [contactMessage, setContactMessage] = useState<string | null>(null);
+  const [isSavingContact, setIsSavingContact] = useState(false);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [discoveryTemplates, setDiscoveryTemplates] = useState<DiscoveryNoteTemplate[]>([]);
   const [discoveryNotes, setDiscoveryNotes] = useState<DiscoveryNoteRecord[]>([]);
@@ -111,10 +144,11 @@ export const PartnerDetailPage = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const [partnerData, qualificationData, timelineData] = await Promise.all([
+        const [partnerData, qualificationResult, timelineData, contactsData] = await Promise.all([
           getPartnerRequest(partnerId),
           getPartnerQualificationRequest(partnerId),
           getPartnerTimelineRequest(partnerId),
+          listPartnerContactsRequest(partnerId),
         ]);
         const [templatesData, notesData] = await Promise.all([
           listDiscoveryNoteTemplatesRequest(partnerId),
@@ -124,7 +158,9 @@ export const PartnerDetailPage = () => {
         const artifactsData = await listArtifactsRequest(partnerId);
         if (!cancelled) {
           setPartner(partnerData);
-          setQualification(qualificationData || defaultQualification);
+          setQualification(qualificationResult.qualification || defaultQualification);
+          setFunctionalBenefitOptions(qualificationResult.functionalBenefitOptions || []);
+          setContacts(contactsData);
           setTimeline(timelineData);
           setDiscoveryTemplates(templatesData);
           setDiscoveryNotes(notesData);
@@ -149,21 +185,43 @@ export const PartnerDetailPage = () => {
     };
   }, [partnerId]);
 
-  const toggleValueProposition = (
-    target: "potentialValuePropositions" | "confirmedValuePropositions",
-    value: string,
-  ) => {
-    setQualification((prev) => {
-      const current = new Set(prev[target]);
-      if (current.has(value)) {
-        current.delete(value);
-      } else {
-        current.add(value);
-      }
+  const addRolePackage = () => {
+    setQualification((prev) => ({
+      ...prev,
+      rolePackages: [
+        ...prev.rolePackages,
+        {
+          impactLevel: selectedPackageImpact,
+          functionalRole: selectedPackageRole,
+        },
+      ],
+    }));
+  };
 
+  const removeRolePackage = (index: number) => {
+    setQualification((prev) => ({
+      ...prev,
+      rolePackages: prev.rolePackages.filter((_, currentIndex) => currentIndex !== index),
+      functionalBenefits: prev.functionalBenefits.filter(
+        (_, currentIndex) =>
+          currentIndex !== index &&
+          currentIndex <
+            prev.rolePackages.filter((_, roleIndex) => roleIndex !== index).length +
+              Math.floor(prev.rolePackages.filter((_, roleIndex) => roleIndex !== index).length / 3),
+      ),
+    }));
+  };
+
+  const benefitSlots =
+    qualification.rolePackages.length + Math.floor(qualification.rolePackages.length / 3);
+
+  const updateBenefitAtSlot = (index: number, value: string) => {
+    setQualification((prev) => {
+      const next = [...prev.functionalBenefits];
+      next[index] = value;
       return {
         ...prev,
-        [target]: [...current],
+        functionalBenefits: next,
       };
     });
   };
@@ -189,6 +247,34 @@ export const PartnerDetailPage = () => {
     setDiscoveryNotes(notesData);
   };
 
+  const saveContact = async () => {
+    if (!partnerId) {
+      return;
+    }
+
+    setIsSavingContact(true);
+    setContactMessage(null);
+    try {
+      await createPartnerContactRequest(partnerId, {
+        fullName: contactForm.fullName,
+        jobTitle: contactForm.jobTitle || undefined,
+        email: contactForm.email || undefined,
+        phone: contactForm.phone || undefined,
+        linkUrl: contactForm.linkUrl || undefined,
+        isPrimary: contactForm.isPrimary,
+      });
+
+      const refreshed = await listPartnerContactsRequest(partnerId);
+      setContacts(refreshed);
+      setContactForm(defaultContactForm);
+      setContactMessage("Contact person added.");
+    } catch (saveError) {
+      setContactMessage(saveError instanceof Error ? saveError.message : "Failed to save contact person");
+    } finally {
+      setIsSavingContact(false);
+    }
+  };
+
   const saveQualification = async () => {
     if (!partnerId) {
       return;
@@ -197,12 +283,20 @@ export const PartnerDetailPage = () => {
     setIsSavingQualification(true);
     setQualificationMessage(null);
     try {
+      if (qualification.rolePackages.length === 0) {
+        setQualificationMessage("Add at least one role package before saving.");
+        return;
+      }
+
+      const selectedBenefits = qualification.functionalBenefits
+        .slice(0, benefitSlots)
+        .map((item) => String(item || "").trim())
+        .filter(Boolean);
+
       const saved = await upsertPartnerQualificationRequest(partnerId, {
         durationCategory: qualification.durationCategory,
-        impactLevel: qualification.impactLevel,
-        functionalRole: qualification.functionalRole,
-        potentialValuePropositions: qualification.potentialValuePropositions,
-        confirmedValuePropositions: qualification.confirmedValuePropositions,
+        rolePackages: qualification.rolePackages,
+        functionalBenefits: selectedBenefits,
       });
       setQualification(saved);
       setQualificationMessage("Qualification mapping saved.");
@@ -486,7 +580,7 @@ export const PartnerDetailPage = () => {
         <>
           <section className="timeline-panel">
             <h2>Qualification Mapping</h2>
-            <p className="muted">Separate potential and confirmed value proposition alignment.</p>
+            <p className="muted">Build role packages first, then curate matching functional benefit packages.</p>
 
             <div className="qualification-grid">
               <label>
@@ -507,67 +601,109 @@ export const PartnerDetailPage = () => {
                 </select>
               </label>
 
-              <label>
-                Impact
-                <select
-                  value={qualification.impactLevel || ""}
-                  onChange={(event) =>
-                    setQualification((prev) => ({
-                      ...prev,
-                      impactLevel: (event.target.value || null) as QualificationProfile["impactLevel"],
-                    }))
-                  }
-                >
-                  <option value="">Unspecified</option>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="transformational">Transformational</option>
-                </select>
-              </label>
-
-              <label>
-                Function Role
-                <input
-                  type="text"
-                  value={qualification.functionalRole || ""}
-                  onChange={(event) =>
-                    setQualification((prev) => ({
-                      ...prev,
-                      functionalRole: event.target.value || null,
-                    }))
-                  }
-                  placeholder="e.g. Strategic Sponsor"
-                />
-              </label>
             </div>
 
             <div className="value-prop-columns">
               <div>
-                <h3>Potential Value Propositions</h3>
-                {VALUE_PROPOSITION_OPTIONS.map((option) => (
-                  <label key={`potential:${option}`} className="check-item">
-                    <input
-                      type="checkbox"
-                      checked={qualification.potentialValuePropositions.includes(option)}
-                      onChange={() => toggleValueProposition("potentialValuePropositions", option)}
-                    />
-                    <span>{option}</span>
+                <h3>Role Package Menu</h3>
+                <div className="qualification-grid">
+                  <label>
+                    Impact
+                    <select
+                      value={selectedPackageImpact}
+                      onChange={(event) =>
+                        setSelectedPackageImpact(event.target.value as "standard" | "major" | "lead")
+                      }
+                    >
+                      {IMPACT_PACKAGE_OPTIONS.map((impact) => (
+                        <option key={impact} value={impact}>
+                          {impact}
+                        </option>
+                      ))}
+                    </select>
                   </label>
-                ))}
+
+                  <label>
+                    Functional Role
+                    <select
+                      value={selectedPackageRole}
+                      onChange={(event) => setSelectedPackageRole(event.target.value)}
+                    >
+                      {ROLE_PACKAGE_FUNCTION_OPTIONS.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="qualification-actions">
+                  <button type="button" onClick={addRolePackage}>
+                    Add Role Package
+                  </button>
+                </div>
+
+                {qualification.rolePackages.length === 0 && <p className="muted">No role packages yet.</p>}
+                {qualification.rolePackages.length > 0 && (
+                  <ol className="timeline-list">
+                    {qualification.rolePackages.map((pkg, index) => (
+                      <li key={`${pkg.impactLevel}:${pkg.functionalRole}:${index}`} className="timeline-item">
+                        <div className="timeline-item-head">
+                          <strong>{`Package ${index + 1}`}</strong>
+                          <span>{pkg.impactLevel}</span>
+                        </div>
+                        <p>{pkg.functionalRole}</p>
+                        <button
+                          type="button"
+                          className="secondary-btn"
+                          onClick={() => removeRolePackage(index)}
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </div>
+
               <div>
-                <h3>Confirmed Value Propositions</h3>
-                {VALUE_PROPOSITION_OPTIONS.map((option) => (
-                  <label key={`confirmed:${option}`} className="check-item">
-                    <input
-                      type="checkbox"
-                      checked={qualification.confirmedValuePropositions.includes(option)}
-                      onChange={() => toggleValueProposition("confirmedValuePropositions", option)}
-                    />
-                    <span>{option}</span>
-                  </label>
-                ))}
+                <h3>Functional Benefit Packages</h3>
+                <p className="muted">{`Benefit slots: ${benefitSlots}`}</p>
+                {benefitSlots === 0 && (
+                  <p className="muted">Add role packages to unlock benefit package slots.</p>
+                )}
+                {benefitSlots > 0 && (
+                  <div className="qualification-grid">
+                    {Array.from({ length: benefitSlots }).map((_, index) => (
+                      <label key={`benefit-slot:${index}`}>
+                        {`Benefit Package ${index + 1}`}
+                        <select
+                          value={qualification.functionalBenefits[index] || ""}
+                          onChange={(event) => updateBenefitAtSlot(index, event.target.value)}
+                        >
+                          <option value="">Select benefit</option>
+                          {functionalBenefitOptions.map((option) => (
+                            <option key={`benefit-option:${option}`} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {functionalBenefitOptions.length === 0 && (
+                  <p className="muted">No preset functional benefits found for this organization type.</p>
+                )}
+                {functionalBenefitOptions.length > 0 && (
+                  <p className="muted">
+                    {`Preset benefits for ${partner?.organizationType || "this organization"}: ${functionalBenefitOptions.join(
+                      ", ",
+                    )}`}
+                  </p>
+                )}
+                <p className="muted">Benefit packages are standard-only and have no impact level.</p>
               </div>
             </div>
 
@@ -577,6 +713,110 @@ export const PartnerDetailPage = () => {
               </button>
               {qualificationMessage && <p className="muted">{qualificationMessage}</p>}
             </div>
+          </section>
+
+          <section className="timeline-panel">
+            <h2>Contact Person</h2>
+            <p className="muted">Add designated contacts per partner without editing core partner details.</p>
+
+            <div className="artifact-upload-grid">
+              <label>
+                Full Name
+                <input
+                  type="text"
+                  value={contactForm.fullName}
+                  onChange={(event) =>
+                    setContactForm((prev) => ({ ...prev, fullName: event.target.value }))
+                  }
+                  placeholder="e.g. Juan Dela Cruz"
+                />
+              </label>
+              <label>
+                Position in Organization
+                <input
+                  type="text"
+                  value={contactForm.jobTitle}
+                  onChange={(event) =>
+                    setContactForm((prev) => ({ ...prev, jobTitle: event.target.value }))
+                  }
+                  placeholder="e.g. Partnerships Manager"
+                />
+              </label>
+              <label>
+                Contact Email
+                <input
+                  type="email"
+                  value={contactForm.email}
+                  onChange={(event) => setContactForm((prev) => ({ ...prev, email: event.target.value }))}
+                  placeholder="name@organization.com"
+                />
+              </label>
+              <label>
+                Contact Number
+                <input
+                  type="text"
+                  value={contactForm.phone}
+                  onChange={(event) => setContactForm((prev) => ({ ...prev, phone: event.target.value }))}
+                  placeholder="+63..."
+                />
+              </label>
+              <label>
+                Link (Website or Social)
+                <input
+                  type="url"
+                  value={contactForm.linkUrl}
+                  onChange={(event) => setContactForm((prev) => ({ ...prev, linkUrl: event.target.value }))}
+                  placeholder="https://..."
+                />
+              </label>
+              <label>
+                Primary Contact
+                <select
+                  value={contactForm.isPrimary ? "yes" : "no"}
+                  onChange={(event) =>
+                    setContactForm((prev) => ({ ...prev, isPrimary: event.target.value === "yes" }))
+                  }
+                >
+                  <option value="no">No</option>
+                  <option value="yes">Yes</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="qualification-actions">
+              <button type="button" onClick={saveContact} disabled={isSavingContact}>
+                {isSavingContact ? "Saving..." : "Add Contact Person"}
+              </button>
+              {contactMessage && <p className="muted">{contactMessage}</p>}
+            </div>
+
+            {contacts.length === 0 && (
+              <div className="status-card status-empty">
+                <h2>No contacts yet</h2>
+                <p>Add at least one contact person for this partner.</p>
+              </div>
+            )}
+
+            {contacts.length > 0 && (
+              <ol className="timeline-list">
+                {contacts.map((contact) => (
+                  <li key={contact.id} className="timeline-item">
+                    <div className="timeline-item-head">
+                      <strong>{contact.fullName}</strong>
+                      <span>{contact.isPrimary ? "Primary" : "Secondary"}</span>
+                    </div>
+                    <p>{contact.jobTitle || "No position provided"}</p>
+                    <p>{contact.email || "-"}</p>
+                    <p>{contact.phone || "-"}</p>
+                    {contact.linkUrl && (
+                      <a href={contact.linkUrl} target="_blank" rel="noreferrer" className="table-link">
+                        {contact.linkUrl}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            )}
           </section>
 
           <section className="timeline-panel">
