@@ -32,6 +32,9 @@ function validateCreatePartnerPayload(payload) {
       message: `impactTier must be one of: ${ALLOWED_IMPACT_TIERS.join(", ")}`,
     });
   }
+  if (data.confirmDuplicate !== undefined && typeof data.confirmDuplicate !== "boolean") {
+    errors.push({ field: "confirmDuplicate", message: "confirmDuplicate must be a boolean" });
+  }
 
   return {
     isValid: errors.length === 0,
@@ -47,6 +50,7 @@ function validateCreatePartnerPayload(payload) {
       lastContactDate: normalizeOptionalString(data.lastContactDate),
       nextActionStep: normalizeOptionalString(data.nextActionStep),
       impactTier: normalizeOptionalString(data.impactTier)?.toLowerCase() || null,
+      confirmDuplicate: Boolean(data.confirmDuplicate),
     },
   };
 }

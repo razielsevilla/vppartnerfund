@@ -1,6 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
-import { listPartnersRequest, type PartnerRecord } from "../services/partners-api";
+import {
+  createPartnerRequest,
+  DuplicatePartnerError,
+  listPartnersRequest,
+  type DuplicateCandidate,
+  type PartnerRecord,
+} from "../services/partners-api";
 
 type FilterState = {
   search: string;
@@ -15,6 +21,25 @@ export const PartnersPage = () => {
   const [partners, setPartners] = useState<PartnerRecord[]>([]);
   const [isLoadingPartners, setIsLoadingPartners] = useState(true);
   const [partnersError, setPartnersError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [pendingDuplicateCandidates, setPendingDuplicateCandidates] = useState<DuplicateCandidate[]>([]);
+  const [pendingCreatePayload, setPendingCreatePayload] = useState<{
+    organizationName: string;
+    organizationType: string;
+    industryNiche: string;
+    currentPhaseId: string;
+    impactTier: "" | "standard" | "major" | "lead";
+    location: string;
+  } | null>(null);
+  const [createForm, setCreateForm] = useState({
+    organizationName: "",
+    organizationType: "",
+    industryNiche: "",
+    currentPhaseId: "phase_lead",
+    impactTier: "" as "" | "standard" | "major" | "lead",
+    location: "",
+  });
   const [filters, setFilters] = useState<FilterState>({
     search: "",
     organizationType: "",
@@ -65,6 +90,68 @@ export const PartnersPage = () => {
 
   const onFilterChange = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const refreshPartners = async () => {
+    setIsLoadingPartners(true);
+    setPartnersError(null);
+    try {
+      const data = await listPartnersRequest(filters);
+      setPartners(data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load partners";
+      setPartnersError(message);
+    } finally {
+      setIsLoadingPartners(false);
+    }
+  };
+
+  const submitCreate = async (confirmDuplicate: boolean) => {
+    const payloadSource = pendingCreatePayload || createForm;
+    setCreateError(null);
+    setIsCreating(true);
+
+    try {
+      await createPartnerRequest({
+        organizationName: payloadSource.organizationName,
+        organizationType: payloadSource.organizationType,
+        industryNiche: payloadSource.industryNiche,
+        currentPhaseId: payloadSource.currentPhaseId,
+        impactTier: payloadSource.impactTier,
+        location: payloadSource.location,
+        confirmDuplicate,
+      });
+
+      setPendingCreatePayload(null);
+      setPendingDuplicateCandidates([]);
+      setCreateForm({
+        organizationName: "",
+        organizationType: "",
+        industryNiche: "",
+        currentPhaseId: "phase_lead",
+        impactTier: "",
+        location: "",
+      });
+      await refreshPartners();
+    } catch (error) {
+      if (error instanceof DuplicatePartnerError) {
+        setPendingCreatePayload(payloadSource);
+        setPendingDuplicateCandidates(error.candidates);
+        setCreateError("Potential duplicate detected. Review matches and confirm to proceed.");
+      } else {
+        const message = error instanceof Error ? error.message : "Failed to create partner";
+        setCreateError(message);
+      }
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const onCreateSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPendingCreatePayload(null);
+    setPendingDuplicateCandidates([]);
+    await submitCreate(false);
   };
 
   return (
@@ -134,6 +221,80 @@ export const PartnersPage = () => {
             <option value="lead">Lead</option>
           </select>
         </label>
+      </section>
+
+      <section className="registry-create-panel" aria-label="Create partner">
+        <h2>Add Partner</h2>
+        <form className="registry-create-form" onSubmit={onCreateSubmit}>
+          <input
+            required
+            type="text"
+            placeholder="Organization name"
+            value={createForm.organizationName}
+            onChange={(event) =>
+              setCreateForm((prev) => ({ ...prev, organizationName: event.target.value }))
+            }
+          />
+          <input
+            required
+            type="text"
+            placeholder="Type"
+            value={createForm.organizationType}
+            onChange={(event) =>
+              setCreateForm((prev) => ({ ...prev, organizationType: event.target.value }))
+            }
+          />
+          <input
+            required
+            type="text"
+            placeholder="Industry"
+            value={createForm.industryNiche}
+            onChange={(event) =>
+              setCreateForm((prev) => ({ ...prev, industryNiche: event.target.value }))
+            }
+          />
+          <input
+            type="text"
+            placeholder="Location"
+            value={createForm.location}
+            onChange={(event) => setCreateForm((prev) => ({ ...prev, location: event.target.value }))}
+          />
+          <select
+            value={createForm.impactTier}
+            onChange={(event) =>
+              setCreateForm((prev) => ({
+                ...prev,
+                impactTier: event.target.value as "" | "standard" | "major" | "lead",
+              }))
+            }
+          >
+            <option value="">Impact (any)</option>
+            <option value="standard">Standard</option>
+            <option value="major">Major</option>
+            <option value="lead">Lead</option>
+          </select>
+          <button type="submit" disabled={isCreating}>
+            {isCreating ? "Creating..." : "Create Partner"}
+          </button>
+        </form>
+
+        {createError && <p className="error-text">{createError}</p>}
+
+        {pendingDuplicateCandidates.length > 0 && (
+          <div className="duplicate-warning" role="alert">
+            <h3>Possible duplicates found</h3>
+            <ul>
+              {pendingDuplicateCandidates.map((candidate) => (
+                <li key={candidate.id}>
+                  {candidate.organizationName} ({Math.round(candidate.similarity * 100)}% similar)
+                </li>
+              ))}
+            </ul>
+            <button type="button" onClick={() => submitCreate(true)} disabled={isCreating}>
+              Confirm Intentional Duplicate
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="registry-panel">

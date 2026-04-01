@@ -26,7 +26,7 @@ This document defines the phase-by-phase implementation plan for the DEVCON Lagu
 | P3-T01  | Partner Data Model        | Define and migrate core partner entities and relationships.                | - [x] Partner schema includes required fields from features spec.<br>- [x] Contact and relationship tables are linked properly.<br>- [x] Migrations run successfully in clean environments.             |
 | P3-T02  | Partner CRUD API          | Implement API endpoints for partner create/read/update/archive operations. | - [x] CRUD endpoints are available and validated.<br>- [x] Invalid payloads return structured errors.<br>- [x] Archive behavior is implemented and test-covered.                                        |
 | P3-T03  | Registry UI and Filters   | Build partner registry table with search and filters.                      | - [x] Users can search by partner name/keyword.<br>- [x] Filters for type, industry, status, and impact work correctly.<br>- [x] Empty, loading, and error states are implemented.                      |
-| P3-T04  | Duplicate Detection Guard | Add duplicate detection checks during partner creation.                    | - [ ] Similar-name duplicates trigger warning or block flow.<br>- [ ] User can resolve or confirm intentional duplicate via explicit action.<br>- [ ] Duplicate logic is tested with sample edge cases. |
+| P3-T04  | Duplicate Detection Guard | Add duplicate detection checks during partner creation.                    | - [x] Similar-name duplicates trigger warning or block flow.<br>- [x] User can resolve or confirm intentional duplicate via explicit action.<br>- [x] Duplicate logic is tested with sample edge cases. |
 
 ## Phase 4 - Workflow Tracker and Qualification Mapping
 

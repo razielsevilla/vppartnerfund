@@ -65,3 +65,69 @@ test("archives a partner and excludes it from default active list", async () => 
   assert.equal(archivedListResponse.body.partners.length, 1);
   assert.equal(archivedListResponse.body.partners[0].id, partnerId);
 });
+
+test("blocks create when similar-name duplicate is detected", async () => {
+  const firstCreate = await agent.post("/api/partners").send({
+    organizationName: "Acme Corporation",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(firstCreate.status, 201);
+
+  const duplicateCreate = await agent.post("/api/partners").send({
+    organizationName: "ACME Corp",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+
+  assert.equal(duplicateCreate.status, 409);
+  assert.equal(duplicateCreate.body.error.code, "PARTNER_DUPLICATE_DETECTED");
+  assert.ok(Array.isArray(duplicateCreate.body.error.details));
+  assert.ok(duplicateCreate.body.error.details[0].canConfirmDuplicate);
+  assert.ok(Array.isArray(duplicateCreate.body.error.details[0].candidates));
+  assert.ok(duplicateCreate.body.error.details[0].candidates.length > 0);
+});
+
+test("allows intentional duplicate when confirmDuplicate is true", async () => {
+  const firstCreate = await agent.post("/api/partners").send({
+    organizationName: "Future Labs",
+    organizationType: "Startup",
+    industryNiche: "Education",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(firstCreate.status, 201);
+
+  const confirmCreate = await agent.post("/api/partners").send({
+    organizationName: "Future Labs",
+    organizationType: "Startup",
+    industryNiche: "Education",
+    currentPhaseId: "phase_lead",
+    confirmDuplicate: true,
+  });
+
+  assert.equal(confirmCreate.status, 201);
+
+  const listResponse = await agent.get("/api/partners?status=all");
+  assert.equal(listResponse.status, 200);
+  assert.equal(listResponse.body.partners.length, 2);
+});
+
+test("does not block distinct names that are not similar", async () => {
+  const firstCreate = await agent.post("/api/partners").send({
+    organizationName: "Northwind Cooperative",
+    organizationType: "NGO",
+    industryNiche: "Environment",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(firstCreate.status, 201);
+
+  const secondCreate = await agent.post("/api/partners").send({
+    organizationName: "Blue Harbor Ventures",
+    organizationType: "Corporate",
+    industryNiche: "Logistics",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(secondCreate.status, 201);
+});

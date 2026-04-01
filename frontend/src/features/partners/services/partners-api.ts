@@ -26,6 +26,44 @@ export type PartnerListFilters = {
   impactTier?: string;
 };
 
+export type CreatePartnerPayload = {
+  organizationName: string;
+  organizationType: string;
+  industryNiche: string;
+  currentPhaseId: string;
+  impactTier?: "standard" | "major" | "lead" | "";
+  location?: string;
+  confirmDuplicate?: boolean;
+};
+
+export type DuplicateCandidate = {
+  id: string;
+  organizationName: string;
+  organizationType: string;
+  industryNiche: string;
+  location: string | null;
+  similarity: number;
+};
+
+export class DuplicatePartnerError extends Error {
+  candidates: DuplicateCandidate[];
+
+  constructor(message: string, candidates: DuplicateCandidate[]) {
+    super(message);
+    this.name = "DuplicatePartnerError";
+    this.candidates = candidates;
+  }
+}
+
+function extractApiMessage(body: unknown, fallback: string): string {
+  if (!body || typeof body !== "object" || !("error" in body)) {
+    return fallback;
+  }
+
+  const error = body.error as { message?: string };
+  return error.message || fallback;
+}
+
 export const listPartnersRequest = async (filters: PartnerListFilters): Promise<PartnerRecord[]> => {
   const params = new URLSearchParams();
 
@@ -53,13 +91,43 @@ export const listPartnersRequest = async (filters: PartnerListFilters): Promise<
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    const errorMessage =
-      (body && typeof body === "object" && "error" in body
-        ? (body.error as { message?: string }).message
-        : undefined) || "Failed to load partners";
-    throw new Error(errorMessage);
+    throw new Error(extractApiMessage(body, "Failed to load partners"));
   }
 
   const body = (await response.json()) as { partners: PartnerRecord[] };
   return body.partners;
+};
+
+export const createPartnerRequest = async (payload: CreatePartnerPayload): Promise<PartnerRecord> => {
+  const response = await fetch(`${API_URL}/partners`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const errorCode =
+      body && typeof body === "object" && "error" in body
+        ? (body.error as { code?: string }).code
+        : undefined;
+
+    if (errorCode === "PARTNER_DUPLICATE_DETECTED") {
+      const details =
+        body && typeof body === "object" && "error" in body
+          ? ((body.error as { details?: Array<{ candidates?: DuplicateCandidate[] }> }).details ?? [])
+          : [];
+
+      const candidates = details[0]?.candidates ?? [];
+      throw new DuplicatePartnerError(
+        extractApiMessage(body, "Potential duplicates found"),
+        candidates,
+      );
+    }
+
+    throw new Error(extractApiMessage(body, "Failed to create partner"));
+  }
+
+  return (body as { partner: PartnerRecord }).partner;
 };

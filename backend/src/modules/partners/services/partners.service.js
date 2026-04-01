@@ -34,6 +34,78 @@ function mapPartnerRow(row) {
   };
 }
 
+function normalizeName(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function canonicalName(value) {
+  return normalizeName(value).replace(/\s+/g, "");
+}
+
+function tokenSet(value) {
+  return new Set(normalizeName(value).split(" ").filter(Boolean));
+}
+
+function jaccardSimilarity(leftSet, rightSet) {
+  if (leftSet.size === 0 && rightSet.size === 0) {
+    return 1;
+  }
+
+  const intersection = [...leftSet].filter((token) => rightSet.has(token)).length;
+  const union = new Set([...leftSet, ...rightSet]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
+function nameSimilarityScore(inputName, existingName) {
+  const inputCanonical = canonicalName(inputName);
+  const existingCanonical = canonicalName(existingName);
+
+  if (inputCanonical === existingCanonical) {
+    return 1;
+  }
+  if (!inputCanonical || !existingCanonical) {
+    return 0;
+  }
+  if (inputCanonical.includes(existingCanonical) || existingCanonical.includes(inputCanonical)) {
+    return 0.9;
+  }
+
+  const inputTokens = tokenSet(inputName);
+  const existingTokens = tokenSet(existingName);
+  return jaccardSimilarity(inputTokens, existingTokens);
+}
+
+async function findPotentialDuplicates(db, organizationName) {
+  const candidates = await db("partners")
+    .whereNull("archived_at")
+    .select("id", "organization_name", "organization_type", "industry_niche", "location")
+    .orderBy("created_at", "desc");
+
+  return candidates
+    .map((row) => {
+      const similarity = nameSimilarityScore(organizationName, row.organization_name);
+      return {
+        id: row.id,
+        organizationName: row.organization_name,
+        organizationType: row.organization_type,
+        industryNiche: row.industry_niche,
+        location: row.location,
+        similarity,
+      };
+    })
+    .filter((row) => row.similarity >= 0.75)
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, 5)
+    .map((row) => ({
+      ...row,
+      similarity: Number(row.similarity.toFixed(2)),
+    }));
+}
+
 async function assertPhaseExists(db, phaseId) {
   const phase = await db("workflow_phases").where({ id: phaseId }).first();
   if (!phase) {
@@ -47,6 +119,23 @@ async function createPartner(data, actorId) {
   const db = getDatabase();
 
   await assertPhaseExists(db, data.currentPhaseId);
+
+  const duplicates = await findPotentialDuplicates(db, data.organizationName);
+  if (duplicates.length > 0 && !data.confirmDuplicate) {
+    throw new PartnerServiceError(
+      "Potential duplicate partners detected",
+      "PARTNER_DUPLICATE_DETECTED",
+      409,
+      [
+        {
+          field: "organizationName",
+          message: "Similar partner names already exist",
+          candidates: duplicates,
+          canConfirmDuplicate: true,
+        },
+      ],
+    );
+  }
 
   const partnerId = crypto.randomUUID();
   const nowIso = new Date().toISOString();
