@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
 import { listTasksRequest, type TaskRecord } from "../../tasks/services/tasks-api";
 import {
   createPartnerRequest,
   DuplicatePartnerError,
+  getWorkflowConfigRequest,
   getWorkflowHealthMetricsRequest,
   listPartnersRequest,
   type DuplicateCandidate,
   type PartnerRecord,
+  type WorkflowConfig,
   type WorkflowHealthMetrics,
 } from "../services/partners-api";
 
@@ -18,13 +20,24 @@ type FilterState = {
   industryNiche: string;
   status: "active" | "archived" | "all";
   impactTier: "" | "standard" | "major" | "lead";
+  phaseCode: string;
 };
+
+function parseStatus(value: string | null): FilterState["status"] {
+  if (value === "active" || value === "archived" || value === "all") {
+    return value;
+  }
+
+  return "active";
+}
 
 export const PartnersPage = () => {
   const { user, logout } = useAuthSession();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [partners, setPartners] = useState<PartnerRecord[]>([]);
   const [isLoadingPartners, setIsLoadingPartners] = useState(true);
   const [partnersError, setPartnersError] = useState<string | null>(null);
+  const [workflowConfig, setWorkflowConfig] = useState<WorkflowConfig | null>(null);
   const [metrics, setMetrics] = useState<WorkflowHealthMetrics | null>(null);
   const [metricsError, setMetricsError] = useState<string | null>(null);
   const [taskCounters, setTaskCounters] = useState({ open: 0, done: 0, overdue: 0 });
@@ -47,13 +60,63 @@ export const PartnersPage = () => {
     impactTier: "" as "" | "standard" | "major" | "lead",
     location: "",
   });
-  const [filters, setFilters] = useState<FilterState>({
-    search: "",
-    organizationType: "",
-    industryNiche: "",
-    status: "active",
-    impactTier: "",
-  });
+  const [filters, setFilters] = useState<FilterState>(() => ({
+    search: searchParams.get("search") || "",
+    organizationType: searchParams.get("organizationType") || "",
+    industryNiche: searchParams.get("industryNiche") || "",
+    status: parseStatus(searchParams.get("status")),
+    impactTier: (searchParams.get("impactTier") as FilterState["impactTier"]) || "",
+    phaseCode: searchParams.get("phaseCode") || "",
+  }));
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (filters.search.trim()) {
+      params.set("search", filters.search.trim());
+    }
+    if (filters.organizationType.trim()) {
+      params.set("organizationType", filters.organizationType.trim());
+    }
+    if (filters.industryNiche.trim()) {
+      params.set("industryNiche", filters.industryNiche.trim());
+    }
+    if (filters.status !== "active") {
+      params.set("status", filters.status);
+    }
+    if (filters.impactTier) {
+      params.set("impactTier", filters.impactTier);
+    }
+    if (filters.phaseCode.trim()) {
+      params.set("phaseCode", filters.phaseCode.trim());
+    }
+
+    if (params.toString() !== searchParams.toString()) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [filters, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadWorkflowConfig = async () => {
+      try {
+        const data = await getWorkflowConfigRequest();
+        if (!cancelled) {
+          setWorkflowConfig(data);
+        }
+      } catch {
+        if (!cancelled) {
+          setWorkflowConfig(null);
+        }
+      }
+    };
+
+    loadWorkflowConfig();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,6 +217,29 @@ export const PartnersPage = () => {
     };
   }, []);
 
+  const filteredPartners = useMemo(() => {
+    if (!filters.phaseCode.trim()) {
+      return partners;
+    }
+
+    const targetCode = filters.phaseCode.trim().toLowerCase();
+    return partners.filter((partner) => {
+      const code = partner.currentPhaseId.replace(/^phase_/, "").toLowerCase();
+      return code === targetCode;
+    });
+  }, [filters.phaseCode, partners]);
+
+  const phaseOptions = useMemo(
+    () =>
+      (workflowConfig?.phases || [])
+        .filter((phase) => phase.isActive)
+        .map((phase) => ({
+          value: phase.code,
+          label: phase.name,
+        })),
+    [workflowConfig?.phases],
+  );
+
   const subtitle = useMemo(() => {
     if (isLoadingPartners) {
       return "Loading partner registry...";
@@ -161,8 +247,8 @@ export const PartnersPage = () => {
     if (partnersError) {
       return "Could not load partner data.";
     }
-    return `${partners.length} partner${partners.length === 1 ? "" : "s"} found`;
-  }, [isLoadingPartners, partners.length, partnersError]);
+    return `${filteredPartners.length} partner${filteredPartners.length === 1 ? "" : "s"} found`;
+  }, [filteredPartners.length, isLoadingPartners, partnersError]);
 
   const onFilterChange = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -239,6 +325,9 @@ export const PartnersPage = () => {
         </div>
         <div className="user-actions">
           <nav className="page-nav-links" aria-label="Primary navigation">
+            <Link to="/dashboard" className="link-button">
+              Dashboard
+            </Link>
             <Link to="/partners" className="link-button link-button-active">
               Partners
             </Link>
@@ -289,6 +378,20 @@ export const PartnersPage = () => {
             <option value="active">Active</option>
             <option value="archived">Archived</option>
             <option value="all">All</option>
+          </select>
+        </label>
+        <label>
+          Phase
+          <select
+            value={filters.phaseCode}
+            onChange={(event) => onFilterChange("phaseCode", event.target.value)}
+          >
+            <option value="">Any</option>
+            {phaseOptions.map((phase) => (
+              <option key={phase.value} value={phase.value}>
+                {phase.label}
+              </option>
+            ))}
           </select>
         </label>
         <label>
@@ -423,14 +526,14 @@ export const PartnersPage = () => {
           </div>
         )}
 
-        {!isLoadingPartners && !partnersError && partners.length === 0 && (
+        {!isLoadingPartners && !partnersError && filteredPartners.length === 0 && (
           <div className="status-card status-empty">
             <h2>No partners found</h2>
             <p>Try adjusting search or filter values to broaden results.</p>
           </div>
         )}
 
-        {!isLoadingPartners && !partnersError && partners.length > 0 && (
+        {!isLoadingPartners && !partnersError && filteredPartners.length > 0 && (
           <div className="registry-table-wrap">
             <table className="registry-table">
               <thead>
@@ -444,7 +547,7 @@ export const PartnersPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {partners.map((partner) => (
+                {filteredPartners.map((partner) => (
                   <tr key={partner.id}>
                     <td>
                       <Link to={`/partners/${partner.id}`} className="table-link">

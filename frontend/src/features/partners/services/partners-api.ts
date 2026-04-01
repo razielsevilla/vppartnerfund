@@ -115,6 +115,42 @@ export type WorkflowHealthMetrics = {
   }>;
 };
 
+export type WorkflowKpiMetrics = {
+  summary: {
+    totalActivePartners: number;
+    overdueNextActionCount: number;
+    generatedAt: string;
+    responseTimeMs: number;
+  };
+  stageCounts: Array<{
+    phaseId: string;
+    phaseCode: string;
+    phaseName: string;
+    count: number;
+  }>;
+  conversion: {
+    overallWinRatePct: number | null;
+    stageConversion: Array<{
+      fromPhaseCode: string;
+      toPhaseCode: string;
+      fromCount: number;
+      toCount: number;
+      conversionRatePct: number | null;
+    }>;
+  };
+  overdueActions: {
+    thresholdDays: number;
+    count: number;
+    partners: Array<{
+      partnerId: string;
+      organizationName: string;
+      currentPhaseId: string;
+      daysSinceAnchor: number;
+      overdueByDays: number;
+    }>;
+  };
+};
+
 export type PartnerListFilters = {
   search?: string;
   organizationType?: string;
@@ -373,6 +409,20 @@ export const getWorkflowHealthMetricsRequest = async (): Promise<WorkflowHealthM
   }
 
   return body as WorkflowHealthMetrics;
+};
+
+export const getWorkflowKpiMetricsRequest = async (): Promise<WorkflowKpiMetrics> => {
+  const response = await fetch(`${API_URL}/workflow/kpi/metrics`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to load workflow KPI metrics"));
+  }
+
+  return body as WorkflowKpiMetrics;
 };
 
 export type WorkflowPhase = {

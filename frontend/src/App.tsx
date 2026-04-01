@@ -2,6 +2,7 @@ import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-d
 import "./App.css";
 import { AuthProvider } from "./features/auth/hooks/use-auth-session";
 import { LoginPage } from "./features/auth/pages/LoginPage";
+import { ExecutiveDashboardPage } from "./features/dashboard/pages/ExecutiveDashboardPage";
 import { PartnerDetailPage } from "./features/partners/pages/PartnerDetailPage";
 import { PartnersPage } from "./features/partners/pages/PartnersPage";
 import { TaskQueuePage } from "./features/tasks/pages/TaskQueuePage";
@@ -14,12 +15,13 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<ExecutiveDashboardPage />} />
             <Route path="/partners" element={<PartnersPage />} />
             <Route path="/partners/:partnerId" element={<PartnerDetailPage />} />
             <Route path="/tasks" element={<TaskQueuePage />} />
           </Route>
-          <Route path="/" element={<Navigate to="/partners" replace />} />
-          <Route path="*" element={<Navigate to="/partners" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Router>
     </AuthProvider>

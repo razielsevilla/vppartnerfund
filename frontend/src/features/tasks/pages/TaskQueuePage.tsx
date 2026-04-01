@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
 import {
   getTaskReminderSummaryRequest,
@@ -20,6 +20,14 @@ type TaskFilters = {
   dueDateTo: string;
 };
 
+function parseTaskStatus(value: string | null): "" | TaskStatus {
+  if (value === "open" || value === "in_progress" || value === "blocked" || value === "done") {
+    return value;
+  }
+
+  return "";
+}
+
 const STATUS_LABELS: Record<TaskStatus, string> = {
   open: "Open",
   in_progress: "In Progress",
@@ -38,12 +46,20 @@ function isOverdue(task: TaskRecord): boolean {
 
 export const TaskQueuePage = () => {
   const { user, logout } = useAuthSession();
-  const [queueMode, setQueueMode] = useState<QueueMode>("personal");
-  const [filters, setFilters] = useState<TaskFilters>({
-    status: "",
-    ownerId: "",
-    dueDateFrom: "",
-    dueDateTo: "",
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [queueMode, setQueueMode] = useState<QueueMode>(() =>
+    searchParams.get("queue") === "team" ? "team" : "personal",
+  );
+  const [filters, setFilters] = useState<TaskFilters>(() => {
+    const dueBucket = searchParams.get("dueBucket");
+    const defaultDueDateTo = dueBucket === "overdue" ? new Date().toISOString().slice(0, 10) : "";
+
+    return {
+      status: parseTaskStatus(searchParams.get("status")),
+      ownerId: searchParams.get("ownerId") || "",
+      dueDateFrom: searchParams.get("dueDateFrom") || "",
+      dueDateTo: searchParams.get("dueDateTo") || defaultDueDateTo,
+    };
   });
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [reminderSummary, setReminderSummary] = useState<TaskReminderSummary | null>(null);
@@ -52,6 +68,37 @@ export const TaskQueuePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCompletingById, setIsCompletingById] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (queueMode !== "personal") {
+      params.set("queue", queueMode);
+    }
+    if (filters.status) {
+      params.set("status", filters.status);
+    }
+    if (filters.ownerId.trim()) {
+      params.set("ownerId", filters.ownerId.trim());
+    }
+    if (filters.dueDateFrom) {
+      params.set("dueDateFrom", filters.dueDateFrom);
+    }
+    if (filters.dueDateTo) {
+      params.set("dueDateTo", filters.dueDateTo);
+    }
+
+    if (params.toString() !== searchParams.toString()) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [
+    filters.dueDateFrom,
+    filters.dueDateTo,
+    filters.ownerId,
+    filters.status,
+    queueMode,
+    searchParams,
+    setSearchParams,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,6 +225,9 @@ export const TaskQueuePage = () => {
         </div>
         <div className="user-actions">
           <nav className="page-nav-links" aria-label="Primary navigation">
+            <Link to="/dashboard" className="link-button">
+              Dashboard
+            </Link>
             <Link to="/partners" className="link-button">
               Partners
             </Link>
