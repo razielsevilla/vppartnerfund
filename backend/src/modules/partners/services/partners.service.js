@@ -64,37 +64,38 @@ const ROLE_PACKAGE_IMPACTS = new Set([
   "high",
   "transformational",
 ]);
+const FUNCTIONAL_BENEFIT_PACKAGE_OPTIONS = [
+  "Direct Access to Tech Talent",
+  "Talent Vetting and Mentorship",
+  "Thought Leadership and Speaking Slots",
+  "Targeted Community Exposure and Media Amplification",
+  "User Onboarding and Technical Testing Grounds",
+  "CSR Fulfillment and Industry-Academe Bridging",
+  "Physical Venue Traffic",
+  "Policy Implementation and Economic Development Support",
+  "Up-Skilling Opportunities",
+  "Teacher Empowerment",
+];
+
 const FUNCTIONAL_BENEFIT_OPTIONS_BY_ORG_TYPE = {
-  "Tech Corporate": [
-    "Brand Visibility",
-    "Product Adoption",
-    "Developer Community Access",
-    "Talent Pipeline",
-  ],
-  "IT-BPO": ["Talent Pipeline", "Brand Visibility", "Developer Community Access"],
-  Startup: ["Product Adoption", "Market Expansion", "Research Collaboration"],
-  "Manufacturing / Industrial": ["Market Expansion", "Brand Visibility", "CSR Impact"],
-  "Local Government Unit": ["CSR Impact", "Brand Visibility", "Research Collaboration"],
-  "National Government Agency": ["CSR Impact", "Research Collaboration", "Brand Visibility"],
-  Academe: ["Research Collaboration", "Talent Pipeline", "Developer Community Access"],
-  "Academic Organization": ["Research Collaboration", "Talent Pipeline", "Event Activation"],
-  "Community / Non-Profit": ["CSR Impact", "Event Activation", "Brand Visibility"],
-  "Incubator / Accelerator": ["Talent Pipeline", "Product Adoption", "Market Expansion"],
-  "Media/Marketing": ["Brand Visibility", "Event Activation", "Market Expansion"],
-  "Food and Hospitality": ["Event Activation", "Brand Visibility", "CSR Impact"],
+  "Tech Corporate": FUNCTIONAL_BENEFIT_PACKAGE_OPTIONS,
+  "IT-BPO": FUNCTIONAL_BENEFIT_PACKAGE_OPTIONS,
+  Startup: FUNCTIONAL_BENEFIT_PACKAGE_OPTIONS,
+  "Manufacturing / Industrial": FUNCTIONAL_BENEFIT_PACKAGE_OPTIONS,
+  "Local Government Unit": FUNCTIONAL_BENEFIT_PACKAGE_OPTIONS,
+  "National Government Agency": FUNCTIONAL_BENEFIT_PACKAGE_OPTIONS,
+  Academe: FUNCTIONAL_BENEFIT_PACKAGE_OPTIONS,
+  "Academic Organization": FUNCTIONAL_BENEFIT_PACKAGE_OPTIONS,
+  "Community / Non-Profit": FUNCTIONAL_BENEFIT_PACKAGE_OPTIONS,
+  "Incubator / Accelerator": FUNCTIONAL_BENEFIT_PACKAGE_OPTIONS,
+  "Media/Marketing": FUNCTIONAL_BENEFIT_PACKAGE_OPTIONS,
+  "Food and Hospitality": FUNCTIONAL_BENEFIT_PACKAGE_OPTIONS,
 };
 
 function getFunctionalBenefitOptions(organizationType) {
   return (
     FUNCTIONAL_BENEFIT_OPTIONS_BY_ORG_TYPE[organizationType] || [
-      "Brand Visibility",
-      "Developer Community Access",
-      "Talent Pipeline",
-      "Product Adoption",
-      "Research Collaboration",
-      "Event Activation",
-      "CSR Impact",
-      "Market Expansion",
+      ...FUNCTIONAL_BENEFIT_PACKAGE_OPTIONS,
     ]
   );
 }

@@ -58,13 +58,6 @@ function validateQualificationPayload(payload) {
       : impactLevel && functionalRole
         ? [{ impactLevel: impactLevel.toLowerCase(), functionalRole }]
         : [];
-  const effectiveFunctionalBenefits =
-    functionalBenefits.length > 0
-      ? functionalBenefits
-      : confirmedValuePropositions.length > 0
-        ? confirmedValuePropositions
-        : potentialValuePropositions;
-
   if (durationCategory && !ALLOWED_DURATION.includes(durationCategory)) {
     errors.push({
       field: "durationCategory",
@@ -123,7 +116,7 @@ function validateQualificationPayload(payload) {
     value: {
       durationCategory,
       rolePackages: effectiveRolePackages,
-      functionalBenefits: effectiveFunctionalBenefits,
+      functionalBenefits,
       impactLevel: impactLevel ? impactLevel.toLowerCase() : null,
       functionalRole,
       potentialValuePropositions,

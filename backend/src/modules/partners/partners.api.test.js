@@ -534,10 +534,10 @@ test("qualification mapping supports role packages and functional benefit packag
       { impactLevel: "lead", functionalRole: "Knowledge Partner" },
     ],
     functionalBenefits: [
-      "Brand Visibility",
-      "Product Adoption",
-      "Talent Pipeline",
-      "Developer Community Access",
+      "Direct Access to Tech Talent",
+      "Talent Vetting and Mentorship",
+      "Thought Leadership and Speaking Slots",
+      "Up-Skilling Opportunities",
     ],
   });
 
