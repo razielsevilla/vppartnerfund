@@ -18,13 +18,72 @@ const {
 
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
 
+function safeParseUrl(value) {
+  try {
+    return new URL(value);
+  } catch (_error) {
+    return null;
+  }
+}
+
+function createAllowedOrigins() {
+  const configured = (process.env.CLIENT_ORIGINS || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return new Set([CLIENT_ORIGIN, ...configured]);
+}
+
+function isAllowedVercelPreviewOrigin(origin, primaryOriginUrl) {
+  if (!origin || !primaryOriginUrl) {
+    return false;
+  }
+
+  const primaryHost = primaryOriginUrl.hostname;
+  if (!primaryHost.endsWith(".vercel.app")) {
+    return false;
+  }
+
+  const originUrl = safeParseUrl(origin);
+  if (!originUrl || originUrl.protocol !== "https:") {
+    return false;
+  }
+
+  const primaryProjectSlug = primaryHost.replace(/\.vercel\.app$/, "");
+  const originHost = originUrl.hostname;
+
+  // Accept preview deployments that belong to the same Vercel project slug.
+  return (
+    originHost === `${primaryProjectSlug}.vercel.app` ||
+    (originHost.startsWith(`${primaryProjectSlug}-`) && originHost.endsWith(".vercel.app"))
+  );
+}
+
 function createApp() {
   const app = express();
   const isProduction = process.env.NODE_ENV === "production";
   const frontendDistPath = path.resolve(__dirname, "../../frontend/dist");
   const hasFrontendDist = fs.existsSync(frontendDistPath);
+  const allowedOrigins = createAllowedOrigins();
+  const primaryOriginUrl = safeParseUrl(CLIENT_ORIGIN);
 
-  app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
+  app.use(
+    cors({
+      origin(origin, callback) {
+        if (!origin) {
+          return callback(null, true);
+        }
+
+        if (allowedOrigins.has(origin) || isAllowedVercelPreviewOrigin(origin, primaryOriginUrl)) {
+          return callback(null, true);
+        }
+
+        return callback(new Error("CORS origin not allowed"));
+      },
+      credentials: true,
+    }),
+  );
   app.use(cookieParser());
   app.use(express.json());
   app.use(attachRequestContext);
