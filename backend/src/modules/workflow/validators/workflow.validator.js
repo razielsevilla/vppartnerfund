@@ -66,7 +66,80 @@ function validateTransitionPayload(payload) {
   };
 }
 
+function validateWorkflowHealthConfigPayload(payload) {
+  const data = payload || {};
+  const errors = [];
+
+  if (
+    data.overdueNextActionDays === undefined ||
+    !Number.isInteger(data.overdueNextActionDays) ||
+    data.overdueNextActionDays <= 0
+  ) {
+    errors.push({
+      field: "overdueNextActionDays",
+      message: "overdueNextActionDays must be a positive integer",
+    });
+  }
+
+  if (!Array.isArray(data.stageThresholds)) {
+    errors.push({
+      field: "stageThresholds",
+      message: "stageThresholds must be an array",
+    });
+  }
+
+  const seen = new Set();
+  (data.stageThresholds || []).forEach((entry, index) => {
+    if (!entry || typeof entry !== "object") {
+      errors.push({
+        field: `stageThresholds[${index}]`,
+        message: "Each stage threshold must be an object",
+      });
+      return;
+    }
+
+    if (!entry.phaseId || !String(entry.phaseId).trim()) {
+      errors.push({
+        field: `stageThresholds[${index}].phaseId`,
+        message: "phaseId is required",
+      });
+    }
+
+    if (!Number.isInteger(entry.stallThresholdDays) || entry.stallThresholdDays <= 0) {
+      errors.push({
+        field: `stageThresholds[${index}].stallThresholdDays`,
+        message: "stallThresholdDays must be a positive integer",
+      });
+    }
+
+    const key = String(entry.phaseId || "").trim();
+    if (key) {
+      if (seen.has(key)) {
+        errors.push({
+          field: `stageThresholds[${index}].phaseId`,
+          message: "Duplicate phaseId in stageThresholds",
+        });
+      } else {
+        seen.add(key);
+      }
+    }
+  });
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    value: {
+      overdueNextActionDays: Number(data.overdueNextActionDays),
+      stageThresholds: (data.stageThresholds || []).map((entry) => ({
+        phaseId: String(entry.phaseId),
+        stallThresholdDays: Number(entry.stallThresholdDays),
+      })),
+    },
+  };
+}
+
 module.exports = {
   validateRuleReplacementPayload,
   validateTransitionPayload,
+  validateWorkflowHealthConfigPayload,
 };

@@ -155,6 +155,62 @@ body {
   background: #f8fafc;
 }
 
+.health-metrics-panel {
+  background: #ffffff;
+  border: 1px solid #dbe3ef;
+  border-radius: 16px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.health-metrics-panel h2 {
+  margin: 0 0 0.7rem;
+  font-size: 1rem;
+}
+
+.health-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.65rem;
+}
+
+.health-card {
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 0.7rem;
+}
+
+.health-card h3 {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.health-card strong {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 1.4rem;
+}
+
+.health-card p {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.health-card-warning {
+  border-color: #fcd34d;
+  background: #fffbeb;
+}
+
+.health-card-danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
 .registry-panel {
   background: #ffffff;
   border: 1px solid #dbe3ef;

@@ -93,6 +93,17 @@ function defaultTransitionRules() {
   ];
 }
 
+function defaultStageThresholds() {
+  return [
+    { phase_id: 'phase_lead', stall_threshold_days: 7 },
+    { phase_id: 'phase_prospecting', stall_threshold_days: 10 },
+    { phase_id: 'phase_qualification', stall_threshold_days: 14 },
+    { phase_id: 'phase_proposal', stall_threshold_days: 14 },
+    { phase_id: 'phase_negotiation', stall_threshold_days: 21 },
+    { phase_id: 'phase_won', stall_threshold_days: 30 },
+  ];
+}
+
 async function seed() {
   try {
     // Check if roles already exist
@@ -175,6 +186,29 @@ async function seed() {
       }));
       await db('workflow_transition_rules').insert(rules);
       console.log('✓ Workflow transition rules seeded');
+    }
+
+    const configCount = await db('workflow_health_config').count('* as count').first();
+    if (configCount.count > 0) {
+      console.log('✓ Workflow health config already seeded, skipping');
+    } else {
+      await db('workflow_health_config').insert({
+        key: 'overdue_next_action_days',
+        value_int: 14,
+        updated_at: new Date().toISOString(),
+      });
+      console.log('✓ Workflow health config seeded');
+    }
+
+    const thresholdsCount = await db('workflow_stage_stall_thresholds').count('* as count').first();
+    if (thresholdsCount.count > 0) {
+      console.log('✓ Stage stall thresholds already seeded, skipping');
+    } else {
+      const nowIso = new Date().toISOString();
+      await db('workflow_stage_stall_thresholds').insert(
+        defaultStageThresholds().map((row) => ({ ...row, updated_at: nowIso })),
+      );
+      console.log('✓ Stage stall thresholds seeded');
     }
 
     console.log('✓ Seeding completed');

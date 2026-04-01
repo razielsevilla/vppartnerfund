@@ -318,3 +318,74 @@ test("qualification mapping persists and rehydrates on reload", async () => {
   assert.ok(reload.body.qualification.potentialValuePropositions.includes("Market Expansion"));
   assert.ok(reload.body.qualification.confirmedValuePropositions.includes("Research Collaboration"));
 });
+
+test("workflow health metrics flag overdue next actions", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Overdue Partner",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+    lastContactDate: "2025-12-01",
+    nextActionStep: "Follow up with procurement",
+  });
+  assert.equal(createResponse.status, 201);
+
+  const metricsResponse = await agent.get("/api/workflow/health/metrics");
+  assert.equal(metricsResponse.status, 200);
+  assert.ok(metricsResponse.body.summary.overdueNextActionCount >= 1);
+  assert.ok(
+    metricsResponse.body.overduePartners.some(
+      (partner) => partner.organizationName === "Overdue Partner",
+    ),
+  );
+});
+
+test("stalled stage thresholds are configurable and reflected in metrics", async () => {
+  const configResponse = await agent.get("/api/workflow/health/config");
+  assert.equal(configResponse.status, 200);
+  assert.ok(Array.isArray(configResponse.body.stageThresholds));
+
+  const saveConfigResponse = await agent.put("/api/workflow/health/config").send({
+    overdueNextActionDays: 10,
+    stageThresholds: [
+      { phaseId: "phase_lead", stallThresholdDays: 2 },
+      { phaseId: "phase_prospecting", stallThresholdDays: 3 },
+      { phaseId: "phase_qualification", stallThresholdDays: 4 },
+      { phaseId: "phase_proposal", stallThresholdDays: 5 },
+      { phaseId: "phase_negotiation", stallThresholdDays: 6 },
+      { phaseId: "phase_won", stallThresholdDays: 7 },
+    ],
+  });
+  assert.equal(saveConfigResponse.status, 200);
+  assert.equal(saveConfigResponse.body.overdueNextActionDays, 10);
+
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Stalled Prospect Partner",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+    lastContactDate: "2026-01-01",
+    nextActionStep: "Send deck",
+  });
+  assert.equal(createResponse.status, 201);
+  const partnerId = createResponse.body.partner.id;
+
+  const transitionResponse = await agent
+    .post(`/api/partners/${partnerId}/transition`)
+    .send({ toPhaseId: "phase_prospecting" });
+  assert.equal(transitionResponse.status, 200);
+
+  const db = getDatabase();
+  await db("workflow_transitions")
+    .where({ partner_id: partnerId, to_phase_id: "phase_prospecting" })
+    .update({ changed_at: "2026-01-01T00:00:00.000Z" });
+
+  const metricsResponse = await agent.get("/api/workflow/health/metrics");
+  assert.equal(metricsResponse.status, 200);
+  assert.ok(metricsResponse.body.summary.stalledPartnerCount >= 1);
+  assert.ok(
+    metricsResponse.body.stalledPartners.some(
+      (partner) => partner.organizationName === "Stalled Prospect Partner",
+    ),
+  );
+});

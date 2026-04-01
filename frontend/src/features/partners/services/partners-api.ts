@@ -49,6 +49,41 @@ export type QualificationPayload = {
   confirmedValuePropositions: string[];
 };
 
+export type WorkflowHealthMetrics = {
+  summary: {
+    totalActivePartners: number;
+    overdueNextActionCount: number;
+    stalledPartnerCount: number;
+    overdueNextActionDaysThreshold: number;
+  };
+  overduePartners: Array<{
+    partnerId: string;
+    organizationName: string;
+    currentPhaseId: string;
+    currentPhaseCode: string;
+    currentPhaseName: string;
+    daysSinceAnchor: number;
+    overdueByDays: number;
+  }>;
+  stalledPartners: Array<{
+    partnerId: string;
+    organizationName: string;
+    currentPhaseId: string;
+    currentPhaseCode: string;
+    currentPhaseName: string;
+    daysInCurrentPhase: number;
+    thresholdDays: number;
+    exceededByDays: number;
+  }>;
+  stageMetrics: Array<{
+    phaseId: string;
+    phaseCode: string;
+    phaseName: string;
+    stalledCount: number;
+    thresholdDays: number;
+  }>;
+};
+
 export type PartnerListFilters = {
   search?: string;
   organizationType?: string;
@@ -224,4 +259,18 @@ export const upsertPartnerQualificationRequest = async (
   }
 
   return (body as { qualification: QualificationProfile }).qualification;
+};
+
+export const getWorkflowHealthMetricsRequest = async (): Promise<WorkflowHealthMetrics> => {
+  const response = await fetch(`${API_URL}/workflow/health/metrics`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to load workflow health metrics"));
+  }
+
+  return body as WorkflowHealthMetrics;
 };

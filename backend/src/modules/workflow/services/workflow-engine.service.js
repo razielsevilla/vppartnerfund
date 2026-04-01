@@ -24,6 +24,11 @@ function toRule(row) {
   };
 }
 
+function daysBetween(fromIso, toIso) {
+  const ms = new Date(toIso).getTime() - new Date(fromIso).getTime();
+  return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
+}
+
 async function getWorkflowConfig() {
   const db = getDatabase();
   const phases = await db("workflow_phases").orderBy("sort_order", "asc");
@@ -201,8 +206,180 @@ async function transitionPartnerPhase(partnerId, toPhaseId, actorId, reason) {
   });
 }
 
+async function getWorkflowHealthConfig() {
+  const db = getDatabase();
+
+  const overdueConfig = await db("workflow_health_config")
+    .where({ key: "overdue_next_action_days" })
+    .first();
+  const thresholds = await db("workflow_stage_stall_thresholds as t")
+    .join("workflow_phases as p", "t.phase_id", "p.id")
+    .select("t.phase_id", "t.stall_threshold_days", "p.code", "p.name")
+    .orderBy("p.sort_order", "asc");
+
+  return {
+    overdueNextActionDays: overdueConfig?.value_int ?? 14,
+    stageThresholds: thresholds.map((entry) => ({
+      phaseId: entry.phase_id,
+      phaseCode: entry.code,
+      phaseName: entry.name,
+      stallThresholdDays: entry.stall_threshold_days,
+    })),
+  };
+}
+
+async function updateWorkflowHealthConfig(payload) {
+  const db = getDatabase();
+  const nowIso = new Date().toISOString();
+
+  await db.transaction(async (trx) => {
+    await trx("workflow_health_config")
+      .insert({ key: "overdue_next_action_days", value_int: payload.overdueNextActionDays, updated_at: nowIso })
+      .onConflict("key")
+      .merge({ value_int: payload.overdueNextActionDays, updated_at: nowIso });
+
+    const existingPhaseIds = new Set(
+      (await trx("workflow_phases").select("id").whereNot({ code: "archived" })).map((row) => row.id),
+    );
+
+    payload.stageThresholds.forEach((threshold) => {
+      if (!existingPhaseIds.has(threshold.phaseId)) {
+        throw new PartnerServiceError(
+          "Unknown phase in stage threshold config",
+          "WORKFLOW_INVALID_STAGE_THRESHOLD",
+          400,
+          [
+            {
+              field: "stageThresholds",
+              message: `Unknown phaseId: ${threshold.phaseId}`,
+            },
+          ],
+        );
+      }
+    });
+
+    await trx("workflow_stage_stall_thresholds").del();
+    if (payload.stageThresholds.length > 0) {
+      await trx("workflow_stage_stall_thresholds").insert(
+        payload.stageThresholds.map((threshold) => ({
+          phase_id: threshold.phaseId,
+          stall_threshold_days: threshold.stallThresholdDays,
+          updated_at: nowIso,
+        })),
+      );
+    }
+  });
+
+  return getWorkflowHealthConfig();
+}
+
+async function getWorkflowHealthMetrics() {
+  const db = getDatabase();
+  const nowIso = new Date().toISOString();
+
+  const config = await getWorkflowHealthConfig();
+
+  const activePartners = await db("partners as p")
+    .join("workflow_phases as wp", "p.current_phase_id", "wp.id")
+    .whereNull("p.archived_at")
+    .select(
+      "p.id",
+      "p.organization_name",
+      "p.current_phase_id",
+      "wp.code as current_phase_code",
+      "wp.name as current_phase_name",
+      "p.created_at",
+      "p.last_contact_date",
+      "p.next_action_step",
+    );
+
+  const transitions = await db("workflow_transitions")
+    .whereIn(
+      "partner_id",
+      activePartners.map((partner) => partner.id),
+    )
+    .select("partner_id", "to_phase_id", "changed_at")
+    .orderBy("changed_at", "desc");
+
+  const thresholdsByPhaseId = new Map(
+    config.stageThresholds.map((entry) => [entry.phaseId, entry.stallThresholdDays]),
+  );
+
+  const overduePartners = [];
+  const stalledPartners = [];
+  const stageMetricsMap = new Map();
+
+  activePartners.forEach((partner) => {
+    const anchorDate = partner.last_contact_date || partner.created_at;
+    const overdueDays = daysBetween(anchorDate, nowIso);
+    const isOverdue = Boolean(partner.next_action_step) && overdueDays > config.overdueNextActionDays;
+
+    if (isOverdue) {
+      overduePartners.push({
+        partnerId: partner.id,
+        organizationName: partner.organization_name,
+        currentPhaseId: partner.current_phase_id,
+        currentPhaseCode: partner.current_phase_code,
+        currentPhaseName: partner.current_phase_name,
+        daysSinceAnchor: overdueDays,
+        overdueByDays: overdueDays - config.overdueNextActionDays,
+      });
+    }
+
+    const partnerTransitions = transitions.filter(
+      (transition) =>
+        transition.partner_id === partner.id && transition.to_phase_id === partner.current_phase_id,
+    );
+    const phaseEnteredAt = partnerTransitions[0]?.changed_at || partner.created_at;
+
+    const stageDays = daysBetween(phaseEnteredAt, nowIso);
+    const threshold = thresholdsByPhaseId.get(partner.current_phase_id);
+    const isStalled = typeof threshold === "number" && stageDays > threshold;
+
+    if (isStalled) {
+      stalledPartners.push({
+        partnerId: partner.id,
+        organizationName: partner.organization_name,
+        currentPhaseId: partner.current_phase_id,
+        currentPhaseCode: partner.current_phase_code,
+        currentPhaseName: partner.current_phase_name,
+        daysInCurrentPhase: stageDays,
+        thresholdDays: threshold,
+        exceededByDays: stageDays - threshold,
+      });
+
+      const stageKey = partner.current_phase_id;
+      if (!stageMetricsMap.has(stageKey)) {
+        stageMetricsMap.set(stageKey, {
+          phaseId: partner.current_phase_id,
+          phaseCode: partner.current_phase_code,
+          phaseName: partner.current_phase_name,
+          stalledCount: 0,
+          thresholdDays: threshold,
+        });
+      }
+      stageMetricsMap.get(stageKey).stalledCount += 1;
+    }
+  });
+
+  return {
+    summary: {
+      totalActivePartners: activePartners.length,
+      overdueNextActionCount: overduePartners.length,
+      stalledPartnerCount: stalledPartners.length,
+      overdueNextActionDaysThreshold: config.overdueNextActionDays,
+    },
+    overduePartners,
+    stalledPartners,
+    stageMetrics: [...stageMetricsMap.values()].sort((a, b) => b.stalledCount - a.stalledCount),
+  };
+}
+
 module.exports = {
   getWorkflowConfig,
   replaceTransitionRules,
   transitionPartnerPhase,
+  getWorkflowHealthConfig,
+  updateWorkflowHealthConfig,
+  getWorkflowHealthMetrics,
 };

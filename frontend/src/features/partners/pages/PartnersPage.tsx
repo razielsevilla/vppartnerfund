@@ -4,9 +4,11 @@ import { useAuthSession } from "../../auth/hooks/use-auth-session";
 import {
   createPartnerRequest,
   DuplicatePartnerError,
+  getWorkflowHealthMetricsRequest,
   listPartnersRequest,
   type DuplicateCandidate,
   type PartnerRecord,
+  type WorkflowHealthMetrics,
 } from "../services/partners-api";
 
 type FilterState = {
@@ -22,6 +24,8 @@ export const PartnersPage = () => {
   const [partners, setPartners] = useState<PartnerRecord[]>([]);
   const [isLoadingPartners, setIsLoadingPartners] = useState(true);
   const [partnersError, setPartnersError] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<WorkflowHealthMetrics | null>(null);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [pendingDuplicateCandidates, setPendingDuplicateCandidates] = useState<DuplicateCandidate[]>([]);
@@ -78,6 +82,30 @@ export const PartnersPage = () => {
       cancelled = true;
     };
   }, [filters]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMetrics = async () => {
+      try {
+        const data = await getWorkflowHealthMetricsRequest();
+        if (!cancelled) {
+          setMetrics(data);
+          setMetricsError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setMetricsError(error instanceof Error ? error.message : "Failed to load metrics");
+        }
+      }
+    };
+
+    loadMetrics();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [partners.length]);
 
   const subtitle = useMemo(() => {
     if (isLoadingPartners) {
@@ -222,6 +250,29 @@ export const PartnersPage = () => {
             <option value="lead">Lead</option>
           </select>
         </label>
+      </section>
+
+      <section className="health-metrics-panel" aria-label="Pipeline health metrics">
+        <h2>Pipeline Health</h2>
+        {metricsError && <p className="error-text">{metricsError}</p>}
+        {!metricsError && metrics && (
+          <div className="health-cards">
+            <article className="health-card">
+              <h3>Active Partners</h3>
+              <strong>{metrics.summary.totalActivePartners}</strong>
+            </article>
+            <article className="health-card health-card-warning">
+              <h3>Overdue Next Actions</h3>
+              <strong>{metrics.summary.overdueNextActionCount}</strong>
+              <p>{`Threshold: ${metrics.summary.overdueNextActionDaysThreshold} days`}</p>
+            </article>
+            <article className="health-card health-card-danger">
+              <h3>Stalled Partners</h3>
+              <strong>{metrics.summary.stalledPartnerCount}</strong>
+              <p>From stage threshold rules</p>
+            </article>
+          </div>
+        )}
       </section>
 
       <section className="registry-create-panel" aria-label="Create partner">

@@ -3,10 +3,14 @@ const {
   getWorkflowConfig,
   replaceTransitionRules,
   transitionPartnerPhase,
+  getWorkflowHealthConfig,
+  updateWorkflowHealthConfig,
+  getWorkflowHealthMetrics,
 } = require("../services/workflow-engine.service");
 const {
   validateRuleReplacementPayload,
   validateTransitionPayload,
+  validateWorkflowHealthConfigPayload,
 } = require("../validators/workflow.validator");
 
 function validationError(res, details) {
@@ -81,8 +85,43 @@ async function transitionPartnerPhaseHandler(req, res) {
   }
 }
 
+async function getWorkflowHealthConfigHandler(_req, res) {
+  try {
+    const config = await getWorkflowHealthConfig();
+    return res.status(200).json(config);
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
+async function updateWorkflowHealthConfigHandler(req, res) {
+  const validation = validateWorkflowHealthConfigPayload(req.body);
+  if (!validation.isValid) {
+    return validationError(res, validation.errors);
+  }
+
+  try {
+    const config = await updateWorkflowHealthConfig(validation.value);
+    return res.status(200).json(config);
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
+async function getWorkflowHealthMetricsHandler(_req, res) {
+  try {
+    const metrics = await getWorkflowHealthMetrics();
+    return res.status(200).json(metrics);
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
 module.exports = {
   getWorkflowConfigHandler,
   replaceTransitionRulesHandler,
   transitionPartnerPhaseHandler,
+  getWorkflowHealthConfigHandler,
+  updateWorkflowHealthConfigHandler,
+  getWorkflowHealthMetricsHandler,
 };
