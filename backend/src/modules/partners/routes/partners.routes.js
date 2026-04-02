@@ -10,6 +10,8 @@ const {
   getPartnerQualificationHandler,
   listPartnerContactsHandler,
   createPartnerContactHandler,
+  updatePartnerContactHandler,
+  deletePartnerContactHandler,
   getPartnerTimelineHandler,
   upsertPartnerQualificationHandler,
   listDiscoveryNoteTemplatesHandler,
@@ -37,6 +39,8 @@ router.get("/:partnerId/timeline", getPartnerTimelineHandler);
 router.get("/:partnerId/discovery-notes/templates", listDiscoveryNoteTemplatesHandler);
 router.get("/:partnerId/discovery-notes", listDiscoveryNotesHandler);
 router.post("/:partnerId/contacts", requireRole(ALL_ROLE_CODES), createPartnerContactHandler);
+router.put("/:partnerId/contacts/:contactId", requireRole(ALL_ROLE_CODES), updatePartnerContactHandler);
+router.delete("/:partnerId/contacts/:contactId", requireRole(ALL_ROLE_CODES), deletePartnerContactHandler);
 router.post("/:partnerId/discovery-notes", requireRole(ALL_ROLE_CODES), createDiscoveryNoteHandler);
 router.put("/:partnerId/discovery-notes/:noteId", requireRole(ALL_ROLE_CODES), updateDiscoveryNoteHandler);
 router.put("/:partnerId/qualification", requireRole(ALL_ROLE_CODES), upsertPartnerQualificationHandler);

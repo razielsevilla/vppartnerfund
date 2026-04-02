@@ -13,6 +13,7 @@ import {
 } from "../../vault/services/vault-api";
 import {
   createPartnerContactRequest,
+  deletePartnerContactRequest,
   createDiscoveryNoteRequest,
   getPartnerRequest,
   getPartnerQualificationRequest,
@@ -23,6 +24,7 @@ import {
   listDiscoveryNoteTemplatesRequest,
   transitionPartnerPhaseRequest,
   updateDiscoveryNoteRequest,
+  updatePartnerContactRequest,
   upsertPartnerQualificationRequest,
   archivePartnerRequest,
   deletePartnerRequest,
@@ -132,6 +134,7 @@ export const PartnerDetailPage = () => {
   const [selectedPackageRole, setSelectedPackageRole] = useState(ROLE_PACKAGE_FUNCTION_OPTIONS[0]);
   const [contacts, setContacts] = useState<PartnerContactRecord[]>([]);
   const [contactForm, setContactForm] = useState(defaultContactForm);
+  const [editingContactId, setEditingContactId] = useState<string | null>(null);
   const [contactMessage, setContactMessage] = useState<string | null>(null);
   const [isSavingContact, setIsSavingContact] = useState(false);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
@@ -280,8 +283,6 @@ export const PartnerDetailPage = () => {
     });
   };
 
-  const selectedTemplate = discoveryTemplates.find((template) => template.id === selectedTemplateId) || null;
-
   const applyTemplateQuestions = (templateId: string) => {
     const template = discoveryTemplates.find((item) => item.id === templateId);
     if (!template) {
@@ -309,23 +310,70 @@ export const PartnerDetailPage = () => {
     setIsSavingContact(true);
     setContactMessage(null);
     try {
-      await createPartnerContactRequest(partnerId, {
+      const payload = {
         fullName: contactForm.fullName,
         jobTitle: contactForm.jobTitle || undefined,
         email: contactForm.email || undefined,
         phone: contactForm.phone || undefined,
         linkUrl: contactForm.linkUrl || undefined,
         isPrimary: contactForm.isPrimary,
-      });
+      };
+
+      if (editingContactId) {
+        await updatePartnerContactRequest(partnerId, editingContactId, payload);
+      } else {
+        await createPartnerContactRequest(partnerId, payload);
+      }
 
       const refreshed = await listPartnerContactsRequest(partnerId);
       setContacts(refreshed);
       setContactForm(defaultContactForm);
-      setContactMessage("Contact person added.");
+      setEditingContactId(null);
+      setContactMessage(editingContactId ? "Contact person updated." : "Contact person added.");
     } catch (saveError) {
       setContactMessage(saveError instanceof Error ? saveError.message : "Failed to save contact person");
     } finally {
       setIsSavingContact(false);
+    }
+  };
+
+  const beginEditContact = (contact: PartnerContactRecord) => {
+    setEditingContactId(contact.id);
+    setContactForm({
+      fullName: contact.fullName,
+      jobTitle: contact.jobTitle || "",
+      email: contact.email || "",
+      phone: contact.phone || "",
+      linkUrl: contact.linkUrl || "",
+      isPrimary: contact.isPrimary,
+    });
+    setContactMessage(null);
+  };
+
+  const cancelEditContact = () => {
+    setEditingContactId(null);
+    setContactForm(defaultContactForm);
+  };
+
+  const removeContact = async (contact: PartnerContactRecord) => {
+    if (!partnerId) {
+      return;
+    }
+
+    if (!window.confirm(`Delete contact person "${contact.fullName}"?`)) {
+      return;
+    }
+
+    try {
+      await deletePartnerContactRequest(partnerId, contact.id);
+      const refreshed = await listPartnerContactsRequest(partnerId);
+      setContacts(refreshed);
+      if (editingContactId === contact.id) {
+        cancelEditContact();
+      }
+      setContactMessage("Contact person deleted.");
+    } catch (deleteError) {
+      setContactMessage(deleteError instanceof Error ? deleteError.message : "Failed to delete contact person");
     }
   };
 
@@ -353,10 +401,10 @@ export const PartnerDetailPage = () => {
         functionalBenefits: selectedBenefits,
       });
       setQualification(saved);
-      setQualificationMessage("Qualification mapping saved.");
+      setQualificationMessage("Give-and-Take Framework saved.");
     } catch (saveError) {
       setQualificationMessage(
-        saveError instanceof Error ? saveError.message : "Failed to save qualification mapping",
+        saveError instanceof Error ? saveError.message : "Failed to save Give-and-Take Framework",
       );
     } finally {
       setIsSavingQualification(false);
@@ -386,132 +434,25 @@ export const PartnerDetailPage = () => {
     setSelectedTemplateId("");
     setGuidedAnswers([]);
     setFreeformText("");
-  };
-
-  const saveDiscoveryNote = async () => {
-    if (!partnerId) {
-      return;
-    }
-
-    const nonEmptyGuidedAnswers = guidedAnswers.filter(
-      (item) => item.question.trim() && item.answer.trim(),
-    );
-
-    if (nonEmptyGuidedAnswers.length === 0 && !freeformText.trim()) {
-      setNotesMessage("Provide at least one guided answer or freeform note.");
-      return;
-    }
-
-    setIsSavingNote(true);
     setNotesMessage(null);
-    try {
-      const payload = {
-        templateId: selectedTemplateId || undefined,
-        templateName: selectedTemplate?.name,
-        guidedAnswers: nonEmptyGuidedAnswers,
-        freeformText: freeformText.trim() || undefined,
-      };
-
-      if (editingNoteId) {
-        await updateDiscoveryNoteRequest(partnerId, editingNoteId, payload);
-      } else {
-        await createDiscoveryNoteRequest(partnerId, payload);
-      }
-
-      await refreshNotesAndTimeline(partnerId);
-      setNotesMessage(editingNoteId ? "Discovery note updated." : "Discovery note saved.");
-      resetNoteComposer();
-    } catch (saveError) {
-      setNotesMessage(saveError instanceof Error ? saveError.message : "Failed to save discovery note");
-    } finally {
-      setIsSavingNote(false);
-    }
-  };
-
-  const refreshArtifacts = async (targetPartnerId: string) => {
-    const records = await listArtifactsRequest(targetPartnerId);
-    setArtifacts(records);
-  };
-
-  const uploadArtifact = async () => {
-    if (!partnerId || !artifactFile) {
-      setArtifactMessage("Select a file to upload.");
-      return;
-    }
-
-    if (!artifactDocumentType.trim()) {
-      setArtifactMessage("Document type is required.");
-      return;
-    }
-
-    if (!CLIENT_ALLOWED_ARTIFACT_TYPES.includes(artifactFile.type)) {
-      setArtifactMessage("Unsupported file type. Upload PDF, PNG, JPG, TXT, or DOCX.");
-      return;
-    }
-
-    if (artifactFile.size > CLIENT_MAX_ARTIFACT_BYTES) {
-      setArtifactMessage("File is too large. Maximum size is 10 MB.");
-      return;
-    }
-
-    setIsUploadingArtifact(true);
-    setArtifactMessage(null);
-    try {
-      await uploadArtifactRequest(partnerId, {
-        file: artifactFile,
-        documentType: artifactDocumentType,
-        status: artifactStatus,
-      });
-      await refreshArtifacts(partnerId);
-      await refreshNotesAndTimeline(partnerId);
-      setArtifactFile(null);
-      setArtifactMessage(`Artifact uploaded for ${artifactDocumentType.trim().toLowerCase()}.`);
-    } catch (uploadError) {
-      setArtifactMessage(uploadError instanceof Error ? uploadError.message : "Failed to upload artifact");
-    } finally {
-      setIsUploadingArtifact(false);
-    }
-  };
-
-  const startReplacementFlow = (documentType: string) => {
-    setArtifactDocumentType(documentType);
-    setArtifactStatus("active");
-    setArtifactMessage(`Replacement mode: upload a new ${documentType} version.`);
-  };
-
-  const changeArtifactStatus = async (artifactId: string, status: ArtifactStatus) => {
-    if (!partnerId) {
-      return;
-    }
-
-    setArtifactMessage(null);
-    try {
-      await updateArtifactStatusRequest(artifactId, status);
-      await refreshArtifacts(partnerId);
-      await refreshNotesAndTimeline(partnerId);
-      setArtifactMessage("Artifact status updated.");
-    } catch (statusError) {
-      setArtifactMessage(statusError instanceof Error ? statusError.message : "Failed to update artifact status");
-    }
   };
 
   const transitionPhase = async () => {
-    if (!partnerId || !targetPhaseId) {
-      setTransitionMessage("Select a target phase first.");
+    const currentPartnerId = partnerId;
+    if (!currentPartnerId) {
       return;
     }
 
-    setIsTransitioningPhase(true);
     setTransitionMessage(null);
     setTransitionBlockingDetails([]);
     try {
-      const updatedPartner = await transitionPartnerPhaseRequest(partnerId, {
+      const updatedPartner = await transitionPartnerPhaseRequest(currentPartnerId, {
         toPhaseId: targetPhaseId,
         reason: transitionReason.trim() || undefined,
       });
 
       setPartner(updatedPartner);
-      await refreshNotesAndTimeline(partnerId);
+      await refreshNotesAndTimeline(currentPartnerId);
       setTransitionMessage(`Transitioned to ${targetPhaseId}.`);
       setTransitionReason("");
     } catch (transitionError) {
@@ -548,6 +489,102 @@ export const PartnerDetailPage = () => {
       }
     } finally {
       setIsTransitioningPhase(false);
+    }
+  };
+
+  const uploadArtifact = async () => {
+    const currentPartnerId = partnerId;
+    if (!currentPartnerId) {
+      return;
+    }
+
+    if (!artifactFile) {
+      setArtifactMessage("Choose a file before uploading.");
+      return;
+    }
+
+    if (!CLIENT_ALLOWED_ARTIFACT_TYPES.includes(artifactFile.type)) {
+      setArtifactMessage("Unsupported file type.");
+      return;
+    }
+
+    if (artifactFile.size > CLIENT_MAX_ARTIFACT_BYTES) {
+      setArtifactMessage("File is too large.");
+      return;
+    }
+
+    setIsUploadingArtifact(true);
+    setArtifactMessage(null);
+    try {
+      await uploadArtifactRequest(currentPartnerId, {
+        file: artifactFile,
+        documentType: artifactDocumentType,
+        status: artifactStatus,
+      });
+      const refreshed = await listArtifactsRequest(currentPartnerId);
+      setArtifacts(refreshed);
+      setArtifactFile(null);
+      setArtifactMessage("Artifact uploaded.");
+    } catch (uploadError) {
+      setArtifactMessage(uploadError instanceof Error ? uploadError.message : "Failed to upload artifact");
+    } finally {
+      setIsUploadingArtifact(false);
+    }
+  };
+
+  const changeArtifactStatus = async (artifactId: string, nextStatus: ArtifactStatus) => {
+    const currentPartnerId = partnerId;
+    if (!currentPartnerId) {
+      return;
+    }
+
+    try {
+      await updateArtifactStatusRequest(artifactId, nextStatus);
+      const refreshed = await listArtifactsRequest(currentPartnerId);
+      setArtifacts(refreshed);
+      setArtifactMessage("Artifact status updated.");
+    } catch (statusError) {
+      setArtifactMessage(statusError instanceof Error ? statusError.message : "Failed to update artifact status");
+    }
+  };
+
+  const startReplacementFlow = (documentType: string) => {
+    setArtifactDocumentType(documentType);
+    setArtifactMessage(`Replacement upload prepared for ${documentType}.`);
+  };
+
+  const saveDiscoveryNote = async () => {
+    const currentPartnerId = partnerId;
+    if (!currentPartnerId) {
+      return;
+    }
+
+    setIsSavingNote(true);
+    setNotesMessage(null);
+    try {
+      const payload = {
+        templateId: selectedTemplateId || undefined,
+        guidedAnswers: guidedAnswers.filter((answer) => answer.answer.trim()),
+        freeformText: freeformText.trim() || undefined,
+      };
+
+      if (editingNoteId) {
+        await updateDiscoveryNoteRequest(currentPartnerId, editingNoteId, payload);
+      } else {
+        await createDiscoveryNoteRequest(currentPartnerId, payload);
+      }
+
+      const refreshedNotes = await listDiscoveryNotesRequest(currentPartnerId);
+      setDiscoveryNotes(refreshedNotes);
+      setSelectedTemplateId("");
+      setGuidedAnswers([]);
+      setFreeformText("");
+      setEditingNoteId(null);
+      setNotesMessage(editingNoteId ? "Discovery note updated." : "Discovery note saved.");
+    } catch (noteError) {
+      setNotesMessage(noteError instanceof Error ? noteError.message : "Failed to save discovery note");
+    } finally {
+      setIsSavingNote(false);
     }
   };
 
@@ -968,8 +1005,8 @@ export const PartnerDetailPage = () => {
             )}
 
             <div className="qualification-actions">
-              <button type="button" onClick={saveQualification} disabled={isSavingQualification}>
-                {isSavingQualification ? "Saving..." : "Save Qualification Mapping"}
+                <button type="button" onClick={saveQualification} disabled={isSavingQualification}>
+                {isSavingQualification ? "Saving..." : "Save Give-and-Take Framework"}
               </button>
               {qualificationMessage && <p className="muted">{qualificationMessage}</p>}
             </div>
@@ -978,6 +1015,10 @@ export const PartnerDetailPage = () => {
 
           {activeView === "contacts" && (
             <section className="timeline-panel">
+            <header className="section-header">
+              <h2>Contact Persons</h2>
+              <p className="muted">Manage the people associated with this partner organization.</p>
+            </header>
 
             <div className="artifact-upload-grid">
               <label>
@@ -1045,8 +1086,13 @@ export const PartnerDetailPage = () => {
 
             <div className="qualification-actions">
               <button type="button" onClick={saveContact} disabled={isSavingContact}>
-                {isSavingContact ? "Saving..." : "Add Contact Person"}
+                {isSavingContact ? "Saving..." : editingContactId ? "Update Contact Person" : "Add Contact Person"}
               </button>
+              {editingContactId && (
+                <button type="button" className="secondary-btn" onClick={cancelEditContact}>
+                  Cancel Edit
+                </button>
+              )}
               {contactMessage && <p className="muted">{contactMessage}</p>}
             </div>
 
@@ -1073,6 +1119,14 @@ export const PartnerDetailPage = () => {
                         {contact.linkUrl}
                       </a>
                     )}
+                    <div className="button-group" style={{ marginTop: "0.75rem" }}>
+                      <button type="button" className="secondary-btn" onClick={() => beginEditContact(contact)}>
+                        Edit
+                      </button>
+                      <button type="button" className="secondary-btn delete-btn" onClick={() => removeContact(contact)}>
+                        Remove
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ol>

@@ -103,6 +103,8 @@ export type CreatePartnerContactPayload = {
   isPrimary?: boolean;
 };
 
+export type UpdatePartnerContactPayload = Partial<CreatePartnerContactPayload>;
+
 export type DiscoveryNotePayload = {
   templateId?: string;
   templateName?: string;
@@ -578,6 +580,38 @@ export const createPartnerContactRequest = async (
   }
 
   return (body as { contact: PartnerContactRecord }).contact;
+};
+
+export const updatePartnerContactRequest = async (
+  partnerId: string,
+  contactId: string,
+  payload: UpdatePartnerContactPayload,
+): Promise<PartnerContactRecord> => {
+  const response = await fetch(`${API_URL}/partners/${partnerId}/contacts/${contactId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to update partner contact"));
+  }
+
+  return (body as { contact: PartnerContactRecord }).contact;
+};
+
+export const deletePartnerContactRequest = async (partnerId: string, contactId: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/partners/${partnerId}/contacts/${contactId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to delete partner contact"));
+  }
 };
 
 export const getWorkflowHealthMetricsRequest = async (): Promise<WorkflowHealthMetrics> => {

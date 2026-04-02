@@ -9,16 +9,19 @@ import {
   type ArtifactStatus,
 } from "../../vault/services/vault-api";
 import {
+  createPartnerContactRequest,
   createDiscoveryNoteRequest,
   getPartnerRequest,
   getPartnerQualificationRequest,
   getPartnerTimelineRequest,
   getWorkflowConfigRequest,
+  deletePartnerContactRequest,
   listPartnerContactsRequest,
   listDiscoveryNotesRequest,
   listDiscoveryNoteTemplatesRequest,
   transitionPartnerPhaseRequest,
   updateDiscoveryNoteRequest,
+  updatePartnerContactRequest,
   upsertPartnerQualificationRequest,
   archivePartnerRequest,
   deletePartnerRequest,
@@ -57,12 +60,25 @@ const defaultQualification: QualificationProfile = {
   updatedAt: null,
 };
 
+const defaultContactForm = {
+  fullName: "",
+  jobTitle: "",
+  email: "",
+  phone: "",
+  linkUrl: "",
+  isPrimary: false,
+};
+
 export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalProps) => {
   const { user } = useAuthSession();
   const [partner, setPartner] = useState<PartnerRecord | null>(null);
   const [qualification, setQualification] = useState<QualificationProfile>(defaultQualification);
   const [functionalBenefitOptions, setFunctionalBenefitOptions] = useState<string[]>([]);
   const [contacts, setContacts] = useState<PartnerContactRecord[]>([]);
+  const [contactForm, setContactForm] = useState(defaultContactForm);
+  const [editingContactId, setEditingContactId] = useState<string | null>(null);
+  const [contactMessage, setContactMessage] = useState<string | null>(null);
+  const [isSavingContact, setIsSavingContact] = useState(false);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [discoveryNotes, setDiscoveryNotes] = useState<DiscoveryNoteRecord[]>([]);
   const [artifacts, setArtifacts] = useState<ArtifactRecord[]>([]);
@@ -268,11 +284,88 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
         functionalBenefits: qualification.functionalBenefits,
       });
       setQualification(saved);
-      setQualificationMessage("Qualification mapping saved to records.");
+      setQualificationMessage("Give-and-Take Framework saved to records.");
     } catch (err) {
-      setQualificationMessage(err instanceof Error ? err.message : "Failed to save qualification mapping");
+      setQualificationMessage(err instanceof Error ? err.message : "Failed to save Give-and-Take Framework");
     } finally {
       setIsSavingQualification(false);
+    }
+  };
+
+  const saveContact = async () => {
+    if (!partnerId) {
+      return;
+    }
+
+    if (!contactForm.fullName.trim()) {
+      setContactMessage("Full name is required.");
+      return;
+    }
+
+    setIsSavingContact(true);
+    setContactMessage(null);
+    try {
+      const payload = {
+        fullName: contactForm.fullName,
+        jobTitle: contactForm.jobTitle || undefined,
+        email: contactForm.email || undefined,
+        phone: contactForm.phone || undefined,
+        linkUrl: contactForm.linkUrl || undefined,
+        isPrimary: contactForm.isPrimary,
+      };
+
+      if (editingContactId) {
+        await updatePartnerContactRequest(partnerId, editingContactId, payload);
+      } else {
+        await createPartnerContactRequest(partnerId, payload);
+      }
+
+      const refreshed = await listPartnerContactsRequest(partnerId);
+      setContacts(refreshed);
+      setContactForm(defaultContactForm);
+      setEditingContactId(null);
+      setContactMessage(editingContactId ? "Contact person updated." : "Contact person added.");
+    } catch (err) {
+      setContactMessage(err instanceof Error ? err.message : "Failed to save contact person");
+    } finally {
+      setIsSavingContact(false);
+    }
+  };
+
+  const beginEditContact = (contact: PartnerContactRecord) => {
+    setEditingContactId(contact.id);
+    setContactForm({
+      fullName: contact.fullName,
+      jobTitle: contact.jobTitle || "",
+      email: contact.email || "",
+      phone: contact.phone || "",
+      linkUrl: contact.linkUrl || "",
+      isPrimary: contact.isPrimary,
+    });
+    setContactMessage(null);
+  };
+
+  const cancelEditContact = () => {
+    setEditingContactId(null);
+    setContactForm(defaultContactForm);
+    setContactMessage(null);
+  };
+
+  const removeContact = async (contact: PartnerContactRecord) => {
+    if (!window.confirm(`Delete contact person "${contact.fullName}"?`)) {
+      return;
+    }
+
+    try {
+      await deletePartnerContactRequest(partnerId, contact.id);
+      const refreshed = await listPartnerContactsRequest(partnerId);
+      setContacts(refreshed);
+      if (editingContactId === contact.id) {
+        cancelEditContact();
+      }
+      setContactMessage("Contact person deleted.");
+    } catch (err) {
+      setContactMessage(err instanceof Error ? err.message : "Failed to delete contact person");
     }
   };
 
@@ -513,7 +606,7 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
 
       <div className="qualification-actions">
         <button type="button" className="primary-btn" onClick={saveQualificationMapping} disabled={isSavingQualification}>
-          {isSavingQualification ? "Saving..." : "Save Qualification Mapping"}
+          {isSavingQualification ? "Saving..." : "Save Give-and-Take Framework"}
         </button>
         {qualificationMessage && <p className="muted">{qualificationMessage}</p>}
       </div>
@@ -522,6 +615,78 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
 
   const renderContacts = () => (
     <div className="contact-grid">
+      <div className="qualification-layout" style={{ marginBottom: '1.5rem' }}>
+        <div className="artifact-upload-grid">
+          <label>
+            Full Name
+            <input
+              type="text"
+              value={contactForm.fullName}
+              onChange={(event) => setContactForm((prev) => ({ ...prev, fullName: event.target.value }))}
+              placeholder="e.g. Juan Dela Cruz"
+            />
+          </label>
+          <label>
+            Position in Organization
+            <input
+              type="text"
+              value={contactForm.jobTitle}
+              onChange={(event) => setContactForm((prev) => ({ ...prev, jobTitle: event.target.value }))}
+              placeholder="e.g. Partnerships Manager"
+            />
+          </label>
+          <label>
+            Contact Email
+            <input
+              type="email"
+              value={contactForm.email}
+              onChange={(event) => setContactForm((prev) => ({ ...prev, email: event.target.value }))}
+              placeholder="name@organization.com"
+            />
+          </label>
+          <label>
+            Contact Number
+            <input
+              type="text"
+              value={contactForm.phone}
+              onChange={(event) => setContactForm((prev) => ({ ...prev, phone: event.target.value }))}
+              placeholder="+63..."
+            />
+          </label>
+          <label>
+            Link (Website or Social)
+            <input
+              type="url"
+              value={contactForm.linkUrl}
+              onChange={(event) => setContactForm((prev) => ({ ...prev, linkUrl: event.target.value }))}
+              placeholder="https://..."
+            />
+          </label>
+          <label>
+            Primary Contact
+            <select
+              value={contactForm.isPrimary ? 'yes' : 'no'}
+              onChange={(event) => setContactForm((prev) => ({ ...prev, isPrimary: event.target.value === 'yes' }))}
+            >
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="qualification-actions">
+          <button type="button" onClick={saveContact} disabled={isSavingContact}>
+            {isSavingContact ? 'Saving...' : editingContactId ? 'Update Contact Person' : 'Add Contact Person'}
+          </button>
+          {editingContactId && (
+            <button type="button" className="secondary-btn" onClick={cancelEditContact}>
+              Cancel Edit
+            </button>
+          )}
+          {contactMessage && <p className="muted">{contactMessage}</p>}
+        </div>
+      </div>
+
       {contacts.map(c => (
         <div key={c.id} className="contact-card-container">
           <div className="contact-card-inner">
@@ -535,6 +700,14 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
               <div className="detail-item"><strong>Phone:</strong> {c.phone || 'N/A'}</div>
               {c.linkUrl && <a href={c.linkUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.8rem' }}>Social/Profile</a>}
               {c.isPrimary && <div style={{ marginTop: 'auto', fontWeight: 'bold', color: 'var(--brand-secondary)' }}>Primary Contact</div>}
+              <div className="button-group" style={{ marginTop: '0.75rem' }}>
+                <button type="button" className="secondary-btn" onClick={() => beginEditContact(c)}>
+                  Edit
+                </button>
+                <button type="button" className="secondary-btn delete-btn" onClick={() => removeContact(c)}>
+                  Remove
+                </button>
+              </div>
             </div>
           </div>
         </div>

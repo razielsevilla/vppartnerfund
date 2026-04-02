@@ -779,6 +779,76 @@ async function createPartnerContact(partnerId, payload, actorId) {
   return mapPartnerContactRow(saved);
 }
 
+async function updatePartnerContact(partnerId, contactId, payload, actorId) {
+  const db = getDatabase();
+  const partner = await db("partners").where({ id: partnerId }).first();
+  if (!partner) {
+    return null;
+  }
+
+  const existing = await db("partner_contacts").where({ id: contactId, partner_id: partnerId }).first();
+  if (!existing) {
+    return null;
+  }
+
+  if (payload.isPrimary) {
+    await db("partner_contacts").where({ partner_id: partnerId }).andWhereNot({ id: contactId }).update({ is_primary: false });
+  }
+
+  const nowIso = new Date().toISOString();
+  const nextPayload = {
+    updated_at: nowIso,
+    full_name: payload.fullName !== undefined ? payload.fullName : existing.full_name,
+    job_title: payload.jobTitle !== undefined ? payload.jobTitle : existing.job_title,
+    email: payload.email !== undefined ? payload.email : existing.email,
+    phone: payload.phone !== undefined ? payload.phone : existing.phone,
+    link_url: payload.linkUrl !== undefined ? payload.linkUrl : existing.link_url,
+    is_primary: payload.isPrimary !== undefined ? Boolean(payload.isPrimary) : Boolean(existing.is_primary),
+  };
+
+  await db("partner_contacts").where({ id: contactId, partner_id: partnerId }).update(nextPayload);
+
+  await logPartnerActivity(db, {
+    partnerId,
+    actionType: "partner_contact_updated",
+    actorId,
+    payload: {
+      contactId,
+      changedFields: Object.keys(payload).filter((key) => payload[key] !== undefined),
+    },
+  });
+
+  const saved = await db("partner_contacts").where({ id: contactId, partner_id: partnerId }).first();
+  return mapPartnerContactRow(saved);
+}
+
+async function deletePartnerContact(partnerId, contactId, actorId) {
+  const db = getDatabase();
+  const partner = await db("partners").where({ id: partnerId }).first();
+  if (!partner) {
+    return null;
+  }
+
+  const existing = await db("partner_contacts").where({ id: contactId, partner_id: partnerId }).first();
+  if (!existing) {
+    return null;
+  }
+
+  await db("partner_contacts").where({ id: contactId, partner_id: partnerId }).delete();
+
+  await logPartnerActivity(db, {
+    partnerId,
+    actionType: "partner_contact_deleted",
+    actorId,
+    payload: {
+      contactId,
+      fullName: existing.full_name,
+    },
+  });
+
+  return { id: contactId };
+}
+
 async function upsertPartnerQualification(partnerId, payload, actorId) {
   const db = getDatabase();
   const partner = await db("partners").where({ id: partnerId }).first();
@@ -1230,6 +1300,8 @@ module.exports = {
   updatePartner,
   deletePartner,
   createPartnerContact,
+  updatePartnerContact,
+  deletePartnerContact,
   upsertPartnerQualification,
   archivePartner,
   getPartnerTimeline,

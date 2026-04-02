@@ -600,6 +600,43 @@ test("partner contacts can be added and listed", async () => {
   assert.equal(listResponse.body.contacts[0].email, "maria@example.com");
 });
 
+test("partner contacts can be updated and deleted", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Editable Contact Partner",
+    organizationType: "Tech Corporate",
+    industryNiche: "Cloud solutions",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createResponse.status, 201);
+
+  const partnerId = createResponse.body.partner.id;
+
+  const createContactResponse = await agent.post(`/api/partners/${partnerId}/contacts`).send({
+    fullName: "Ana Reyes",
+    jobTitle: "Partnership Lead",
+    email: "ana@example.com",
+    isPrimary: true,
+  });
+  assert.equal(createContactResponse.status, 201);
+
+  const contactId = createContactResponse.body.contact.id;
+
+  const updateResponse = await agent.put(`/api/partners/${partnerId}/contacts/${contactId}`).send({
+    jobTitle: "Senior Partnership Lead",
+    phone: "+639171112233",
+  });
+  assert.equal(updateResponse.status, 200);
+  assert.equal(updateResponse.body.contact.jobTitle, "Senior Partnership Lead");
+  assert.equal(updateResponse.body.contact.phone, "+639171112233");
+
+  const deleteResponse = await agent.delete(`/api/partners/${partnerId}/contacts/${contactId}`);
+  assert.equal(deleteResponse.status, 200);
+
+  const listResponse = await agent.get(`/api/partners/${partnerId}/contacts`);
+  assert.equal(listResponse.status, 200);
+  assert.equal(listResponse.body.contacts.length, 0);
+});
+
 test("workflow health metrics flag overdue next actions", async () => {
   const createResponse = await agent.post("/api/partners").send({
     organizationName: "Overdue Partner",

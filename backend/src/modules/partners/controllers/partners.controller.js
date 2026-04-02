@@ -14,6 +14,8 @@ const {
   updatePartner,
   deletePartner,
   createPartnerContact,
+  updatePartnerContact,
+  deletePartnerContact,
   upsertPartnerQualification,
   archivePartner,
   getPartnerImportMappingConfig,
@@ -24,7 +26,7 @@ const {
   validateUpdatePartnerPayload,
 } = require("../validators/partner.validator");
 const { validateQualificationPayload } = require("../validators/qualification.validator");
-const { validateCreatePartnerContactPayload } = require("../validators/contact.validator");
+const { validateCreatePartnerContactPayload, validateUpdatePartnerContactPayload } = require("../validators/contact.validator");
 const {
   validateCreateDiscoveryNotePayload,
   validateUpdateDiscoveryNotePayload,
@@ -230,6 +232,54 @@ async function createPartnerContactHandler(req, res) {
   }
 }
 
+async function updatePartnerContactHandler(req, res) {
+  const validation = validateUpdatePartnerContactPayload(req.body);
+  if (!validation.isValid) {
+    return validationError(res, validation.errors);
+  }
+
+  try {
+    const contact = await updatePartnerContact(
+      req.params.partnerId,
+      req.params.contactId,
+      validation.value,
+      req.user.id,
+    );
+    if (!contact) {
+      return res.status(404).json({
+        error: {
+          code: "PARTNER_CONTACT_NOT_FOUND",
+          message: "Contact person was not found",
+          details: [{ field: "contactId", message: "No contact exists with this id" }],
+        },
+      });
+    }
+
+    return res.status(200).json({ contact });
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
+async function deletePartnerContactHandler(req, res) {
+  try {
+    const deleted = await deletePartnerContact(req.params.partnerId, req.params.contactId, req.user.id);
+    if (!deleted) {
+      return res.status(404).json({
+        error: {
+          code: "PARTNER_CONTACT_NOT_FOUND",
+          message: "Contact person was not found",
+          details: [{ field: "contactId", message: "No contact exists with this id" }],
+        },
+      });
+    }
+
+    return res.status(200).json({ message: "Contact person deleted" });
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
 async function listDiscoveryNoteTemplatesHandler(req, res) {
   try {
     const templates = await listDiscoveryNoteTemplates(req.params.partnerId);
@@ -406,6 +456,8 @@ module.exports = {
   getPartnerQualificationHandler,
   listPartnerContactsHandler,
   createPartnerContactHandler,
+  updatePartnerContactHandler,
+  deletePartnerContactHandler,
   getPartnerTimelineHandler,
   upsertPartnerQualificationHandler,
   listDiscoveryNoteTemplatesHandler,
