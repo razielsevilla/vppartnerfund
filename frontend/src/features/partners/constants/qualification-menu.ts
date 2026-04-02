@@ -42,204 +42,172 @@ export const ROLE_GUIDES: Record<
   }
 > = {
   "Technology Partner": {
-    description:
-      "Provides software, API, and cloud infrastructure support for projects and hackathons.",
+    description: "Provides software, API, and cloud infrastructure support.",
     tiers: {
-      standard: "Temporary software licenses/API access for around 15 users.",
-      major: "Around 50 users plus cloud credits and certification vouchers.",
-      lead: "100+ users, larger cloud value, and expanded permanent license support.",
+      standard: "15 Users (Temp License)",
+      major: "50 Users & 5 Exam Vouchers",
+      lead: "100+ Users, $2000+ Cloud Credits, 20 Vouchers, 15 Permanent Licenses",
     },
   },
   "Knowledge Partner": {
-    description:
-      "Shares industry expertise through speakers, workshop facilitators, and learning modules.",
+    description: "Shares industry expertise through speakers and learning modules.",
     tiers: {
-      standard: "One speaker and one learning module.",
-      major: "Two speakers, multiple modules, and workshop facilitation.",
-      lead: "Expanded curriculum support with keynote-level participation.",
+      standard: "1 Speaker (20 mins) & 1 Learning Module",
+      major: "2 Speakers, 3 Modules, & 1 Technical Workshop (90 mins)",
+      lead: "3+ Speakers, Full Curriculum, 2 Workshops, & 1 C-Level Keynote",
     },
   },
   "Mentorship Partner": {
-    description:
-      "Provides direct technical guidance, code review, and agile mentorship to teams.",
+    description: "Provides direct technical guidance and mentorship.",
     tiers: {
-      standard: "One mentor lane with async feedback and limited live support.",
-      major: "More mentors, judge participation, and stronger live guidance.",
-      lead: "High mentor capacity and embedded coaching support.",
+      standard: "1 Hr Async Feedback & 1 Live Mentor",
+      major: "2 Hrs Async, 3 Live Mentors, & 2 Judges",
+      lead: "5 Hrs Async, 5+ Live Mentors, 3 Judges, & Dedicated Scrum Masters for up to 5 teams",
     },
   },
   "Venue Partner": {
-    description:
-      "Supplies physical event spaces from planning rooms to large main venues.",
+    description: "Supplies physical event spaces.",
     tiers: {
-      standard: "Planning room support for committee operations.",
-      major: "Workshop hall and additional event furniture support.",
-      lead: "Premium auditorium and broader venue access coverage.",
+      standard: "1 Committee Room (20 Pax)",
+      major: "2 Rooms, 1 Workshop Hall (100 Pax), & 15 Showcase Tables",
+      lead: "Unlimited Rooms, 2 Halls, 30+ Tables, & Premium Main Auditorium (200+ Pax)",
     },
   },
   "Logistics Partner": {
-    description:
-      "Covers event operations such as AV setup, connectivity, and transport.",
+    description: "Covers event operations and transport.",
     tiers: {
-      standard: "Core AV sets and basic infrastructure accessories.",
-      major: "Additional AV, connectivity resources, and transport support.",
-      lead: "Full-stage operations and high-capacity network/transport setup.",
+      standard: "2 AV Sets, 5 Ext. Cords, 1 Dedicated Router, 1 Transport Van (15 Pax)",
+      major: "4 AV Sets & 15 Ext. Cords",
+      lead: "Full Stage Setup, 30+ Ext. Cords, Full Venue Network, & 2 Transport Buses (100 Pax)",
     },
   },
   "F&B Partner": {
-    description:
-      "Provides food and beverage support for participants, organizers, and speakers.",
+    description: "Provides food and beverage support.",
     tiers: {
-      standard: "Committee refreshments and bottled water coverage.",
-      major: "Scaled catering support for event attendees.",
-      lead: "Higher-capacity meals plus VIP/speaker dining support.",
+      standard: "Coffee/Pastries (20 Pax) & 20 VIP Waters",
+      major: "Coffee (50 Pax), 50 Waters, & Full Meal (100 Pax)",
+      lead: "Coffee (100 Pax), 100+ Waters, Full Meal (200 Pax), & Exclusive VIP Dinner (20 Pax)",
     },
   },
   "Swag Partner": {
-    description:
-      "Provides merch, shirts, giveaways, and recognition items for events.",
+    description: "Provides merch and recognition items.",
     tiers: {
-      standard: "Basic merch packs for participants or staff.",
-      major: "Higher-volume merch and event shirt support.",
-      lead: "Premium giveaways and larger trophy/prize merchandise support.",
+      standard: "50 Basic Merch Pcs & 30 Staff Shirts",
+      major: "100 Basic Merch, 50 Shirts, 50 Tote Bags, & 3 Custom Trophies",
+      lead: "200+ Basic Merch, 150+ Tote Bags, & 100+ Premium Tech Giveaways",
     },
   },
   "Media Partner": {
-    description:
-      "Amplifies event visibility through digital media, coverage, and livestream content.",
+    description: "Amplifies event visibility through media coverage.",
     tiers: {
-      standard: "Social media blast support.",
-      major: "Added media content and photographer support.",
-      lead: "Expanded media team support with livestream and aftermovie outputs.",
+      standard: "2 Social Cross-posts",
+      major: "4 Posts, 1 Feature Article, & 1 Photographer",
+      lead: "10+ Posts, 3 Articles, Full Media Team, Live-stream, & Aftermovie",
     },
   },
   "Community Partner": {
-    description:
-      "Mobilizes communities and teams to join, compete, and collaborate.",
+    description: "Mobilizes communities and teams.",
     tiers: {
-      standard: "Basic member mobilization and group dissemination.",
-      major: "Stronger attendee/team commitments and co-activation support.",
-      lead: "Large mobilization channels and major joint community activations.",
+      standard: "Flyers in 2 Groups & 10 Guaranteed Attendees",
+      major: "Flyers in 5 Groups, 20 Attendees, & 2 Competing Teams",
+      lead: "Flyers in All Channels, 50+ Attendees, 5 Teams, & 1 Co-hosted Joint-Assembly",
     },
   },
   "Ecosystem Partner": {
-    description:
-      "Connects participants with incubators, leaders, and broader tech ecosystem opportunities.",
+    description: "Connects participants with incubators and leaders.",
     tiers: {
-      standard: "Industry introductions and ecosystem access support.",
-      major: "Pitch meeting enablement and stronger integration pathways.",
-      lead: "Strategic roadmap/advisory-level ecosystem positioning support.",
+      standard: "2 Direct Industry Intros",
+      major: "5 Intros & 1 Pitch Meeting with Incubators",
+      lead: "10+ Intros, 3 Pitch Meetings, 1 Tech Roadmap Integration, & 2 Advisory Board Seats",
     },
   },
   "Resource Partner": {
-    description:
-      "Provides operating support resources to sustain key event and program activities.",
+    description: "Provides operating support resources.",
     tiers: {
-      standard: "Baseline operational support commitment.",
-      major: "Higher-value support scope for operations and collateral needs.",
-      lead: "Top-tier operational backbone support and broader funding coverage.",
+      standard: "₱5,000 - ₱10,000 Funding",
+      major: "₱10,001 - ₱30,000 Funding",
+      lead: "₱30,001+ Funding",
     },
   },
   "Grant Partner": {
-    description:
-      "Provides grants, prizes, and launch support for student innovation.",
+    description: "Provides grants and prize pools.",
     tiers: {
-      standard: "Micro-grants for project deployment.",
-      major: "Expanded prize pools and higher grant support.",
-      lead: "Flagship seed funding and internship-backed launch pathways.",
+      standard: "₱3,000 Micro-grant",
+      major: "₱10,000 Micro-grant & ₱10,000 Secondary Prize Pool",
+      lead: "₱10,000 Micro-grant, ₱20,000 Secondary Prize, ₱30,000+ Grand Champion Seed Funding, & 2 Guaranteed Paid Internships",
     },
   },
 };
 
+export const BASELINE_BENEFIT = {
+  name: "Baseline Benefit (Always Included)",
+  responsibilities: [
+    "Logo Placement: A small logo featured on the official event website and physical tarpaulin.",
+    "Social Media Mention: Inclusion in 1 grouped 'Thank You' sponsor post.",
+    "Event Access: 1 VIP Access Pass for a company representative.",
+    "Official Recognition: A digital and physical Certificate of Partnership.",
+  ],
+};
+
 export const FUNCTIONAL_BENEFIT_GUIDES: Record<string, { description: string; responsibilities: string[] }> = {
-  "Direct Access to Tech Talent": {
-    description: "Gives partners direct recruiting access to student developer talent.",
+  "Talent & Recruitment": {
+    description: "Connects partners with student developer talent through direct recruitment channels.",
     responsibilities: [
-      "Resume database and post-event demographic access.",
-      "Recruitment booth support and interview/networking session setup.",
-      "Recruitment messaging via event email/community channels.",
-      "Job board and landing page visibility support.",
+      "Resume Database Access: Full access to the opt-in attendee Resume Database and reports.",
+      "Direct Recruitment: Facilitate recruitment via physical booth flyers and networking sessions.",
+      "Recruitment Mailing: Career opportunities in 1 dedicated pre-event email blast.",
+      "Job Board Integration: Post up to 3 job openings across DEVCON's digital channels.",
+      "★ Fast-Track Interview Sessions: Arranged specific time slots for on-the-spot interviews.",
     ],
   },
-  "Talent Vetting and Mentorship": {
-    description: "Lets partners evaluate talent in action through mentorship and judging.",
+  "Mentorship & Vetting": {
+    description: "Evaluates talent through direct technical guidance and project review.",
     responsibilities: [
-      "Code/project review sessions and one-on-one feedback facilitation.",
-      "Mentor spotlighting and finalist judging opportunities.",
-      "Partner bounty challenge integration.",
-      "Post-event mentor-to-talent linkage support.",
+      "Code & Project Review: Access to final project GitHub repositories and feedback tables.",
+      "Expertise Spotlighting: Feature mentors in digital handbook and 2-minute stage slot.",
+      "Hackathon Bounty Creation: Integrate partner tech to define a specific bounty challenge.",
+      "Post-Event Incubation: Connect mentors with top participants for a post-event Virtual AMA.",
+      "★ Right of First Refusal: 30-day exclusive window to negotiate hiring the Grand Champion's team.",
     ],
   },
-  "Thought Leadership and Speaking Slots": {
-    description: "Positions partner experts as thought leaders through speaking and content slots.",
+  "Thought Leadership & Branding": {
+    description: "Positions partner experts as leaders through speaking and content slots.",
     responsibilities: [
-      "Stage time for talks, workshops, panels, or keynote slots.",
-      "Curriculum/masterclass branding and co-branded certifications.",
-      "VIP access and speaker-lounge privileges.",
-      "Co-created content and whitepaper contribution opportunities.",
+      "Stage & Speaking Time: Dedicated 5-15 minute stage time for tech talk or panel.",
+      "Curriculum Branding: Officially brand learning materials and co-brand certifications.",
+      "Content Co-Creation: Publish 1 co-authored technical blog post on DEVCON's platforms.",
+      "★ The Keynote Address: 15 to 30-minute prime Keynote slot on the main stage.",
+      "★ Title Sponsorship Naming Rights: 'DEVCON Laguna Roadshow, Co-Presented by [Partner].'",
     ],
   },
-  "Targeted Community Exposure and Media Amplification": {
-    description: "Boosts partner visibility across physical and digital event channels.",
+  "Exposure & Product Testing": {
+    description: "Boosts partner visibility and provides developer feedback on tools.",
     responsibilities: [
-      "Logo placement across collaterals and platforms.",
-      "Dedicated social media features and sponsor shoutouts.",
-      "Livestream/video integration support.",
-      "Press and media inclusion support.",
+      "Premium Logo Placement: Medium/Large logos on mid-to-top tier collaterals.",
+      "Live Product Demonstrations: Dedicated stage time or booth space for tech demos.",
+      "User Data & Feedback Integration: Compiled developer feedback reports from attendees.",
+      "Technical Helpdesk Setup: Dedicated Discord channel and physical space for a helpdesk.",
+      "★ Closed Beta Testing: Exclusive beta testing sessions with top student developers.",
     ],
   },
-  "User Onboarding and Technical Testing Grounds": {
-    description: "Supports product adoption and technical feedback through event integration.",
+  "Civic Alignment & CSR": {
+    description: "Aligns partner CSR goals with regional tech and economic development.",
     responsibilities: [
-      "Tool/API adoption in tracks or bounties.",
-      "Developer feedback and user data reporting support.",
-      "Technical helpdesk/documentation channel support.",
-      "Live product demo and beta testing opportunities.",
+      "ROI & Impact Reporting: Formalized CSR Impact Report for corporate stakeholders.",
+      "Community Scholarships: Publicly acknowledge partner and award scholarships live on stage.",
+      "Ecosystem Integration: Panel slots to discuss smart city roadmaps with local government VIPs.",
+      "Innovation Mapping: Co-author regional tech whitepapers and economic case studies.",
+      "★ Policy Advocacy Presentations: Formal platform to present policy recommendations.",
     ],
   },
-  "CSR Fulfillment and Industry-Academe Bridging": {
-    description: "Aligns partner CSR goals with education and ecosystem impact initiatives.",
+  "Upskilling & Academe Bridging": {
+    description: "Supports faculty and student learning through certifications and resources.",
     responsibilities: [
-      "CSR impact reporting and ROI visibility support.",
-      "Naming-rights and sponsorship recognition options.",
-      "Scholarship acknowledgment and impact-track collaboration.",
-      "Regional initiative integration opportunities.",
-    ],
-  },
-  "Physical Venue Traffic": {
-    description: "Drives attendees and sustained engagement into partner physical locations.",
-    responsibilities: [
-      "Foot-traffic campaigns and venue promo integrations.",
-      "On-site branding, demo, and venue experience mapping support.",
-      "Post-event activation and recurring meetup support.",
-      "Geo-targeted check-in and signage enablement.",
-    ],
-  },
-  "Policy Implementation and Economic Development Support": {
-    description: "Supports policy dialogue and regional ecosystem/economic development objectives.",
-    responsibilities: [
-      "Panel/whitepaper channels for roadmap and policy discussions.",
-      "Aggregated event data sharing for ecosystem insights.",
-      "Government/LGU bridging and closed-door roundtable support.",
-      "Innovation mapping and policy advocacy presentation slots.",
-    ],
-  },
-  "Up-Skilling Opportunities": {
-    description: "Elevates participant skills through certifications, classes, and learning access.",
-    responsibilities: [
-      "Co-branded certification and credential pathways.",
-      "Learning resource distribution and academy access support.",
-      "Project incubation consultation and sandbox enablement.",
-      "Specialized masterclass and skill-gap reporting support.",
-    ],
-  },
-  "Teacher Empowerment": {
-    description: "Equips faculty with modern tools, programs, and industry-aligned resources.",
-    responsibilities: [
-      "Faculty engagement and advisory collaboration channels.",
-      "Train-the-trainer workshops and educator certifications.",
-      "Academic resource/license grant support.",
-      "Curriculum co-development and faculty innovation funding pathways.",
+      "Continuous Learning Access: Distribute resources and 1-month premium academy access.",
+      "Skill-Gap Analysis Reports: Detailed reports analyzing technical proficiencies.",
+      "Train-the-Trainer Programs: Host technical upskilling workshops for university faculty.",
+      "Academic Resource Grants: Outfit university labs with partner tech or software licenses.",
+      "★ Advisory Board Seat: Reciprocal Advisory Board seat bridging partner with university deans.",
     ],
   },
 };

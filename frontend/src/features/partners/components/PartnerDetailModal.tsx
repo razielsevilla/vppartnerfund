@@ -37,9 +37,11 @@ import {
   WorkflowTransitionError,
 } from "../services/partners-api";
 import {
+  BASELINE_BENEFIT,
   DURATION_OPTIONS,
   FUNCTIONAL_BENEFIT_GUIDES,
   ROLE_PACKAGE_FUNCTION_OPTIONS,
+  ROLE_GUIDES,
 } from "../constants/qualification-menu";
 
 type PartnerDetailModalProps = {
@@ -73,7 +75,6 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
   const { user } = useAuthSession();
   const [partner, setPartner] = useState<PartnerRecord | null>(null);
   const [qualification, setQualification] = useState<QualificationProfile>(defaultQualification);
-  const [functionalBenefitOptions, setFunctionalBenefitOptions] = useState<string[]>([]);
   const [contacts, setContacts] = useState<PartnerContactRecord[]>([]);
   const [contactForm, setContactForm] = useState(defaultContactForm);
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
@@ -97,9 +98,6 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
   const [openPanel, setOpenPanel] = useState<"role" | "benefit" | null>("role");
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [selectedTier, setSelectedTier] = useState<"standard" | "major" | "lead">("standard");
-  const [selectedResponsibilities, setSelectedResponsibilities] = useState<string[]>([]);
-  const [selectedBenefit, setSelectedBenefit] = useState<string>("");
-  const [selectedBenefitResponsibilities, setSelectedBenefitResponsibilities] = useState<string[]>([]);
   const [qualificationMessage, setQualificationMessage] = useState<string | null>(null);
   const [isSavingQualification, setIsSavingQualification] = useState(false);
 
@@ -139,11 +137,6 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
         ]);
         setPartner(p);
         setQualification(q.qualification || defaultQualification);
-        setFunctionalBenefitOptions(
-          q.functionalBenefitOptions && q.functionalBenefitOptions.length > 0
-            ? q.functionalBenefitOptions
-            : Object.keys(FUNCTIONAL_BENEFIT_GUIDES),
-        );
         setContacts(c);
         setTimeline(t);
         setDiscoveryNotes(n);
@@ -201,12 +194,13 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
 
   // Qualification Helpers
   const addRolePackage = () => {
-    if (!selectedRole || selectedResponsibilities.length === 0) return;
+    if (!selectedRole) return;
 
+    const guide = ROLE_GUIDES[selectedRole];
     const newPackage = {
       functionalRole: selectedRole,
       impactLevel: selectedTier,
-      checklistItems: [...selectedResponsibilities],
+      checklistItems: [guide.tiers[selectedTier]],
     };
     setQualification((prev) => ({
       ...prev,
@@ -214,7 +208,6 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
     }));
     setSelectedRole("");
     setSelectedTier("standard");
-    setSelectedResponsibilities([]);
     setQualificationMessage(null);
   };
 
@@ -235,43 +228,90 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
     setQualificationMessage(null);
   };
 
-  const benefitSlots =
-    qualification.rolePackages.length > 0
-      ? qualification.rolePackages.length + 2 + Math.floor(qualification.rolePackages.length / 3)
-      : 0;
+  const getBenefitLimits = () => {
+    if (qualification.rolePackages.length === 0) return { totalCats: 0, baseCats: 0, basePicks: 0, bonusCats: 0, bonusPicks: 3, highestTier: null };
+    
+    const tiers = qualification.rolePackages.map(pkg => pkg.impactLevel);
+    let highestTier: "standard" | "major" | "lead" = "standard";
+    if (tiers.includes("lead")) highestTier = "lead";
+    else if (tiers.includes("major")) highestTier = "major";
 
-  const addBenefitPackage = () => {
-    if (!selectedBenefit) return;
-    if (qualification.functionalBenefits.length >= benefitSlots) {
-      setQualificationMessage(`You can only select up to ${benefitSlots} benefit packages.`);
-      return;
-    }
+    const baseConfig = {
+      standard: { cats: 2, picks: 3 },
+      major: { cats: 4, picks: 4 },
+      lead: { cats: 8, picks: 5 }
+    }[highestTier];
 
-    setQualification((prev) => ({
-      ...prev,
-      functionalBenefits: [...prev.functionalBenefits, selectedBenefit],
-    }));
-    setSelectedBenefit("");
-    setSelectedBenefitResponsibilities([]);
-    setQualificationMessage(null);
+    const bonusCats = Math.floor(qualification.rolePackages.length / 2);
+    
+    return {
+      totalCats: baseConfig.cats + bonusCats,
+      baseCats: baseConfig.cats,
+      basePicks: baseConfig.picks,
+      bonusCats,
+      bonusPicks: 3,
+      highestTier
+    };
   };
 
-  const removeBenefitPackage = (index: number) => {
-    setQualification((prev) => ({
-      ...prev,
-      functionalBenefits: prev.functionalBenefits.filter((_, i) => i !== index),
-    }));
-    setQualificationMessage(null);
+  const benefitLimits = getBenefitLimits();
+
+  const toggleBenefitSelection = (benefit: string, category: string) => {
+    setQualification((prev) => {
+      const isSelected = prev.functionalBenefits.includes(benefit);
+      const categorySelections = prev.functionalBenefits.filter(b => 
+        FUNCTIONAL_BENEFIT_GUIDES[category]?.responsibilities.includes(b)
+      );
+
+      if (isSelected) {
+        return {
+          ...prev,
+          functionalBenefits: prev.functionalBenefits.filter(b => b !== benefit),
+        };
+      } else {
+        // Enforce pick limit per category
+        const selectedCategories = Array.from(new Set(prev.functionalBenefits.map(b => {
+          for (const cat in FUNCTIONAL_BENEFIT_GUIDES) {
+            if (FUNCTIONAL_BENEFIT_GUIDES[cat].responsibilities.includes(b)) return cat;
+          }
+          return null;
+        }).filter(Boolean)));
+        
+        const isNewCategory = !selectedCategories.includes(category);
+        if (isNewCategory && selectedCategories.length >= benefitLimits.totalCats) {
+          setQualificationMessage(`You can only select up to ${benefitLimits.totalCats} benefit categories.`);
+          return prev;
+        }
+
+        // Determine if this category is treated as "base" or "bonus" for pick limit
+        const categoryIndex = selectedCategories.indexOf(category);
+        const limit = (categoryIndex !== -1 && categoryIndex < benefitLimits.baseCats) || (categoryIndex === -1 && selectedCategories.length < benefitLimits.baseCats)
+          ? benefitLimits.basePicks 
+          : benefitLimits.bonusPicks;
+
+        if (categorySelections.length >= limit) {
+          setQualificationMessage(`You can only pick ${limit} selections for this category.`);
+          return prev;
+        }
+
+        // Enforce Lead tier for ★
+        if (benefit.includes("★") && benefitLimits.highestTier !== "lead") {
+          setQualificationMessage("Only partners with Lead Tier role packages can select starred (★) benefits.");
+          return prev;
+        }
+
+        setQualificationMessage(null);
+        return {
+          ...prev,
+          functionalBenefits: [...prev.functionalBenefits, benefit],
+        };
+      }
+    });
   };
 
   const saveQualificationMapping = async () => {
     if (qualification.rolePackages.length === 0) {
       setQualificationMessage("Add at least one role package before saving.");
-      return;
-    }
-
-    if (qualification.functionalBenefits.length > benefitSlots) {
-      setQualificationMessage(`Only ${benefitSlots} benefit package selections are allowed.`);
       return;
     }
 
@@ -479,39 +519,67 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
 
             {selectedRole && (
               <div style={{ marginTop: '1.5rem' }}>
-                <div className="tier-selector">
-                  {(['standard', 'major', 'lead'] as const).map(t => (
-                    <button key={t} className={`tier-chip ${selectedTier === t ? 'is-active' : ''}`} onClick={() => setSelectedTier(t)}>
-                      {t.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-                <table className="role-package-table">
+                <table className="role-package-table spreadsheet-style">
                   <thead>
                     <tr>
-                      <th>Selection</th>
-                      <th>Responsibility</th>
-                      <th className={selectedTier === 'standard' ? 'emp-col' : ''}>Standard</th>
-                      <th className={selectedTier === 'major' ? 'emp-col' : ''}>Major</th>
-                      <th className={selectedTier === 'lead' ? 'emp-col' : ''}>Lead</th>
+                      <th style={{ width: '25%' }}>Category & Responsibility</th>
+                      <th style={{ width: '25%' }}>Standard Tier</th>
+                      <th style={{ width: '25%' }}>Major Tier</th>
+                      <th style={{ width: '25%' }}>Lead Tier</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {/* Simplified mock responsibilities based on ROLE_GUIDES data */}
-                    {["Resource Allocation", "Personnel Commitment", "Outcome Accountability"].map(resp => (
-                      <tr key={resp}>
-                        <td><input type="checkbox" checked={selectedResponsibilities.includes(resp)} onChange={() => setSelectedResponsibilities((prev: string[]) => prev.includes(resp) ? prev.filter((x: string) => x !== resp) : [...prev, resp])} /></td>
-                        <td>{resp}</td>
-                        <td className={selectedTier === 'standard' ? 'emp-col' : ''}>Base</td>
-                        <td className={selectedTier === 'major' ? 'emp-col' : ''}>Plus</td>
-                        <td className={selectedTier === 'lead' ? 'emp-col' : ''}>Full</td>
-                      </tr>
-                    ))}
+                    <tr>
+                      <td className="category-cell">
+                        <strong>{selectedRole}</strong>
+                        <p className="muted" style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>
+                          {ROLE_GUIDES[selectedRole].description}
+                        </p>
+                      </td>
+                      <td 
+                        className={`tier-cell ${selectedTier === 'standard' ? 'is-selected' : ''}`}
+                        onClick={() => setSelectedTier('standard')}
+                      >
+                        <div className="tier-content">{ROLE_GUIDES[selectedRole].tiers.standard}</div>
+                        <button 
+                          className={`tier-select-btn ${selectedTier === 'standard' ? 'active' : ''}`}
+                          onClick={(e) => { e.stopPropagation(); setSelectedTier('standard'); }}
+                        >
+                          {selectedTier === 'standard' ? 'Selected' : 'Choose'}
+                        </button>
+                      </td>
+                      <td 
+                        className={`tier-cell ${selectedTier === 'major' ? 'is-selected' : ''}`}
+                        onClick={() => setSelectedTier('major')}
+                      >
+                        <div className="tier-content">{ROLE_GUIDES[selectedRole].tiers.major}</div>
+                        <button 
+                          className={`tier-select-btn ${selectedTier === 'major' ? 'active' : ''}`}
+                          onClick={(e) => { e.stopPropagation(); setSelectedTier('major'); }}
+                        >
+                          {selectedTier === 'major' ? 'Selected' : 'Choose'}
+                        </button>
+                      </td>
+                      <td 
+                        className={`tier-cell ${selectedTier === 'lead' ? 'is-selected' : ''}`}
+                        onClick={() => setSelectedTier('lead')}
+                      >
+                        <div className="tier-content">{ROLE_GUIDES[selectedRole].tiers.lead}</div>
+                        <button 
+                          className={`tier-select-btn ${selectedTier === 'lead' ? 'active' : ''}`}
+                          onClick={(e) => { e.stopPropagation(); setSelectedTier('lead'); }}
+                        >
+                          {selectedTier === 'lead' ? 'Selected' : 'Choose'}
+                        </button>
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
-                <button className="primary-btn mt-4" disabled={!selectedRole || selectedResponsibilities.length === 0} onClick={addRolePackage}>
-                  Add Role Package
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                  <button className="emphasized-add-btn" onClick={addRolePackage}>
+                    Add {selectedTier.toUpperCase()} {selectedRole}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -539,53 +607,75 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
 
         <div className={`sliding-panel ${openPanel === 'benefit' ? 'is-open' : ''}`}>
           <div className="sliding-panel-header" onClick={() => setOpenPanel(openPanel === 'benefit' ? null : 'benefit')}>
-            <span>Benefit Packages</span>
+            <span>Benefit Packages Selection</span>
             <span>{openPanel === 'benefit' ? 'Collapse' : 'Expand'}</span>
           </div>
           <div className="sliding-panel-content">
-            <select value={selectedBenefit} onChange={e => { setSelectedBenefit(e.target.value); setSelectedBenefitResponsibilities([]); }}>
-              <option value="">-- Choose Benefit --</option>
-              {functionalBenefitOptions.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
-            <p className="muted">{`Benefit packages selected: ${qualification.functionalBenefits.length} / ${benefitSlots}`}</p>
-            {selectedBenefit && (
-              <div style={{ marginTop: '1.5rem' }}>
-                <table className="role-package-table">
-                  <thead>
-                    <tr><th>Selection</th><th>Benefit Responsibility</th></tr>
-                  </thead>
-                  <tbody>
-                    {FUNCTIONAL_BENEFIT_GUIDES[selectedBenefit].responsibilities.map(r => (
-                      <tr key={r}>
-                        <td><input type="checkbox" checked={selectedBenefitResponsibilities.includes(r)} onChange={() => setSelectedBenefitResponsibilities((prev: string[]) => prev.includes(r) ? prev.filter((x: string) => x !== r) : [...prev, r])} /></td>
-                        <td>{r}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <button
-                  className="primary-btn mt-4"
-                  disabled={!selectedBenefit || qualification.functionalBenefits.length >= benefitSlots}
-                  onClick={addBenefitPackage}
-                >
-                  Add Benefit Package
-                </button>
-              </div>
-            )}
+            <div className="baseline-benefit-box">
+              <h4>{BASELINE_BENEFIT.name}</h4>
+              <ul className="baseline-list">
+                {BASELINE_BENEFIT.responsibilities.map(r => <li key={r}>{r}</li>)}
+              </ul>
+            </div>
 
-            {qualification.functionalBenefits.length > 0 && (
-              <div className="timeline-list" style={{ marginTop: "1rem" }}>
-                {qualification.functionalBenefits.map((benefit, index) => (
-                  <div key={`${benefit}:${index}`} className="timeline-item">
-                    <div className="timeline-item-head">
-                      <strong>{`Benefit Package ${index + 1}`}</strong>
-                    </div>
-                    <p>{benefit}</p>
-                    <button className="secondary-btn" onClick={() => removeBenefitPackage(index)}>
-                      Remove
-                    </button>
-                  </div>
-                ))}
+            {qualification.rolePackages.length === 0 ? (
+              <p className="muted" style={{ marginTop: '1rem' }}>Assign at least one Role Package to unlock Benefit Packages.</p>
+            ) : (
+              <div style={{ marginTop: '1.5rem' }}>
+                <div className="limits-banner">
+                  <span>Categories: <strong>{benefitLimits.totalCats}</strong> (Base: {benefitLimits.baseCats}, Bonus: {benefitLimits.bonusCats})</span>
+                  <span> | Picks per Category: <strong>{benefitLimits.basePicks}</strong> (Bonus: {benefitLimits.bonusPicks})</span>
+                </div>
+
+                <div className="benefit-categories-grid">
+                  {Object.entries(FUNCTIONAL_BENEFIT_GUIDES).map(([catName, guide]) => {
+                    const selectedInCat = qualification.functionalBenefits.filter(b => guide.responsibilities.includes(b));
+                    const isAnySelected = selectedInCat.length > 0;
+                    
+                    const selectedCategories = Array.from(new Set(qualification.functionalBenefits.map(b => {
+                      for (const c in FUNCTIONAL_BENEFIT_GUIDES) {
+                        if (FUNCTIONAL_BENEFIT_GUIDES[c].responsibilities.includes(b)) return c;
+                      }
+                      return null;
+                    }).filter(Boolean))) as string[];
+                    
+                    const categoryIndex = selectedCategories.indexOf(catName);
+                    const limit = (categoryIndex !== -1 && categoryIndex < benefitLimits.baseCats) || (categoryIndex === -1 && selectedCategories.length < benefitLimits.baseCats)
+                      ? benefitLimits.basePicks 
+                      : benefitLimits.bonusPicks;
+
+                    return (
+                      <div key={catName} className={`benefit-category-card ${isAnySelected ? 'is-active' : ''}`}>
+                        <div className="category-header">
+                          <strong>{catName}</strong>
+                          <span className="count-badge">{selectedInCat.length} / {limit}</span>
+                        </div>
+                        <p className="muted" style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>{guide.description}</p>
+                        
+                        <div className="benefit-options-list">
+                          {guide.responsibilities.map(resp => {
+                            const isChecked = qualification.functionalBenefits.includes(resp);
+                            const isStar = resp.includes("★");
+                            const isLocked = isStar && benefitLimits.highestTier !== "lead";
+                            
+                            return (
+                              <label key={resp} className={`benefit-option-label ${isLocked ? 'is-locked' : ''} ${isChecked ? 'is-checked' : ''}`}>
+                                <input 
+                                  type="checkbox" 
+                                  checked={isChecked}
+                                  disabled={isLocked}
+                                  onChange={() => toggleBenefitSelection(resp, catName)} 
+                                />
+                                <span className={isStar ? 'star-text' : ''}>{resp}</span>
+                                {isLocked && <span className="lock-icon">🔒</span>}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -593,15 +683,21 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
       </div>
 
       <div className="status-card">
-        <h3>Qualification Receipt Preview</h3>
-        <p>{`Role Packages: ${qualification.rolePackages.length}`}</p>
-        <p>{`Benefit Packages: ${qualification.functionalBenefits.length}`}</p>
-        {qualification.rolePackages.map((pkg, index) => (
-          <p key={`receipt-role:${pkg.functionalRole}:${index}`}>{`Role Package ${index + 1}: ${pkg.impactLevel.toUpperCase()} - ${pkg.functionalRole}`}</p>
-        ))}
-        {qualification.functionalBenefits.map((benefit, index) => (
-          <p key={`receipt-benefit:${benefit}:${index}`}>{`Benefit Package ${index + 1}: ${benefit}`}</p>
-        ))}
+        <h3>Give-and-Take Summary</h3>
+        <p><strong>Role Coverage:</strong></p>
+        <div className="tags-list">
+          {qualification.rolePackages.map((pkg, index) => (
+            <span key={index} className="tag">{pkg.impactLevel.toUpperCase()} {pkg.functionalRole}</span>
+          ))}
+        </div>
+        
+        <p style={{ marginTop: '1rem' }}><strong>Benefit Selections:</strong></p>
+        <p className="muted" style={{ fontSize: '0.85rem' }}>+ {BASELINE_BENEFIT.name}</p>
+        <div className="tags-list">
+          {qualification.functionalBenefits.map((benefit, index) => (
+            <span key={index} className="tag tag-benefit">{benefit}</span>
+          ))}
+        </div>
       </div>
 
       <div className="qualification-actions">
