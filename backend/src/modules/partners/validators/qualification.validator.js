@@ -28,6 +28,7 @@ function normalizeRolePackages(values) {
 
       const impactLevel = normalizeString(entry.impactLevel)?.toLowerCase() || null;
       const functionalRole = normalizeString(entry.functionalRole);
+      const checklistItems = normalizeArray(entry.checklistItems);
       if (!impactLevel || !functionalRole) {
         return null;
       }
@@ -35,6 +36,7 @@ function normalizeRolePackages(values) {
       return {
         impactLevel,
         functionalRole,
+        checklistItems,
       };
     })
     .filter(Boolean);
@@ -56,7 +58,7 @@ function validateQualificationPayload(payload) {
     rolePackages.length > 0
       ? rolePackages
       : impactLevel && functionalRole
-        ? [{ impactLevel: impactLevel.toLowerCase(), functionalRole }]
+        ? [{ impactLevel: impactLevel.toLowerCase(), functionalRole, checklistItems: [] }]
         : [];
   if (durationCategory && !ALLOWED_DURATION.includes(durationCategory)) {
     errors.push({

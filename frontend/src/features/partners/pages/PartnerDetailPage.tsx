@@ -250,18 +250,19 @@ export const PartnerDetailPage = () => {
     setQualification((prev) => ({
       ...prev,
       rolePackages: prev.rolePackages.filter((_, currentIndex) => currentIndex !== index),
-      functionalBenefits: prev.functionalBenefits.filter(
-        (_, currentIndex) =>
-          currentIndex !== index &&
-          currentIndex <
-            prev.rolePackages.filter((_, roleIndex) => roleIndex !== index).length +
-              Math.floor(prev.rolePackages.filter((_, roleIndex) => roleIndex !== index).length / 3),
+      functionalBenefits: prev.functionalBenefits.slice(
+        0,
+        prev.rolePackages.length > 1
+          ? prev.rolePackages.length - 1 + 2 + Math.floor((prev.rolePackages.length - 1) / 3)
+          : 0,
       ),
     }));
   };
 
   const benefitSlots =
-    qualification.rolePackages.length + Math.floor(qualification.rolePackages.length / 3);
+    qualification.rolePackages.length > 0
+      ? qualification.rolePackages.length + 2 + Math.floor(qualification.rolePackages.length / 3)
+      : 0;
 
   const qualificationTitleSummary = useMemo(
     () => buildRolePackageSummary(qualification.rolePackages),

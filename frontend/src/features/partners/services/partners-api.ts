@@ -59,6 +59,7 @@ export type QualificationProfile = {
   rolePackages: Array<{
     impactLevel: "standard" | "major" | "lead";
     functionalRole: string;
+    checklistItems?: string[];
   }>;
   functionalBenefits: string[];
   impactLevel: string | null;
@@ -75,6 +76,7 @@ export type QualificationPayload = {
   rolePackages: Array<{
     impactLevel: "standard" | "major" | "lead";
     functionalRole: string;
+    checklistItems?: string[];
   }>;
   functionalBenefits: string[];
 };

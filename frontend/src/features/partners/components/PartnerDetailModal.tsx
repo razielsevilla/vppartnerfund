@@ -61,6 +61,7 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
   const { user } = useAuthSession();
   const [partner, setPartner] = useState<PartnerRecord | null>(null);
   const [qualification, setQualification] = useState<QualificationProfile>(defaultQualification);
+  const [functionalBenefitOptions, setFunctionalBenefitOptions] = useState<string[]>([]);
   const [contacts, setContacts] = useState<PartnerContactRecord[]>([]);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [discoveryNotes, setDiscoveryNotes] = useState<DiscoveryNoteRecord[]>([]);
@@ -83,6 +84,8 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
   const [selectedResponsibilities, setSelectedResponsibilities] = useState<string[]>([]);
   const [selectedBenefit, setSelectedBenefit] = useState<string>("");
   const [selectedBenefitResponsibilities, setSelectedBenefitResponsibilities] = useState<string[]>([]);
+  const [qualificationMessage, setQualificationMessage] = useState<string | null>(null);
+  const [isSavingQualification, setIsSavingQualification] = useState(false);
 
   // Artifacts State
   const [artifactFile, setArtifactFile] = useState<File | null>(null);
@@ -120,6 +123,11 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
         ]);
         setPartner(p);
         setQualification(q.qualification || defaultQualification);
+        setFunctionalBenefitOptions(
+          q.functionalBenefitOptions && q.functionalBenefitOptions.length > 0
+            ? q.functionalBenefitOptions
+            : Object.keys(FUNCTIONAL_BENEFIT_GUIDES),
+        );
         setContacts(c);
         setTimeline(t);
         setDiscoveryNotes(n);
@@ -176,32 +184,96 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
   };
 
   // Qualification Helpers
-  const addRolePackage = async () => {
+  const addRolePackage = () => {
     if (!selectedRole || selectedResponsibilities.length === 0) return;
+
     const newPackage = {
       functionalRole: selectedRole,
       impactLevel: selectedTier,
-      // In advanced mode, we might want to store specific responsibilities, 
-      // but for now we follow the existing schema or extend it.
+      checklistItems: [...selectedResponsibilities],
     };
-    const updated = [...qualification.rolePackages, newPackage];
-    try {
-      const saved = await upsertPartnerQualificationRequest(partnerId, { ...qualification, rolePackages: updated });
-      setQualification(saved);
-      setSelectedRole("");
-      setSelectedResponsibilities([]);
-    } catch (err) { alert(err instanceof Error ? err.message : "Failed"); }
+    setQualification((prev) => ({
+      ...prev,
+      rolePackages: [...prev.rolePackages, newPackage],
+    }));
+    setSelectedRole("");
+    setSelectedTier("standard");
+    setSelectedResponsibilities([]);
+    setQualificationMessage(null);
   };
 
-  const addBenefitPackage = async () => {
-    if (!selectedBenefit || selectedBenefitResponsibilities.length === 0) return;
-    const updated = [...qualification.functionalBenefits, selectedBenefit];
+  const removeRolePackage = (index: number) => {
+    setQualification((prev) => {
+      const nextRolePackages = prev.rolePackages.filter((_, i) => i !== index);
+      const nextSlots =
+        nextRolePackages.length > 0
+          ? nextRolePackages.length + 2 + Math.floor(nextRolePackages.length / 3)
+          : 0;
+
+      return {
+        ...prev,
+        rolePackages: nextRolePackages,
+        functionalBenefits: prev.functionalBenefits.slice(0, nextSlots),
+      };
+    });
+    setQualificationMessage(null);
+  };
+
+  const benefitSlots =
+    qualification.rolePackages.length > 0
+      ? qualification.rolePackages.length + 2 + Math.floor(qualification.rolePackages.length / 3)
+      : 0;
+
+  const addBenefitPackage = () => {
+    if (!selectedBenefit) return;
+    if (qualification.functionalBenefits.length >= benefitSlots) {
+      setQualificationMessage(`You can only select up to ${benefitSlots} benefit packages.`);
+      return;
+    }
+
+    setQualification((prev) => ({
+      ...prev,
+      functionalBenefits: [...prev.functionalBenefits, selectedBenefit],
+    }));
+    setSelectedBenefit("");
+    setSelectedBenefitResponsibilities([]);
+    setQualificationMessage(null);
+  };
+
+  const removeBenefitPackage = (index: number) => {
+    setQualification((prev) => ({
+      ...prev,
+      functionalBenefits: prev.functionalBenefits.filter((_, i) => i !== index),
+    }));
+    setQualificationMessage(null);
+  };
+
+  const saveQualificationMapping = async () => {
+    if (qualification.rolePackages.length === 0) {
+      setQualificationMessage("Add at least one role package before saving.");
+      return;
+    }
+
+    if (qualification.functionalBenefits.length > benefitSlots) {
+      setQualificationMessage(`Only ${benefitSlots} benefit package selections are allowed.`);
+      return;
+    }
+
+    setIsSavingQualification(true);
+    setQualificationMessage(null);
     try {
-      const saved = await upsertPartnerQualificationRequest(partnerId, { ...qualification, functionalBenefits: updated });
+      const saved = await upsertPartnerQualificationRequest(partnerId, {
+        durationCategory: qualification.durationCategory,
+        rolePackages: qualification.rolePackages,
+        functionalBenefits: qualification.functionalBenefits,
+      });
       setQualification(saved);
-      setSelectedBenefit("");
-      setSelectedBenefitResponsibilities([]);
-    } catch (err) { alert(err instanceof Error ? err.message : "Failed"); }
+      setQualificationMessage("Qualification mapping saved to records.");
+    } catch (err) {
+      setQualificationMessage(err instanceof Error ? err.message : "Failed to save qualification mapping");
+    } finally {
+      setIsSavingQualification(false);
+    }
   };
 
   // Transition Helper
@@ -349,6 +421,26 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
                 </button>
               </div>
             )}
+
+            {qualification.rolePackages.length > 0 && (
+              <div className="timeline-list" style={{ marginTop: "1rem" }}>
+                {qualification.rolePackages.map((pkg, index) => (
+                  <div key={`${pkg.functionalRole}:${pkg.impactLevel}:${index}`} className="timeline-item">
+                    <div className="timeline-item-head">
+                      <strong>{`Role Package ${index + 1}`}</strong>
+                      <span>{pkg.impactLevel.toUpperCase()}</span>
+                    </div>
+                    <p>{pkg.functionalRole}</p>
+                    {(pkg.checklistItems || []).length > 0 && (
+                      <p>{`Checklist: ${(pkg.checklistItems || []).join(", ")}`}</p>
+                    )}
+                    <button className="secondary-btn" onClick={() => removeRolePackage(index)}>
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -360,8 +452,9 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
           <div className="sliding-panel-content">
             <select value={selectedBenefit} onChange={e => { setSelectedBenefit(e.target.value); setSelectedBenefitResponsibilities([]); }}>
               <option value="">-- Choose Benefit --</option>
-              {Object.keys(FUNCTIONAL_BENEFIT_GUIDES).map(b => <option key={b} value={b}>{b}</option>)}
+              {functionalBenefitOptions.map(b => <option key={b} value={b}>{b}</option>)}
             </select>
+            <p className="muted">{`Benefit packages selected: ${qualification.functionalBenefits.length} / ${benefitSlots}`}</p>
             {selectedBenefit && (
               <div style={{ marginTop: '1.5rem' }}>
                 <table className="role-package-table">
@@ -377,13 +470,52 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
                     ))}
                   </tbody>
                 </table>
-                <button className="primary-btn mt-4" disabled={!selectedBenefit || selectedBenefitResponsibilities.length === 0} onClick={addBenefitPackage}>
+                <button
+                  className="primary-btn mt-4"
+                  disabled={!selectedBenefit || qualification.functionalBenefits.length >= benefitSlots}
+                  onClick={addBenefitPackage}
+                >
                   Add Benefit Package
                 </button>
               </div>
             )}
+
+            {qualification.functionalBenefits.length > 0 && (
+              <div className="timeline-list" style={{ marginTop: "1rem" }}>
+                {qualification.functionalBenefits.map((benefit, index) => (
+                  <div key={`${benefit}:${index}`} className="timeline-item">
+                    <div className="timeline-item-head">
+                      <strong>{`Benefit Package ${index + 1}`}</strong>
+                    </div>
+                    <p>{benefit}</p>
+                    <button className="secondary-btn" onClick={() => removeBenefitPackage(index)}>
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
+      </div>
+
+      <div className="status-card">
+        <h3>Qualification Receipt Preview</h3>
+        <p>{`Role Packages: ${qualification.rolePackages.length}`}</p>
+        <p>{`Benefit Packages: ${qualification.functionalBenefits.length}`}</p>
+        {qualification.rolePackages.map((pkg, index) => (
+          <p key={`receipt-role:${pkg.functionalRole}:${index}`}>{`Role Package ${index + 1}: ${pkg.impactLevel.toUpperCase()} - ${pkg.functionalRole}`}</p>
+        ))}
+        {qualification.functionalBenefits.map((benefit, index) => (
+          <p key={`receipt-benefit:${benefit}:${index}`}>{`Benefit Package ${index + 1}: ${benefit}`}</p>
+        ))}
+      </div>
+
+      <div className="qualification-actions">
+        <button type="button" className="primary-btn" onClick={saveQualificationMapping} disabled={isSavingQualification}>
+          {isSavingQualification ? "Saving..." : "Save Qualification Mapping"}
+        </button>
+        {qualificationMessage && <p className="muted">{qualificationMessage}</p>}
       </div>
     </div>
   );

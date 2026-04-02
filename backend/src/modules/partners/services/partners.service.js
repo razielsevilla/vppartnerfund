@@ -541,11 +541,14 @@ function mapQualificationRow(row) {
 
       const impactLevel = String(entry.impactLevel || "").trim().toLowerCase();
       const functionalRole = String(entry.functionalRole || "").trim();
+      const checklistItems = Array.isArray(entry.checklistItems)
+        ? [...new Set(entry.checklistItems.map((item) => String(item).trim()).filter(Boolean))]
+        : [];
       if (!impactLevel || !functionalRole) {
         return null;
       }
 
-      return { impactLevel, functionalRole };
+      return { impactLevel, functionalRole, checklistItems };
     })
     .filter(Boolean);
 
@@ -783,7 +786,16 @@ async function upsertPartnerQualification(partnerId, payload, actorId) {
     return null;
   }
 
-  const rolePackages = Array.isArray(payload.rolePackages) ? payload.rolePackages : [];
+  const inputRolePackages = Array.isArray(payload.rolePackages) ? payload.rolePackages : [];
+  const rolePackages = inputRolePackages
+    .map((item) => ({
+      impactLevel: String(item.impactLevel || "").trim().toLowerCase(),
+      functionalRole: String(item.functionalRole || "").trim(),
+      checklistItems: Array.isArray(item.checklistItems)
+        ? [...new Set(item.checklistItems.map((entry) => String(entry).trim()).filter(Boolean))]
+        : [],
+    }))
+    .filter((item) => item.impactLevel && item.functionalRole);
   const functionalBenefits = Array.isArray(payload.functionalBenefits) ? payload.functionalBenefits : [];
   const legacyPotentialValues = Array.isArray(payload.potentialValuePropositions)
     ? payload.potentialValuePropositions
@@ -795,7 +807,8 @@ async function upsertPartnerQualification(partnerId, payload, actorId) {
     legacyPotentialValues.length > 0 ? legacyPotentialValues : functionalBenefits;
   const effectiveConfirmedValues =
     legacyConfirmedValues.length > 0 ? legacyConfirmedValues : functionalBenefits;
-  const maxBenefitSlots = rolePackages.length + Math.floor(rolePackages.length / 3);
+  const maxBenefitSlots =
+    rolePackages.length > 0 ? rolePackages.length + 2 + Math.floor(rolePackages.length / 3) : 0;
 
   if (rolePackages.length > 0) {
     for (const item of rolePackages) {
