@@ -3,6 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
 import { usePersistentState } from "../../../shared/hooks/usePersistentState";
 import { listTasksRequest } from "../../tasks/services/tasks-api";
+import { Modal } from "../../../shared/components/Modal";
+import { PartnerDetailModal } from "../components/PartnerDetailModal.tsx";
 import {
   archivePartnerRequest,
   createPartnerRequest,
@@ -11,6 +13,7 @@ import {
   getWorkflowHealthMetricsRequest,
   getWorkflowKpiMetricsRequest,
   listPartnersRequest,
+  type CreatePartnerPayload,
   type DuplicateCandidate,
   type PartnerRecord,
   type WorkflowConfig,
@@ -23,7 +26,7 @@ type FilterState = {
   organizationType: string;
   status: "active" | "archived" | "all";
   phaseCode: string;
-  groupBy: "none" | "type" | "status" | "phase";
+  locationRange: "all" | "laguna" | "non-laguna";
 };
 
 function parseStatus(value: string | null): FilterState["status"] {
@@ -60,21 +63,20 @@ export const PartnersPage = () => {
   const [taskCounters, setTaskCounters] = useState({ open: 0, done: 0, overdue: 0 });
   const [createError, setCreateError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [activeView, setActiveView] = usePersistentState<"table" | "pipeline" | "add">(
+  const [activeView, setActiveView] = usePersistentState<"table" | "pipeline">(
     "ui:partners:active-view",
     "table"
   );
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: "organizationName"; direction: "asc" | "desc" } | null>({
+    key: "organizationName",
+    direction: "asc"
+  });
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = usePersistentState<number>("ui:partners:page-size", 10);
+  const [pageSize] = usePersistentState<number>("ui:partners:page-size", 10);
   const [pendingDuplicateCandidates, setPendingDuplicateCandidates] = useState<DuplicateCandidate[]>([]);
-  const [pendingCreatePayload, setPendingCreatePayload] = useState<{
-    organizationName: string;
-    organizationType: string;
-    industryNiche: string;
-    currentPhaseId: string;
-    location: string;
-    websiteUrl: string;
-  } | null>(null);
+  const [pendingCreatePayload, setPendingCreatePayload] = useState<CreatePartnerPayload | null>(null);
   const [createForm, setCreateForm] = useState({
     organizationName: "",
     organizationType: "",
@@ -90,7 +92,7 @@ export const PartnersPage = () => {
     organizationType: searchParams.get("organizationType") || "",
     status: parseStatus(searchParams.get("status")),
     phaseCode: searchParams.get("phaseCode") || "",
-    groupBy: (searchParams.get("groupBy") as FilterState["groupBy"]) || "none",
+    locationRange: (searchParams.get("locationRange") as FilterState["locationRange"]) || "all",
   }));
 
   useEffect(() => {
@@ -99,7 +101,7 @@ export const PartnersPage = () => {
     if (filters.organizationType.trim()) params.set("organizationType", filters.organizationType.trim());
     if (filters.status !== "active") params.set("status", filters.status);
     if (filters.phaseCode.trim()) params.set("phaseCode", filters.phaseCode.trim());
-    if (filters.groupBy !== "none") params.set("groupBy", filters.groupBy);
+    if (filters.locationRange !== "all") params.set("locationRange", filters.locationRange);
 
     if (params.toString() !== searchParams.toString()) {
       setSearchParams(params, { replace: true });
@@ -116,8 +118,6 @@ export const PartnersPage = () => {
   };
 
   const refreshPartners = async () => {
-    setIsLoadingPartners(true);
-    setPartnersError(null);
     try {
       const data = await listPartnersRequest(filters);
       setPartners(data);
@@ -173,7 +173,7 @@ export const PartnersPage = () => {
   }, [partners.length]);
 
   const onFilterChange = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+    setFilters((prev: FilterState) => ({ ...prev, [key]: value }));
   };
 
   const phaseOptions = useMemo(
@@ -187,33 +187,41 @@ export const PartnersPage = () => {
     [workflowConfig?.phases]
   );
 
-  const totalFilteredCount = partners.length;
+  const sortedPartners = useMemo(() => {
+    if (!sortConfig) return partners;
+    return [...partners].sort((a, b) => {
+      const valA = a[sortConfig.key]?.toLowerCase() || "";
+      const valB = b[sortConfig.key]?.toLowerCase() || "";
+      if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [partners, sortConfig]);
+
+  const filteredByLocation = useMemo(() => {
+    return sortedPartners.filter((p: PartnerRecord) => {
+      if (filters.locationRange === "all") return true;
+      const isLaguna = p.location?.toLowerCase().includes("laguna");
+      return filters.locationRange === "laguna" ? isLaguna : !isLaguna;
+    });
+  }, [sortedPartners, filters.locationRange]);
+
+  const totalFilteredCount = filteredByLocation.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredCount / pageSize));
 
   const paginatedPartners = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return partners.slice(start, start + pageSize);
-  }, [currentPage, partners, pageSize]);
+    return filteredByLocation.slice(start, start + pageSize);
+  }, [currentPage, filteredByLocation, pageSize]);
 
-  const finalDisplayGroups = useMemo(() => {
-    if (filters.groupBy === "none") return { "": paginatedPartners };
-    
-    // Group only the current page for instant feel
-    const groups: Record<string, PartnerRecord[]> = {};
-    paginatedPartners.forEach((p) => {
-      let key = "Other";
-      if (filters.groupBy === "type") key = p.organizationType || "Uncategorized";
-      if (filters.groupBy === "status") key = p.archivedAt ? "ARCHIVED" : "ACTIVE";
-      if (filters.groupBy === "phase") {
-        const phase = workflowConfig?.phases.find((ph) => ph.id === p.currentPhaseId);
-        key = phase ? phase.name : p.currentPhaseId.replace(/^phase_/, "").toUpperCase();
-      }
+  const handleSort = (key: "organizationName") => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev?.key === key && prev.direction === "asc" ? "desc" : "asc"
+    }));
+  };
 
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(p);
-    });
-    return groups;
-  }, [filters.groupBy, paginatedPartners, workflowConfig]);
+  const finalDisplayGroups = { "": paginatedPartners };
 
   const subtitle = useMemo(() => {
     if (isLoadingPartners) return "Loading partner registry...";
@@ -221,12 +229,12 @@ export const PartnersPage = () => {
     return `${totalFilteredCount} partner${totalFilteredCount === 1 ? "" : "s"} found`;
   }, [totalFilteredCount, isLoadingPartners, partnersError]);
 
-  const submitCreate = async (confirmDuplicate: boolean, payloadOverride?: any) => {
+  const submitCreate = async (confirmDuplicate: boolean, payloadOverride?: CreatePartnerPayload) => {
     const payloadSource = payloadOverride || pendingCreatePayload;
     if (!payloadSource) return;
 
-    setCreateError(null);
     setIsCreating(true);
+    setCreateError(null);
     try {
       await createPartnerRequest({ ...payloadSource, confirmDuplicate });
       setPendingCreatePayload(null);
@@ -241,7 +249,7 @@ export const PartnersPage = () => {
         websiteUrl: "",
       });
       await refreshPartners();
-      setActiveView("table"); // Redirect to table after success
+      setShowAddModal(false);
     } catch (error) {
       if (error instanceof DuplicatePartnerError) {
         setPendingCreatePayload(payloadSource);
@@ -262,7 +270,7 @@ export const PartnersPage = () => {
       setCreateError("Please specify the location.");
       return;
     }
-    const payload = {
+    const payload: CreatePartnerPayload = {
       organizationName: createForm.organizationName,
       organizationType: createForm.organizationType,
       industryNiche: createForm.industryNiche,
@@ -285,33 +293,42 @@ export const PartnersPage = () => {
 
   const renderRegistryTable = () => (
     <div className="registry-panel">
+      <header className="section-header">
+        <h2>Partner Registry</h2>
+        <p className="muted">Managing and tracking the central repository of network collaborators</p>
+      </header>
+
       <div className="registry-header-filters">
-        <input 
-          type="text" 
-          placeholder="Search Name or Niche..."
-          className="search-input-inline"
-          value={filters.search}
-          onChange={e => onFilterChange("search", e.target.value)}
-        />
-        <select value={filters.organizationType} onChange={e => onFilterChange("organizationType", e.target.value)}>
-          <option value="">All Types</option>
-          {ORGANIZATION_TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-        </select>
-        <select value={filters.status} onChange={e => onFilterChange("status", e.target.value as any)}>
-          <option value="active">Active</option>
-          <option value="archived">Archived</option>
-          <option value="all">Both</option>
-        </select>
-        <select value={filters.phaseCode} onChange={e => onFilterChange("phaseCode", e.target.value)}>
-          <option value="">Any Phase</option>
-          {phaseOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-        </select>
-        <select value={filters.groupBy} onChange={e => onFilterChange("groupBy", e.target.value as any)}>
-          <option value="none">No Grouping</option>
-          <option value="type">Group by Type</option>
-          <option value="status">Group by Status</option>
-          <option value="phase">Group by Phase</option>
-        </select>
+        <div className="registry-filters-row">
+          <input 
+            type="text" 
+            placeholder="Search Name or Niche..."
+            className="search-input-inline search-field-40"
+            value={filters.search}
+            onChange={e => onFilterChange("search", e.target.value)}
+          />
+          <select value={filters.organizationType} onChange={e => onFilterChange("organizationType", e.target.value)} className="filter-equal">
+            <option value="">All Types</option>
+            {ORGANIZATION_TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+          </select>
+          <select value={filters.locationRange} onChange={e => onFilterChange("locationRange", e.target.value as FilterState["locationRange"])} className="filter-equal">
+            <option value="all">All Location</option>
+            <option value="laguna">Laguna</option>
+            <option value="non-laguna">Non-Laguna</option>
+          </select>
+          <select value={filters.phaseCode} onChange={e => onFilterChange("phaseCode", e.target.value)} className="filter-equal">
+            <option value="">All Phases</option>
+            {phaseOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+          <select value={filters.status} onChange={e => onFilterChange("status", e.target.value as FilterState["status"])} className="filter-equal">
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+          </select>
+          <button type="button" className="emphasized-add-btn filter-equal" onClick={() => setShowAddModal(true)}>
+            + Add New Partner
+          </button>
+        </div>
       </div>
 
       {isLoadingPartners ? (
@@ -335,7 +352,9 @@ export const PartnersPage = () => {
                 <table className="registry-table">
                   <thead>
                     <tr>
-                      <th>Organization</th>
+                      <th className="clickable-header" onClick={() => handleSort("organizationName")}>
+                        Organization {sortConfig?.key === "organizationName" && (sortConfig.direction === "asc" ? "↑" : "↓")}
+                      </th>
                       <th>Type</th>
                       <th>Phase</th>
                       <th>Location</th>
@@ -346,9 +365,14 @@ export const PartnersPage = () => {
                     {groupPartners.map((p) => (
                       <tr key={p.id}>
                         <td>
-                          <Link to={`/partners/${p.id}`} className="table-link">
+                          <button
+                            type="button"
+                            className="table-link-btn"
+                            onClick={() => setSelectedPartnerId(p.id)}
+                            style={{ background: 'none', border: 'none', padding: 0, textDecoration: 'underline', color: 'var(--brand-primary)', fontWeight: 'bold', cursor: 'pointer' }}
+                          >
                             {p.organizationName}
-                          </Link>
+                          </button>
                         </td>
                         <td>{p.organizationType}</td>
                         <td>{p.currentPhaseId.replace(/^phase_/, "").toUpperCase()}</td>
@@ -370,39 +394,26 @@ export const PartnersPage = () => {
             ))}
           </div>
 
-          <div className="settings-actions-footer">
-            <div className="table-pagination-row">
-              <div className="table-pagination-controls">
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                >
-                  Prev
-                </button>
-                <span className="page-indicator">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  Next
-                </button>
-              </div>
-              <select
-                value={pageSize}
-                onChange={(event) => setPageSize(Number(event.target.value))}
-                className="secondary-btn"
-              >
-                <option value={10}>10 per page</option>
-                <option value={20}>20 per page</option>
-                <option value={50}>50 per page</option>
-              </select>
-            </div>
+          <div className="pagination-bottom-center">
+            <button
+              type="button"
+              className="secondary-btn"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p: number) => Math.max(1, p - 1))}
+            >
+              Prev
+            </button>
+            <span className="page-indicator">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              className="secondary-btn"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p: number) => Math.min(totalPages, p + 1))}
+            >
+              Next
+            </button>
           </div>
         </>
       )}
@@ -431,13 +442,6 @@ export const PartnersPage = () => {
           >
             Pipeline Health
           </button>
-          <button
-            type="button"
-            className={`sidebar-link ${activeView === "add" ? "is-active" : ""}`}
-            onClick={() => setActiveView("add")}
-          >
-            Add New Partner
-          </button>
         </nav>
       </div>
 
@@ -453,39 +457,46 @@ export const PartnersPage = () => {
                   <p className="muted">Statistical overview of network health and conversion velocity</p>
                 </header>
                 {metrics && (
-                   <div className="stats-grid-detailed">
-                    <div className="metric-box">
-                      <span className="label">Total Active</span>
-                      <span className="value">{metrics.summary.totalActivePartners}</span>
-                      <p className="subtext">Entities currently in the workflow</p>
-                    </div>
-                    <div className="metric-box warning">
-                      <span className="label">Next Action Overdue</span>
-                      <span className="value">{metrics.summary.overdueNextActionCount}</span>
-                      <p className="subtext">Threshold: {metrics.summary.overdueNextActionDaysThreshold} days</p>
-                    </div>
-                    <div className="metric-box danger">
-                      <span className="label">Stalled Partners</span>
-                      <span className="value">{metrics.summary.stalledPartnerCount}</span>
-                      <p className="subtext">No progress in current phase</p>
-                    </div>
-                    <div className="metric-box info">
-                      <span className="label">Pending Tasks</span>
-                      <span className="value">{taskCounters.open}</span>
-                      <p className="subtext">Open items across all actors</p>
-                    </div>
-
-                    {kpi && (
-                      <>
+                  <div className="stats-grid-detailed">
+                    <div className="stats-row-1">
+                      <div className="metric-box">
+                        <span className="label">Total Active</span>
+                        <span className="value">{metrics.summary.totalActivePartners}</span>
+                        <p className="subtext">Entities currently in the workflow</p>
+                      </div>
+                      {kpi && (
                         <div className="metric-box success">
                           <span className="label">Overall Win Rate</span>
                           <span className="value">{((kpi.conversion.overallWinRatePct || 0) * 100).toFixed(1)}%</span>
                           <p className="subtext">Conversion to Partnership</p>
                         </div>
+                      )}
+                    </div>
+
+                    <div className="stats-row-2">
+                       <div className="metric-box warning">
+                        <span className="label">Next Action Overdue</span>
+                        <span className="value">{metrics.summary.overdueNextActionCount}</span>
+                        <p className="subtext">Threshold: {metrics.summary.overdueNextActionDaysThreshold} days</p>
+                      </div>
+                      <div className="metric-box danger">
+                        <span className="label">Stalled Partners</span>
+                        <span className="value">{metrics.summary.stalledPartnerCount}</span>
+                        <p className="subtext">No progress in current phase</p>
+                      </div>
+                      <div className="metric-box info">
+                        <span className="label">Pending Tasks</span>
+                        <span className="value">{taskCounters.open}</span>
+                        <p className="subtext">Open items across all actors</p>
+                      </div>
+                    </div>
+
+                    <div className="stats-row-3">
+                      {kpi && (
                         <div className="metric-box full-width-stat">
                           <span className="label">Stage Distribution</span>
                           <div className="stage-distribution-bar">
-                            {kpi.stageCounts.map(stage => (
+                            {kpi.stageCounts.map((stage: { phaseId: string; phaseName: string; count: number; phaseCode: string }) => (
                               <div 
                                 key={stage.phaseId} 
                                 className="stage-slice"
@@ -501,8 +512,8 @@ export const PartnersPage = () => {
                             ))}
                           </div>
                         </div>
-                      </>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )}
               </section>
@@ -511,7 +522,7 @@ export const PartnersPage = () => {
                 <section className="stalled-list-section">
                   <h3>Critical Attention Required ({metrics.overduePartners.length})</h3>
                   <div className="stalled-partners-grid">
-                    {metrics.overduePartners.slice(0, 6).map(p => (
+                    {metrics.overduePartners.slice(0, 6).map((p: WorkflowHealthMetrics["overduePartners"][0]) => (
                       <Link to={`/partners/${p.partnerId}`} key={p.partnerId} className="stalled-card">
                          <span className="p-name">{p.organizationName}</span>
                          <span className="p-ov">Overdue: {p.overdueByDays} days</span>
@@ -524,11 +535,11 @@ export const PartnersPage = () => {
             </div>
           )}
 
-          {activeView === "add" && (
+          {/* Add Modal */}
+          <Modal title="Register New Partner" open={showAddModal} onClose={() => setShowAddModal(false)}>
             <div className="add-partner-view">
               <section className="add-partner-section">
                 <header className="section-header">
-                  <h2>Register New Partner</h2>
                   <p className="muted">Capture new organization details to start the engagement workflow</p>
                 </header>
                 <form className="registry-create-form wide-form" onSubmit={onCreateSubmit}>
@@ -581,6 +592,7 @@ export const PartnersPage = () => {
                         <label className="radio-label">
                           <input
                             type="radio"
+                            name="locationScope"
                             checked={createForm.locationScope === "laguna"}
                             onChange={() => setCreateForm((f) => ({ ...f, locationScope: "laguna" }))}
                           />
@@ -589,6 +601,7 @@ export const PartnersPage = () => {
                         <label className="radio-label">
                           <input
                             type="radio"
+                            name="locationScope"
                             checked={createForm.locationScope === "non_laguna"}
                             onChange={() => setCreateForm((f) => ({ ...f, locationScope: "non_laguna" }))}
                           />
@@ -614,7 +627,7 @@ export const PartnersPage = () => {
                     <div className="duplicate-warning">
                       <p>Found {pendingDuplicateCandidates.length} existing partners with similar names:</p>
                       <ul>
-                        {pendingDuplicateCandidates.map(c => (
+                        {pendingDuplicateCandidates.map((c: DuplicateCandidate) => (
                           <li key={c.id}>
                             <strong>{c.organizationName}</strong> ({c.location})
                           </li>
@@ -638,6 +651,17 @@ export const PartnersPage = () => {
                 </form>
               </section>
             </div>
+          </Modal>
+
+          {/* Detail Modal Placeholder */}
+          {selectedPartnerId && (
+            <PartnerDetailModal 
+              partnerId={selectedPartnerId} 
+              onClose={() => {
+                setSelectedPartnerId(null);
+                refreshPartners();
+              }} 
+            />
           )}
         </div>
       </div>
