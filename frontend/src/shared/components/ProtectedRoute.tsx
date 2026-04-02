@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuthSession } from "../../features/auth/hooks/use-auth-session";
+import { Navbar } from "./Navbar";
 
 export const ProtectedRoute = () => {
   const location = useLocation();
@@ -13,5 +14,12 @@ export const ProtectedRoute = () => {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  return <Outlet />;
+  return (
+    <>
+      <Navbar />
+      <div className="authenticated-layout">
+        <Outlet />
+      </div>
+    </>
+  );
 };

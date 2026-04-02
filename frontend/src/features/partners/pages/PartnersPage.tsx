@@ -112,7 +112,7 @@ function parseSpreadsheetText(raw: string): Array<Record<string, string>> {
 }
 
 export const PartnersPage = () => {
-  const { user, logout } = useAuthSession();
+  useAuthSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const [partners, setPartners] = useState<PartnerRecord[]>([]);
   const [isLoadingPartners, setIsLoadingPartners] = useState(true);
@@ -512,29 +512,6 @@ export const PartnersPage = () => {
         <div>
           <h1>Partner Registry</h1>
           <p className="muted">{subtitle}</p>
-        </div>
-        <div className="user-actions">
-          <nav className="page-nav-links" aria-label="Primary navigation">
-            <Link to="/dashboard" className="link-button">
-              Dashboard
-            </Link>
-            <Link to="/partners" className="link-button link-button-active">
-              Partners
-            </Link>
-            <Link to="/tasks" className="link-button">
-              Tasks
-            </Link>
-            <Link to="/team" className="link-button">
-              Team
-            </Link>
-            <Link to="/settings" className="link-button">
-              Settings
-            </Link>
-          </nav>
-          <span>{user?.displayName}</span>
-          <button type="button" onClick={logout}>
-            Logout
-          </button>
         </div>
       </header>
       <div className="page-view-switcher" role="tablist" aria-label="Partner registry view switcher">

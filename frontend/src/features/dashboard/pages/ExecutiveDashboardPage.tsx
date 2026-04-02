@@ -47,7 +47,7 @@ function getHealthTone(level: number, thresholds: { warning: number; danger: num
 }
 
 export const ExecutiveDashboardPage = () => {
-  const { user, logout } = useAuthSession();
+  useAuthSession();
   const [metrics, setMetrics] = useState<WorkflowKpiMetrics | null>(null);
   const [coverage, setCoverage] = useState<WorkflowCoverageInsights | null>(null);
   const [snapshots, setSnapshots] = useState<WorkflowSnapshot[]>([]);
@@ -143,29 +143,6 @@ export const ExecutiveDashboardPage = () => {
         <div>
           <h1>Executive Dashboard</h1>
           <p className="muted">Live performance overview for pipeline health and execution.</p>
-        </div>
-        <div className="user-actions">
-          <nav className="page-nav-links" aria-label="Primary navigation">
-            <Link to="/dashboard" className="link-button link-button-active">
-              Dashboard
-            </Link>
-            <Link to="/partners" className="link-button">
-              Partners
-            </Link>
-            <Link to="/tasks" className="link-button">
-              Tasks
-            </Link>
-            <Link to="/team" className="link-button">
-              Team
-            </Link>
-            <Link to="/settings" className="link-button">
-              Settings
-            </Link>
-          </nav>
-          <span>{user?.displayName}</span>
-          <button type="button" onClick={logout}>
-            Logout
-          </button>
         </div>
       </header>
 
