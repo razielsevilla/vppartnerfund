@@ -838,6 +838,136 @@ textarea:hover {
   transform: translateY(-1px) !important;
 }
 
+.sidebar-link {
+  width: 100%;
+  display: flex !important;
+  align-items: center;
+  padding: 0.9rem 1.25rem !important;
+  border-radius: 14px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  font-weight: 500 !important;
+  font-size: 0.95rem !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-link:hover {
+  background: rgba(30, 64, 175, 0.04) !important;
+  color: var(--brand-primary) !important;
+  padding-left: 1.5rem !important;
+}
+
+.sidebar-link.is-active {
+  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%) !important;
+  color: var(--brand-primary) !important;
+  font-weight: 700 !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+}
+
+.sidebar-link.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  height: 60%;
+  width: 5px;
+  background: var(--brand-primary);
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 10px rgba(30, 64, 175, 0.3);
+}
+
+.settings-content {
+  flex: 1;
+  background: #f8fafc;
+  background: radial-gradient(at top left, #f8fafc 0%, #f1f5f9 100%);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden !important;
+  height: 100%;
+}
+
+.single-screen-content {
+  padding: 3rem;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  height: 100%;
+  overflow-y: auto; /* Content area scrolls if content is too large, but page shell is 100vh */
+  scrollbar-gutter: stable;
+}
+
+/* TABLE UPGRADES */
+.registry-table-wrap {
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
+  margin-top: 1.5rem;
+}
+
+.registry-table th {
+  background: #fcfcfd;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 800;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.registry-table td {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.95rem;
+}
+
+.registry-table tr:hover td {
+  background: #fafafb;
+}
+
+/* KPI CARDS UPGRADE */
+.health-card {
+  padding: 2rem !important;
+  border-radius: 20px !important;
+  background: #ffffff !important;
+  border: 1px solid var(--border-soft) !important;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.04) !important;
+  transition: all 300ms ease !important;
+}
+
+.health-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(15, 23, 42, 0.08) !important;
+  border-color: var(--brand-primary) !important;
+}
+
+.health-card h3 {
+  font-size: 0.85rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  margin-bottom: 1rem !important;
+  color: var(--text-muted) !important;
+}
+
+.health-card strong {
+  font-size: 2.5rem !important;
+  font-weight: 850 !important;
+  display: block;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, var(--text-primary), #64748b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 .authenticated-layout {
   padding-top: 1rem;
 }

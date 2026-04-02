@@ -46,7 +46,7 @@ function isOverdue(task: TaskRecord): boolean {
 }
 
 export const TaskQueuePage = () => {
-  const { user, logout } = useAuthSession();
+  const { user } = useAuthSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const [queueMode, setQueueMode] = useState<QueueMode>(() =>
     searchParams.get("queue") === "team" ? "team" : "personal",
@@ -222,258 +222,248 @@ export const TaskQueuePage = () => {
   };
 
   return (
-    <main className="page-layout single-screen-page">
-      <header className="page-header">
-        <div>
-          <h1>Task Queues</h1>
-          <p className="muted">{subtitle}</p>
+    <main className="settings-page-container">
+      <div className="settings-sidebar">
+        <div className="sidebar-header">
+          <h1>Tasks</h1>
+          <p className="sidebar-status">{subtitle}</p>
         </div>
-        <div className="user-actions">
-          <nav className="page-nav-links" aria-label="Primary navigation">
-            <Link to="/dashboard" className="link-button">
-              Dashboard
-            </Link>
-            <Link to="/partners" className="link-button">
-              Partners
-            </Link>
-            <Link to="/tasks" className="link-button link-button-active">
-              Tasks
-            </Link>
-            <Link to="/team" className="link-button">
-              Team
-            </Link>
-            <Link to="/settings" className="link-button">
-              Settings
-            </Link>
-          </nav>
-          <span>{user?.displayName}</span>
-          <button type="button" onClick={logout}>
-            Logout
+
+        <nav className="sidebar-nav">
+          <button
+            type="button"
+            className={`sidebar-link ${activeView === "summary" ? "is-active" : ""}`}
+            onClick={() => setActiveView("summary")}
+          >
+            Dashboard Summary
           </button>
-        </div>
-      </header>
+          <button
+            type="button"
+            className={`sidebar-link ${activeView === "filters" ? "is-active" : ""}`}
+            onClick={() => setActiveView("filters")}
+          >
+            Queue Filters
+          </button>
+          <button
+            type="button"
+            className={`sidebar-link ${activeView === "table" ? "is-active" : ""}`}
+            onClick={() => setActiveView("table")}
+          >
+            Task Queue
+          </button>
+        </nav>
 
-      <div className="page-view-switcher" role="tablist" aria-label="Task view switcher">
-        <button
-          type="button"
-          className={`view-tab-btn ${activeView === "summary" ? "is-active" : ""}`}
-          onClick={() => setActiveView("summary")}
-        >
-          Summary
-        </button>
-        <button
-          type="button"
-          className={`view-tab-btn ${activeView === "filters" ? "is-active" : ""}`}
-          onClick={() => setActiveView("filters")}
-        >
-          Filters
-        </button>
-        <button
-          type="button"
-          className={`view-tab-btn ${activeView === "table" ? "is-active" : ""}`}
-          onClick={() => setActiveView("table")}
-        >
-          Queue Table
-        </button>
-      </div>
-
-      <div className="single-screen-content">
-      {activeView === "summary" && (
-      <section className="health-metrics-panel" aria-label="Task queue summary">
-        <h2>Task Counters</h2>
-        <div className="health-cards">
-          <article className="health-card">
-            <h3>Open</h3>
-            <strong>{summary.open}</strong>
-          </article>
-          <article className="health-card">
-            <h3>In Progress</h3>
-            <strong>{summary.inProgress}</strong>
-          </article>
-          <article className="health-card">
-            <h3>Blocked</h3>
-            <strong>{summary.blocked}</strong>
-          </article>
-          <article className="health-card">
-            <h3>Completed</h3>
-            <strong>{summary.done}</strong>
-          </article>
-          <article className="health-card health-card-warning">
-            <h3>Upcoming</h3>
-            <strong>{summary.upcoming}</strong>
-          </article>
-          <article className="health-card health-card-warning">
-            <h3>Overdue</h3>
-            <strong>{summary.overdue}</strong>
-          </article>
-        </div>
-        <div className="task-reminder-actions">
+        <div className="sidebar-status" style={{ marginTop: "auto" }}>
           <button
             type="button"
             className="secondary-btn"
+            style={{ width: "100%" }}
             onClick={triggerReminders}
             disabled={isTriggeringReminders}
           >
-            {isTriggeringReminders ? "Triggering..." : "Trigger Critical Reminders"}
+            {isTriggeringReminders ? "Sending..." : "🔔 Remind Team"}
           </button>
-          {triggerMessage && <p className="muted">{triggerMessage}</p>}
+          {triggerMessage && <p className="muted" style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>{triggerMessage}</p>}
         </div>
-      </section>
-      )}
+      </div>
 
-      {activeView === "filters" && (
-      <section className="registry-controls" aria-label="Task queue filters">
-        <label>
-          Queue
-          <select
-            value={queueMode}
-            onChange={(event) => setQueueMode(event.target.value as QueueMode)}
-          >
-            <option value="personal">Personal Queue</option>
-            <option value="team">Team Queue</option>
-          </select>
-        </label>
+      <div className="settings-content">
+        <div className="single-screen-content">
+          {activeView === "summary" && (
+            <section className="health-metrics-panel" aria-label="Task queue summary">
+              <h2>Performance Counters</h2>
+              <div className="health-cards">
+                <article className="health-card">
+                  <h3>Open</h3>
+                  <strong>{summary.open}</strong>
+                </article>
+                <article className="health-card">
+                  <h3>In Progress</h3>
+                  <strong>{summary.inProgress}</strong>
+                </article>
+                <article className="health-card">
+                  <h3>Blocked</h3>
+                  <strong>{summary.blocked}</strong>
+                </article>
+                <article className="health-card">
+                  <h3>Completed</h3>
+                  <strong>{summary.done}</strong>
+                </article>
+                <article className="health-card health-card-warning">
+                  <h3>Upcoming</h3>
+                  <strong>{summary.upcoming}</strong>
+                </article>
+                <article className="health-card health-card-danger">
+                  <h3>Overdue</h3>
+                  <strong>{summary.overdue}</strong>
+                </article>
+              </div>
+            </section>
+          )}
 
-        <label>
-          Status
-          <select
-            value={filters.status}
-            onChange={(event) =>
-              setFilters((prev) => ({ ...prev, status: event.target.value as TaskFilters["status"] }))
-            }
-          >
-            <option value="">All states</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="blocked">Blocked</option>
-            <option value="done">Done</option>
-          </select>
-        </label>
+          {activeView === "filters" && (
+            <section className="registry-controls" aria-label="Task queue filters">
+              <label>
+                Queue Type
+                <select
+                  value={queueMode}
+                  onChange={(event) => setQueueMode(event.target.value as QueueMode)}
+                >
+                  <option value="personal">Personal assignments</option>
+                  <option value="team">Division-wide queue</option>
+                </select>
+              </label>
 
-        <label>
-          Owner
-          <select
-            value={queueMode === "personal" ? user?.id || "" : filters.ownerId}
-            onChange={(event) => setFilters((prev) => ({ ...prev, ownerId: event.target.value }))}
-            disabled={queueMode === "personal"}
-          >
-            {queueMode === "personal" ? (
-              <option value={user?.id || ""}>{user?.displayName || "Current user"}</option>
-            ) : (
-              <>
-                <option value="">All owners</option>
-                {ownerOptions.map((owner) => (
-                  <option key={owner.id} value={owner.id}>
-                    {owner.label}
-                  </option>
-                ))}
-              </>
-            )}
-          </select>
-        </label>
+              <label>
+                Status
+                <select
+                  value={filters.status}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      status: event.target.value as TaskFilters["status"],
+                    }))
+                  }
+                >
+                  <option value="">All active states</option>
+                  <option value="open">Open</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="blocked">Blocked</option>
+                  <option value="done">Done</option>
+                </select>
+              </label>
 
-        <label>
-          Due from
-          <input
-            type="date"
-            value={filters.dueDateFrom}
-            onChange={(event) => setFilters((prev) => ({ ...prev, dueDateFrom: event.target.value }))}
-          />
-        </label>
+              <label>
+                Assignee
+                <select
+                  value={queueMode === "personal" ? user?.id || "" : filters.ownerId}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, ownerId: event.target.value }))}
+                  disabled={queueMode === "personal"}
+                >
+                  {queueMode === "personal" ? (
+                    <option value={user?.id || ""}>{user?.displayName}</option>
+                  ) : (
+                    <>
+                      <option value="">Everyone</option>
+                      {ownerOptions.map((owner) => (
+                        <option key={owner.id} value={owner.id}>
+                          {owner.label}
+                        </option>
+                      ))}
+                    </>
+                  )}
+                </select>
+              </label>
 
-        <label>
-          Due to
-          <input
-            type="date"
-            value={filters.dueDateTo}
-            onChange={(event) => setFilters((prev) => ({ ...prev, dueDateTo: event.target.value }))}
-          />
-        </label>
-      </section>
-      )}
+              <label>
+                Due from
+                <input
+                  type="date"
+                  value={filters.dueDateFrom}
+                  onChange={(event) =>
+                    setFilters((prev) => ({ ...prev, dueDateFrom: event.target.value }))
+                  }
+                />
+              </label>
 
-      {activeView === "table" && (
-      <section className="registry-panel" aria-label="Task queue table">
-        {isLoading && <p className="loading-state">Loading tasks...</p>}
+              <label>
+                Due to
+                <input
+                  type="date"
+                  value={filters.dueDateTo}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, dueDateTo: event.target.value }))}
+                />
+              </label>
+            </section>
+          )}
 
-        {!isLoading && error && (
-          <div className="status-card status-error" role="alert">
-            <h2>Failed to load tasks</h2>
-            <p>{error}</p>
-          </div>
-        )}
+          {activeView === "table" && (
+            <section className="registry-panel" aria-label="Task queue table">
+              {isLoading && <p className="loading-state">Syncing tasks...</p>}
 
-        {!isLoading && !error && tasks.length === 0 && (
-          <div className="status-card status-empty">
-            <h2>No tasks found</h2>
-            <p>Try adjusting queue filters to broaden results.</p>
-          </div>
-        )}
+              {!isLoading && error && (
+                <div className="status-card status-error" role="alert">
+                  <h2>Sync Failed</h2>
+                  <p>{error}</p>
+                </div>
+              )}
 
-        {!isLoading && !error && tasks.length > 0 && (
-          <div className="registry-table-wrap">
-            <table className="registry-table">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Owner</th>
-                  <th>Due Date</th>
-                  <th>Priority</th>
-                  <th>Status</th>
-                  <th>Partner</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tasks.map((task) => {
-                  const overdue = isOverdue(task);
-                  const reminderType = summary.reminderByTaskId.get(task.id);
-                  return (
-                    <tr key={task.id} className={overdue ? "task-row-overdue" : ""}>
-                      <td>
-                        <div className="task-title-cell">
-                          <strong>{task.title}</strong>
-                          {task.description && <span className="muted">{task.description}</span>}
-                        </div>
-                      </td>
-                      <td>{task.ownerId}</td>
-                      <td>{task.dueDate}</td>
-                      <td>{task.priority}</td>
-                      <td>
-                        <span className={`task-status-chip task-status-${task.status}`}>
-                          {STATUS_LABELS[task.status]}
-                        </span>
-                        {reminderType === "upcoming" && <span className="task-upcoming-flag">Upcoming</span>}
-                        {overdue && <span className="task-overdue-flag">Overdue</span>}
-                      </td>
-                      <td>
-                        <Link to={`/partners/${task.partnerId}`} className="table-link">
-                          View Partner
-                        </Link>
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className="task-complete-btn"
-                          disabled={task.status === "done" || Boolean(isCompletingById[task.id])}
-                          onClick={() => completeTask(task.id)}
-                        >
-                          {task.status === "done"
-                            ? "Completed"
-                            : isCompletingById[task.id]
-                              ? "Completing..."
-                              : "Mark Done"}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-      )}
+              {!isLoading && !error && tasks.length === 0 && (
+                <div className="status-card status-empty">
+                  <h2>All caught up</h2>
+                  <p>No tasks match your current filter selection.</p>
+                </div>
+              )}
+
+              {!isLoading && !error && tasks.length > 0 && (
+                <div className="registry-table-wrap">
+                  <table className="registry-table">
+                    <thead>
+                      <tr>
+                        <th>Title & Context</th>
+                        <th>Owner</th>
+                        <th>Due At</th>
+                        <th>Status</th>
+                        <th>Partner Link</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tasks.map((task) => {
+                        const overdue = isOverdue(task);
+                        const reminderType = summary.reminderByTaskId.get(task.id);
+                        return (
+                          <tr key={task.id} className={overdue ? "task-row-overdue" : ""}>
+                            <td>
+                              <div className="task-title-cell">
+                                <strong>{task.title}</strong>
+                                {task.description && (
+                                  <span className="muted" style={{ fontSize: "0.85rem" }}>
+                                    {task.description}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td>{task.ownerId}</td>
+                            <td>{task.dueDate}</td>
+                            <td>
+                              <span className={`task-status-chip task-status-${task.status}`}>
+                                {STATUS_LABELS[task.status]}
+                              </span>
+                              {reminderType === "upcoming" && (
+                                <span className="task-upcoming-flag">Notify</span>
+                              )}
+                              {overdue && <span className="task-overdue-flag">LATE</span>}
+                            </td>
+                            <td>
+                              <Link to={`/partners/${task.partnerId}`} className="table-link">
+                                View Partner
+                              </Link>
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className="task-complete-btn"
+                                disabled={task.status === "done" || Boolean(isCompletingById[task.id])}
+                                onClick={() => completeTask(task.id)}
+                              >
+                                {task.status === "done"
+                                  ? "Done"
+                                  : isCompletingById[task.id]
+                                    ? "..."
+                                    : "Complete"}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          )}
+        </div>
       </div>
     </main>
   );

@@ -507,453 +507,431 @@ export const PartnersPage = () => {
   };
 
   return (
-    <main className="page-layout single-screen-page">
-      <header className="page-header">
-        <div>
-          <h1>Partner Registry</h1>
-          <p className="muted">{subtitle}</p>
-        </div>
-      </header>
-      <div className="page-view-switcher" role="tablist" aria-label="Partner registry view switcher">
-        <button
-          type="button"
-          className={`view-tab-btn ${activeView === "table" ? "is-active" : ""}`}
-          onClick={() => setActiveView("table")}
-        >
-          Registry Table
-        </button>
-        <button
-          type="button"
-          className={`view-tab-btn ${activeView === "filters" ? "is-active" : ""}`}
-          onClick={() => setActiveView("filters")}
-        >
-          Filters
-        </button>
-        <button
-          type="button"
-          className={`view-tab-btn ${activeView === "health" ? "is-active" : ""}`}
-          onClick={() => setActiveView("health")}
-        >
-          Pipeline Health
-        </button>
-        <button
-          type="button"
-          className={`view-tab-btn ${activeView === "add" ? "is-active" : ""}`}
-          onClick={() => setActiveView("add")}
-        >
-          Add Partner
-        </button>
-        <button
-          type="button"
-          className={`view-tab-btn ${activeView === "import" ? "is-active" : ""}`}
-          onClick={() => setActiveView("import")}
-        >
-          Import
-        </button>
-      </div>
-
-      <div className="single-screen-content">
-      {activeView === "filters" && (
-      <section className="registry-controls" aria-label="Partner registry filters">
-        <label>
-          Search
-          <input
-            type="text"
-            placeholder="Partner name or keyword"
-            value={filters.search}
-            onChange={(event) => onFilterChange("search", event.target.value)}
-          />
-        </label>
-        <label>
-          Type
-          <input
-            type="text"
-            placeholder="e.g. Corporate"
-            value={filters.organizationType}
-            onChange={(event) => onFilterChange("organizationType", event.target.value)}
-          />
-        </label>
-        <label>
-          Niche
-          <input
-            type="text"
-            placeholder="e.g. Digital upskilling for startups and SMEs"
-            value={filters.industryNiche}
-            onChange={(event) => onFilterChange("industryNiche", event.target.value)}
-          />
-        </label>
-        <label>
-          Status
-          <select
-            value={filters.status}
-            onChange={(event) => onFilterChange("status", event.target.value as FilterState["status"])}
-          >
-            <option value="active">Active</option>
-            <option value="archived">Archived</option>
-            <option value="all">All</option>
-          </select>
-        </label>
-        <label>
-          Phase
-          <select
-            value={filters.phaseCode}
-            onChange={(event) => onFilterChange("phaseCode", event.target.value)}
-          >
-            <option value="">Any</option>
-            {phaseOptions.map((phase) => (
-              <option key={phase.value} value={phase.value}>
-                {phase.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Value Proposition
-          <input
-            type="text"
-            placeholder="e.g. Talent Pipeline"
-            value={filters.valueProp}
-            onChange={(event) => onFilterChange("valueProp", event.target.value)}
-          />
-        </label>
-        <label>
-          Coverage
-          <select
-            value={filters.coverageState}
-            onChange={(event) =>
-              onFilterChange("coverageState", event.target.value as FilterState["coverageState"])
-            }
-          >
-            <option value="">Any</option>
-            <option value="gap">Gap (Potential not Confirmed)</option>
-            <option value="covered">Covered (Confirmed)</option>
-          </select>
-        </label>
-        <label>
-          Impact
-          <select
-            value={filters.impactTier}
-            onChange={(event) =>
-              onFilterChange("impactTier", event.target.value as FilterState["impactTier"])
-            }
-          >
-            <option value="">Any</option>
-            <option value="standard">Standard</option>
-            <option value="major">Major</option>
-            <option value="lead">Lead</option>
-          </select>
-        </label>
-      </section>
-      )}
-
-      {activeView === "health" && (
-      <section className="health-metrics-panel" aria-label="Pipeline health metrics">
-        {metricsError && <p className="error-text">{metricsError}</p>}
-        {!metricsError && metrics && (
-          <div className="health-cards">
-            <article className="health-card">
-              <h3>Active Partners</h3>
-              <strong>{metrics.summary.totalActivePartners}</strong>
-            </article>
-            <article className="health-card health-card-warning">
-              <h3>Overdue Next Actions</h3>
-              <strong>{metrics.summary.overdueNextActionCount}</strong>
-              <p>{`Threshold: ${metrics.summary.overdueNextActionDaysThreshold} days`}</p>
-            </article>
-            <article className="health-card health-card-danger">
-              <h3>Stalled Partners</h3>
-              <strong>{metrics.summary.stalledPartnerCount}</strong>
-              <p>From stage threshold rules</p>
-            </article>
-            <article className="health-card">
-              <h3>Open Tasks</h3>
-              <strong>{taskCounters.open}</strong>
-            </article>
-            <article className="health-card">
-              <h3>Completed Tasks</h3>
-              <strong>{taskCounters.done}</strong>
-              <p>{taskCounters.overdue} overdue</p>
-            </article>
-          </div>
-        )}
-      </section>
-      )}
-
-      {activeView === "add" && (
-      <section className="registry-create-panel" aria-label="Create partner">
-        <form className="registry-create-form" onSubmit={onCreateSubmit}>
-          <input
-            required
-            type="text"
-            placeholder="Organization name"
-            value={createForm.organizationName}
-            onChange={(event) =>
-              setCreateForm((prev) => ({ ...prev, organizationName: event.target.value }))
-            }
-          />
-          <select
-            required
-            value={createForm.organizationType}
-            onChange={(event) =>
-              setCreateForm((prev) => ({ ...prev, organizationType: event.target.value }))
-            }
-          >
-            <option value="">Select type</option>
-            {ORGANIZATION_TYPE_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-          <textarea
-            className="registry-create-field-wide"
-            required
-            placeholder="Niche (long answer)"
-            value={createForm.industryNiche}
-            onChange={(event) =>
-              setCreateForm((prev) => ({ ...prev, industryNiche: event.target.value }))
-            }
-          />
-          <select
-            value={createForm.locationScope}
-            onChange={(event) =>
-              setCreateForm((prev) => ({
-                ...prev,
-                locationScope: event.target.value as "laguna" | "non_laguna",
-              }))
-            }
-          >
-            <option value="laguna">Laguna</option>
-            <option value="non_laguna">Non-Laguna</option>
-          </select>
-          {createForm.locationScope === "non_laguna" && (
-            <input
-              required
-              type="text"
-              placeholder="Specify non-Laguna location"
-              value={createForm.nonLagunaLocation}
-              onChange={(event) =>
-                setCreateForm((prev) => ({ ...prev, nonLagunaLocation: event.target.value }))
-              }
-            />
-          )}
-          <input
-            type="url"
-            placeholder="Website or social media link"
-            value={createForm.websiteUrl}
-            onChange={(event) => setCreateForm((prev) => ({ ...prev, websiteUrl: event.target.value }))}
-          />
-          <button type="submit" disabled={isCreating}>
-            {isCreating ? "Creating..." : "Create Partner"}
-          </button>
-        </form>
-
-        {createError && <p className="error-text">{createError}</p>}
-
-        {pendingDuplicateCandidates.length > 0 && (
-          <div className="duplicate-warning" role="alert">
-            <h3>Possible duplicates found</h3>
-            <ul>
-              {pendingDuplicateCandidates.map((candidate) => (
-                <li key={candidate.id}>
-                  {candidate.organizationName} ({Math.round(candidate.similarity * 100)}% similar)
-                </li>
-              ))}
-            </ul>
-            <button type="button" onClick={() => submitCreate(true)} disabled={isCreating}>
-              Confirm Intentional Duplicate
-            </button>
-          </div>
-        )}
-      </section>
-      )}
-
-      {activeView === "import" && (
-      <section className="registry-create-panel" aria-label="Spreadsheet import">
-        <p className="muted">Paste CSV/TSV exported from Sheets, map columns, and run dry-run before apply.</p>
-
-        <div className="import-grid">
-          <label>
-            Sheet Data
-            <textarea
-              className="import-textarea"
-              value={sheetText}
-              onChange={(event) => setSheetText(event.target.value)}
-              placeholder="Organization Name,Type,Industry,Phase,Impact,Location"
-            />
-          </label>
-
-          <div className="import-mapping-grid">
-            {importMappingConfig?.fields.map((field) => (
-              <label key={field.key}>
-                {field.label}
-                <input
-                  type="text"
-                  required={field.required}
-                  value={importMapping[field.key] || ""}
-                  onChange={(event) =>
-                    setImportMapping((prev) => ({ ...prev, [field.key]: event.target.value }))
-                  }
-                />
-              </label>
-            ))}
-          </div>
+    <main className="settings-page-container">
+      <div className="settings-sidebar">
+        <div className="sidebar-header">
+          <h1>Partners</h1>
+          <p className="sidebar-status">{subtitle}</p>
         </div>
 
-        <div className="import-actions">
+        <nav className="sidebar-nav">
           <button
             type="button"
-            className="secondary-btn"
-            disabled={isImporting}
-            onClick={() => runImport(true)}
+            className={`sidebar-link ${activeView === "table" ? "is-active" : ""}`}
+            onClick={() => setActiveView("table")}
           >
-            {isImporting ? "Processing..." : "Dry Run"}
+            Partner Registry
           </button>
-          <button type="button" disabled={isImporting} onClick={() => runImport(false)}>
-            {isImporting ? "Processing..." : "Apply Import"}
+          <button
+            type="button"
+            className={`sidebar-link ${activeView === "filters" ? "is-active" : ""}`}
+            onClick={() => setActiveView("filters")}
+          >
+            Advanced Filters
           </button>
-        </div>
+          <button
+            type="button"
+            className={`sidebar-link ${activeView === "health" ? "is-active" : ""}`}
+            onClick={() => setActiveView("health")}
+          >
+            Pipeline Health
+          </button>
+          <button
+            type="button"
+            className={`sidebar-link ${activeView === "add" ? "is-active" : ""}`}
+            onClick={() => setActiveView("add")}
+          >
+            Add New Partner
+          </button>
+          <button
+            type="button"
+            className={`sidebar-link ${activeView === "import" ? "is-active" : ""}`}
+            onClick={() => setActiveView("import")}
+          >
+            Spreadsheet Import
+          </button>
+        </nav>
+      </div>
 
-        {importError && <p className="error-text">{importError}</p>}
+      <div className="settings-content">
+        <div className="single-screen-content">
+          {activeView === "table" && (
+            <div className="registry-panel">
+              {isLoadingPartners && <p className="loading-state">Loading registry...</p>}
 
-        {importResult && (
-          <div className="import-summary" role="status">
-            <h3>{importResult.dryRun ? "Dry-Run Summary" : "Import Summary"}</h3>
-            <p className="muted">{`Executed: ${new Date(importResult.executedAt).toLocaleString()}`}</p>
-            <div className="health-cards">
-              <article className="health-card">
-                <h3>Created</h3>
-                <strong>{importResult.summary.created}</strong>
-              </article>
-              <article className="health-card">
-                <h3>Updated</h3>
-                <strong>{importResult.summary.updated}</strong>
-              </article>
-              <article className="health-card">
-                <h3>Skipped</h3>
-                <strong>{importResult.summary.skipped}</strong>
-              </article>
-              <article className="health-card health-card-danger">
-                <h3>Failed</h3>
-                <strong>{importResult.summary.failed}</strong>
-              </article>
+              {!isLoadingPartners && partnersError && (
+                <div className="status-card status-error" role="alert">
+                  <h2>Registry Error</h2>
+                  <p>{partnersError}</p>
+                </div>
+              )}
+
+              {!isLoadingPartners && !partnersError && filteredPartners.length === 0 && (
+                <div className="status-card status-empty">
+                  <h2>No partners found</h2>
+                  <p>Try adjusting filters or adding a new partner.</p>
+                </div>
+              )}
+
+              {!isLoadingPartners && !partnersError && filteredPartners.length > 0 && (
+                <>
+                  <div className="registry-table-wrap">
+                    <table className="registry-table">
+                      <thead>
+                        <tr>
+                          <th>Organization</th>
+                          <th>Type</th>
+                          <th>Phase</th>
+                          <th>Location</th>
+                          <th>Impact</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedPartners.map((partner) => (
+                          <tr key={partner.id}>
+                            <td>
+                              <Link to={`/partners/${partner.id}`} className="table-link">
+                                {partner.organizationName}
+                              </Link>
+                            </td>
+                            <td>{partner.organizationType}</td>
+                            <td>{partner.currentPhaseId.replace(/^phase_/, "").toUpperCase()}</td>
+                            <td>{partner.location}</td>
+                            <td>{partner.impactTier || "standard"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="settings-actions-footer">
+                    <div className="table-pagination-row">
+                      <div className="table-pagination-controls">
+                        <button
+                          type="button"
+                          className="secondary-btn"
+                          disabled={currentPage === 1}
+                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        >
+                          Prev
+                        </button>
+                        <span className="page-indicator">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                          type="button"
+                          className="secondary-btn"
+                          disabled={currentPage === totalPages}
+                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        >
+                          Next
+                        </button>
+                      </div>
+                      <select
+                        value={pageSize}
+                        onChange={(event) => setPageSize(Number(event.target.value))}
+                        className="secondary-btn"
+                        style={{ padding: "0.4rem" }}
+                      >
+                        <option value={10}>10 per page</option>
+                        <option value={20}>20 per page</option>
+                        <option value={50}>50 per page</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-            <div className="registry-table-wrap">
-              <table className="registry-table">
-                <thead>
-                  <tr>
-                    <th>Row</th>
-                    <th>Action</th>
-                    <th>Organization</th>
-                    <th>Reason</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {importResult.results.slice(0, 20).map((entry) => (
-                    <tr key={`${entry.rowNumber}-${entry.organizationName || "row"}`}>
-                      <td>{entry.rowNumber}</td>
-                      <td>{entry.action}</td>
-                      <td>{entry.organizationName || "-"}</td>
-                      <td>{entry.reason || "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </section>
-      )}
+          )}
 
-      {activeView === "table" && (
-      <section className="registry-panel">
-        {isLoadingPartners && <p className="loading-state">Loading partners...</p>}
-
-        {!isLoadingPartners && partnersError && (
-          <div className="status-card status-error" role="alert">
-            <h2>Failed to load partner registry</h2>
-            <p>{partnersError}</p>
-          </div>
-        )}
-
-        {!isLoadingPartners && !partnersError && filteredPartners.length === 0 && (
-          <div className="status-card status-empty">
-            <h2>No partners found</h2>
-            <p>Try adjusting search or filter values to broaden results.</p>
-          </div>
-        )}
-
-        {!isLoadingPartners && !partnersError && filteredPartners.length > 0 && (
-          <>
-          <div className="table-pagination-row">
-            <p className="muted">
-              {`Showing ${(currentPage - 1) * pageSize + 1}-${Math.min(currentPage * pageSize, filteredPartners.length)} of ${filteredPartners.length}`}
-            </p>
-            <div className="table-pagination-controls">
+          {activeView === "filters" && (
+            <section className="registry-controls" aria-label="Partner registry filters">
               <label>
-                Rows
+                Search
+                <input
+                  type="text"
+                  placeholder="Partner name or keyword"
+                  value={filters.search}
+                  onChange={(event) => onFilterChange("search", event.target.value)}
+                />
+              </label>
+              <label>
+                Type
+                <input
+                  type="text"
+                  placeholder="e.g. Corporate"
+                  value={filters.organizationType}
+                  onChange={(event) => onFilterChange("organizationType", event.target.value)}
+                />
+              </label>
+              <label>
+                Niche
+                <input
+                  type="text"
+                  placeholder="e.g. Digital upskilling"
+                  value={filters.industryNiche}
+                  onChange={(event) => onFilterChange("industryNiche", event.target.value)}
+                />
+              </label>
+              <label>
+                Status
                 <select
-                  value={String(pageSize)}
-                  onChange={(event) => setPageSize(Number(event.target.value))}
+                  value={filters.status}
+                  onChange={(event) =>
+                    onFilterChange("status", event.target.value as FilterState["status"])
+                  }
                 >
-                  <option value="10">10</option>
-                  <option value="20">20</option>
-                  <option value="30">30</option>
+                  <option value="active">Active</option>
+                  <option value="archived">Archived</option>
+                  <option value="all">All</option>
                 </select>
               </label>
-              <button
-                type="button"
-                className="secondary-btn"
-                disabled={currentPage <= 1}
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-              >
-                Prev
-              </button>
-              <span className="muted">{`Page ${currentPage} of ${totalPages}`}</span>
-              <button
-                type="button"
-                className="secondary-btn"
-                disabled={currentPage >= totalPages}
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-              >
-                Next
-              </button>
-            </div>
-          </div>
-          <div className="registry-table-wrap">
-            <table className="registry-table">
-              <thead>
-                <tr>
-                  <th>Organization</th>
-                  <th>Type</th>
-                  <th>Niche</th>
-                  <th>Impact</th>
-                  <th>Status</th>
-                  <th>Location</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedPartners.map((partner) => (
-                  <tr key={partner.id}>
-                    <td>
-                      <Link to={`/partners/${partner.id}`} className="table-link">
-                        {partner.organizationName}
-                      </Link>
-                    </td>
-                    <td>{partner.organizationType}</td>
-                    <td>{partner.industryNiche}</td>
-                    <td>{partner.impactTier || "-"}</td>
-                    <td>{partner.archivedAt ? "Archived" : "Active"}</td>
-                    <td>{partner.location || "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          </>
-        )}
-      </section>
-      )}
+              <label>
+                Phase
+                <select
+                  value={filters.phaseCode}
+                  onChange={(event) => onFilterChange("phaseCode", event.target.value)}
+                >
+                  <option value="">Any</option>
+                  {phaseOptions.map((phase) => (
+                    <option key={phase.value} value={phase.value}>
+                      {phase.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Value Proposition
+                <input
+                  type="text"
+                  placeholder="e.g. Talent Pipeline"
+                  value={filters.valueProp}
+                  onChange={(event) => onFilterChange("valueProp", event.target.value)}
+                />
+              </label>
+              <label>
+                Coverage
+                <select
+                  value={filters.coverageState}
+                  onChange={(event) =>
+                    onFilterChange("coverageState", event.target.value as FilterState["coverageState"])
+                  }
+                >
+                  <option value="">Any</option>
+                  <option value="gap">Gap (Potential not Confirmed)</option>
+                  <option value="covered">Covered (Confirmed)</option>
+                </select>
+              </label>
+              <label>
+                Impact
+                <select
+                  value={filters.impactTier}
+                  onChange={(event) =>
+                    onFilterChange("impactTier", event.target.value as FilterState["impactTier"])
+                  }
+                >
+                  <option value="">Any</option>
+                  <option value="standard">Standard</option>
+                  <option value="major">Major</option>
+                  <option value="lead">Lead</option>
+                </select>
+              </label>
+            </section>
+          )}
+
+          {activeView === "health" && (
+            <section className="health-metrics-panel" aria-label="Pipeline health metrics">
+              {metricsError && <p className="error-text">{metricsError}</p>}
+              {!metricsError && metrics && (
+                <div className="health-cards">
+                  <article className="health-card">
+                    <h3>Active Partners</h3>
+                    <strong>{metrics.summary.totalActivePartners}</strong>
+                  </article>
+                  <article className="health-card health-card-warning">
+                    <h3>Overdue Actions</h3>
+                    <strong>{metrics.summary.overdueNextActionCount}</strong>
+                    <p>{`Threshold: ${metrics.summary.overdueNextActionDaysThreshold} days`}</p>
+                  </article>
+                  <article className="health-card health-card-danger">
+                    <h3>Stalled Stages</h3>
+                    <strong>{metrics.summary.stalledPartnerCount}</strong>
+                    <p>Threshold from config rules</p>
+                  </article>
+                  <article className="health-card">
+                    <h3>Open Tasks</h3>
+                    <strong>{taskCounters.open}</strong>
+                  </article>
+                  <article className="health-card">
+                    <h3>Completed Tasks</h3>
+                    <strong>{taskCounters.done}</strong>
+                    <p>{taskCounters.overdue} overdue</p>
+                  </article>
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeView === "add" && (
+            <section className="registry-create-panel" aria-label="Create partner">
+              <form className="registry-create-form" onSubmit={onCreateSubmit}>
+                <input
+                  required
+                  type="text"
+                  placeholder="Organization name"
+                  value={createForm.organizationName}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, organizationName: event.target.value }))
+                  }
+                />
+                <select
+                  required
+                  value={createForm.organizationType}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, organizationType: event.target.value }))
+                  }
+                >
+                  <option value="">Select type</option>
+                  {ORGANIZATION_TYPE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <textarea
+                  className="registry-create-field-wide"
+                  required
+                  placeholder="Industry Niche (describe core focus)"
+                  value={createForm.industryNiche}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, industryNiche: event.target.value }))
+                  }
+                />
+                <select
+                  value={createForm.locationScope}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({
+                      ...prev,
+                      locationScope: event.target.value as "laguna" | "non_laguna",
+                    }))
+                  }
+                >
+                  <option value="laguna">Laguna</option>
+                  <option value="non_laguna">Non-Laguna</option>
+                </select>
+                {createForm.locationScope === "non_laguna" && (
+                  <input
+                    required
+                    type="text"
+                    placeholder="Specify location"
+                    value={createForm.nonLagunaLocation}
+                    onChange={(event) =>
+                      setCreateForm((prev) => ({ ...prev, nonLagunaLocation: event.target.value }))
+                    }
+                  />
+                )}
+                <input
+                  type="url"
+                  placeholder="Website URL"
+                  value={createForm.websiteUrl}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, websiteUrl: event.target.value }))
+                  }
+                />
+                <button type="submit" disabled={isCreating}>
+                  {isCreating ? "Creating..." : "Add Partner"}
+                </button>
+              </form>
+
+              {createError && <p className="error-text">{createError}</p>}
+
+              {pendingDuplicateCandidates.length > 0 && (
+                <div className="duplicate-warning" role="alert">
+                  <h3>Potential duplication</h3>
+                  <ul>
+                    {pendingDuplicateCandidates.map((candidate) => (
+                      <li key={candidate.id}>
+                        {candidate.organizationName} ({Math.round(candidate.similarity * 100)}%)
+                      </li>
+                    ))}
+                  </ul>
+                  <button type="button" onClick={() => submitCreate(true)} disabled={isCreating}>
+                    Save as Intentional Duplicate
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeView === "import" && (
+            <section className="registry-create-panel" aria-label="Spreadsheet import">
+              <p className="muted">Bulk import from Google Sheets by pasting raw cell data.</p>
+              <div className="import-grid">
+                <label>
+                  Paste Data Here
+                  <textarea
+                    className="import-textarea"
+                    value={sheetText}
+                    onChange={(event) => setSheetText(event.target.value)}
+                    placeholder="Headers followed by data rows..."
+                  />
+                </label>
+
+                <div className="import-mapping-grid">
+                  {importMappingConfig?.fields.map((field) => (
+                    <label key={field.key}>
+                      {field.label}
+                      <input
+                        type="text"
+                        required={field.required}
+                        value={importMapping[field.key] || ""}
+                        onChange={(event) =>
+                          setImportMapping((prev) => ({ ...prev, [field.key]: event.target.value }))
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="import-actions">
+                <button type="button" onClick={() => runImport(true)} disabled={isImporting}>
+                  Dry Run
+                </button>
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => runImport(false)}
+                  disabled={isImporting}
+                >
+                  Apply Import
+                </button>
+              </div>
+
+              {importError && <p className="error-text">{importError}</p>}
+
+              {importResult && (
+                <div className="import-summary">
+                  <h3>Import Result</h3>
+                  <div className="health-cards">
+                    <article className="health-card">
+                      <h3>Created</h3>
+                      <strong>{importResult.summary.created}</strong>
+                    </article>
+                    <article className="health-card">
+                      <h3>Updated</h3>
+                      <strong>{importResult.summary.updated}</strong>
+                    </article>
+                    <article className="health-card">
+                      <h3>Skipped</h3>
+                      <strong>{importResult.summary.skipped}</strong>
+                    </article>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+        </div>
       </div>
     </main>
   );

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
 import { listAuthAccountsRequest, type AuthAccountRecord } from "../../auth/services/auth-api";
 import { Modal } from "../../../shared/components/Modal";
@@ -14,17 +13,6 @@ import {
   type TeamMemberRecord,
 } from "../services/team-api";
 
-const OFFICER_ROLE_DESCRIPTIONS = {
-  liaison: [
-    "Prospecting and pitching potential partners in the designated sector.",
-    "Leading relationship-building, external meetings, and initial negotiation.",
-  ],
-  compliance: [
-    "Drafting and tracking MOUs based on negotiated commitments.",
-    "Executing deliverables and preparing post-event partner reports.",
-  ],
-};
-
 const emptyMemberForm = {
   fullName: "",
   officerType: "liaison" as "liaison" | "compliance",
@@ -36,7 +24,7 @@ const emptyMemberForm = {
 };
 
 export const TeamManagementPage = () => {
-  const { user, logout } = useAuthSession();
+  const { user } = useAuthSession();
   const [groups, setGroups] = useState<TeamGroupRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +36,6 @@ export const TeamManagementPage = () => {
   const [isSavingGroup, setIsSavingGroup] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = usePersistentState<string>("ui:team:selected-group", "group_a");
   const [authAccounts, setAuthAccounts] = useState<AuthAccountRecord[]>([]);
-  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
 
   const selectedGroup = useMemo(
     () => groups.find((group) => group.id === selectedGroupId) || groups[0] || null,
@@ -116,7 +103,6 @@ export const TeamManagementPage = () => {
     let cancelled = false;
 
     const loadAccounts = async () => {
-      setIsLoadingAccounts(true);
       try {
         const accounts = await listAuthAccountsRequest();
         if (!cancelled) {
@@ -126,10 +112,6 @@ export const TeamManagementPage = () => {
         if (!cancelled) {
           setAuthAccounts([]);
           setError(loadError instanceof Error ? loadError.message : "Failed to load credential ownership");
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoadingAccounts(false);
         }
       }
     };
@@ -249,179 +231,75 @@ export const TeamManagementPage = () => {
     }
   };
 
+
   return (
-    <main className="page-layout single-screen-page">
-      <header className="page-header">
-        <div>
-          <h1>Team Management</h1>
-          <p className="muted">Manage VP Partnerships and Fundraising division groups, officer assignments, and setup.</p>
+    <main className="settings-page-container">
+      <div className="settings-sidebar">
+        <div className="sidebar-header">
+          <h1>Team</h1>
+          <p className="sidebar-status">
+            {error ? "Error loading structure" : "Division Groups & Officers"}
+          </p>
         </div>
-        <div className="user-actions">
-          <nav className="page-nav-links" aria-label="Primary navigation">
-            <Link to="/dashboard" className="link-button">
-              Dashboard
-            </Link>
-            <Link to="/partners" className="link-button">
-              Partners
-            </Link>
-            <Link to="/tasks" className="link-button">
-              Tasks
-            </Link>
-            <Link to="/team" className="link-button link-button-active">
-              Team
-            </Link>
-            <Link to="/settings" className="link-button">
-              Settings
-            </Link>
-          </nav>
-          <span>{user?.displayName}</span>
-          <button type="button" onClick={logout}>
-            Logout
-          </button>
-        </div>
-      </header>
 
-      {error && <p className="error-text">{error}</p>}
-      {message && <p className="muted">{message}</p>}
+        <nav className="sidebar-nav">
+          {groups.map((group) => (
+            <button
+              key={group.id}
+              type="button"
+              className={`sidebar-link ${selectedGroup?.id === group.id ? "is-active" : ""}`}
+              onClick={() => setSelectedGroupId(group.id)}
+            >
+              {`Group ${group.code}: ${group.name}`}
+            </button>
+          ))}
+        </nav>
 
-      <div className="page-view-switcher" role="tablist" aria-label="Team group switcher">
-        {groups.map((group) => (
+        <div className="sidebar-status" style={{ marginTop: "auto" }}>
           <button
-            key={group.id}
             type="button"
-            className={`view-tab-btn ${selectedGroup?.id === group.id ? "is-active" : ""}`}
-            onClick={() => setSelectedGroupId(group.id)}
+            className="secondary-btn"
+            style={{ width: "100%" }}
+            onClick={openCreateMemberModal}
           >
-            {`Group ${group.code}: ${group.name}`}
+            ➕ Add Officer
           </button>
-        ))}
+          {message && <p className="muted" style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>{message}</p>}
+        </div>
       </div>
 
-      <div className="single-screen-content">
-        {isLoading && <p className="loading-state">Loading team structure...</p>}
+      <div className="settings-content">
+        <div className="single-screen-content">
+          {isLoading && <p className="loading-state">Syncing structure...</p>}
 
-        {!isLoading && selectedGroup && (
-          <>
-            <section className="registry-create-panel">
-              <h2>{`Group ${selectedGroup.code}: ${selectedGroup.name}`}</h2>
-              <p className="muted">{`Target sector: ${selectedGroup.targetSector}`}</p>
-
-              <div className="artifact-upload-grid">
-                <label>
-                  Target Sector
-                  <input
-                    type="text"
-                    value={groupForm.targetSector}
-                    onChange={(event) =>
-                      setGroupForm((prev) => ({ ...prev, targetSector: event.target.value }))
-                    }
-                  />
-                </label>
-                <label>
-                  Liaison Min
-                  <input
-                    type="number"
-                    min={1}
-                    value={groupForm.liaisonMin}
-                    onChange={(event) =>
-                      setGroupForm((prev) => ({ ...prev, liaisonMin: Number(event.target.value || 1) }))
-                    }
-                  />
-                </label>
-                <label>
-                  Liaison Max
-                  <input
-                    type="number"
-                    min={1}
-                    value={groupForm.liaisonMax}
-                    onChange={(event) =>
-                      setGroupForm((prev) => ({ ...prev, liaisonMax: Number(event.target.value || 1) }))
-                    }
-                  />
-                </label>
-                <label>
-                  Compliance Min
-                  <input
-                    type="number"
-                    min={1}
-                    value={groupForm.complianceMin}
-                    onChange={(event) =>
-                      setGroupForm((prev) => ({ ...prev, complianceMin: Number(event.target.value || 1) }))
-                    }
-                  />
-                </label>
-                <label>
-                  Compliance Max
-                  <input
-                    type="number"
-                    min={1}
-                    value={groupForm.complianceMax}
-                    onChange={(event) =>
-                      setGroupForm((prev) => ({ ...prev, complianceMax: Number(event.target.value || 1) }))
-                    }
-                  />
-                </label>
-                <label>
-                  Group Status
-                  <select
-                    value={groupForm.isActive ? "active" : "inactive"}
-                    onChange={(event) =>
-                      setGroupForm((prev) => ({ ...prev, isActive: event.target.value === "active" }))
-                    }
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </label>
+          {!isLoading && selectedGroup && (
+            <>
+              <div className="dashboard-kpi-grid">
+                <article className="health-card">
+                  <h3>Division Segment</h3>
+                  <strong>{selectedGroup.name}</strong>
+                  <p className="muted">{selectedGroup.targetSector}</p>
+                </article>
+                <article className="health-card">
+                  <h3>Capacity</h3>
+                  <strong>{selectedGroup.members.length}</strong>
+                  <p className="muted">Total division officers</p>
+                </article>
+                <article className="health-card">
+                  <h3>Liaison Count</h3>
+                  <strong>{selectedGroup.members.filter(m => m.officerType === "liaison").length}</strong>
+                  <p className="muted">{`Target: ${selectedGroup.liaisonMin}-${selectedGroup.liaisonMax}`}</p>
+                </article>
               </div>
 
-              <div className="qualification-actions">
-                <button type="button" onClick={saveGroupConfig} disabled={isSavingGroup}>
-                  {isSavingGroup ? "Saving..." : "Save Group Setup"}
-                </button>
-              </div>
-            </section>
-
-            <section className="value-prop-columns">
-              <article className="timeline-panel">
-                <h3>Liaison Officers (Acquisition and Outreach Arm)</h3>
-                {OFFICER_ROLE_DESCRIPTIONS.liaison.map((item) => (
-                  <p key={item} className="muted">{`- ${item}`}</p>
-                ))}
-              </article>
-
-              <article className="timeline-panel">
-                <h3>Compliance Officers (Success and Fulfillment Arm)</h3>
-                {OFFICER_ROLE_DESCRIPTIONS.compliance.map((item) => (
-                  <p key={item} className="muted">{`- ${item}`}</p>
-                ))}
-              </article>
-            </section>
-
-            <section className="registry-panel">
-              <div className="dashboard-panel-head">
-                <h2>Group Roster</h2>
-                <button type="button" className="secondary-btn" onClick={openCreateMemberModal}>
-                  Add Officer
-                </button>
-              </div>
-
-              {selectedGroup.members.length === 0 && (
-                <div className="status-card status-empty">
-                  <h2>No team members yet</h2>
-                  <p>Start by adding Liaison and Compliance officers for this group.</p>
-                </div>
-              )}
-
-              {selectedGroup.members.length > 0 && (
+              <section className="registry-panel">
                 <div className="registry-table-wrap">
                   <table className="registry-table">
                     <thead>
                       <tr>
-                        <th>Name</th>
-                        <th>Role</th>
+                        <th>Officer Name</th>
+                        <th>Division Arm</th>
                         <th>Designation</th>
-                        <th>Contact</th>
                         <th>Status</th>
                         <th>Actions</th>
                       </tr>
@@ -430,13 +308,18 @@ export const TeamManagementPage = () => {
                       {selectedGroup.members.map((member) => (
                         <tr key={member.id}>
                           <td>{member.fullName}</td>
-                          <td>{member.officerType === "liaison" ? "Liaison Officer" : "Compliance Officer"}</td>
+                          <td>
+                            {member.officerType === "liaison" ? "Liaison Unit" : "Compliance Unit"}
+                          </td>
                           <td>{member.designation || "-"}</td>
-                          <td>{member.email || member.phone || "-"}</td>
                           <td>{member.status}</td>
                           <td>
                             <div className="artifact-actions-row">
-                              <button type="button" className="secondary-btn" onClick={() => openEditMemberModal(member)}>
+                              <button
+                                type="button"
+                                className="secondary-btn"
+                                onClick={() => openEditMemberModal(member)}
+                              >
                                 Edit
                               </button>
                               <button type="button" onClick={() => removeMember(member.id)}>
@@ -449,52 +332,108 @@ export const TeamManagementPage = () => {
                     </tbody>
                   </table>
                 </div>
-              )}
-            </section>
+              </section>
 
-            {user?.role === "vp_head" && (
-              <section className="registry-panel">
-                <div className="dashboard-panel-head">
-                  <h2>Credential Ownership Tracker</h2>
-                </div>
-                {isLoadingAccounts && <p className="muted">Loading credential ownership...</p>}
-                {!isLoadingAccounts && authAccounts.length === 0 && (
-                  <p className="muted">No credential records available.</p>
-                )}
-                {!isLoadingAccounts && authAccounts.length > 0 && (
+              {user?.role === "vp_head" && authAccounts.length > 0 && (
+                <section className="registry-panel">
+                  <div className="sidebar-header" style={{ marginBottom: "1rem" }}>
+                    <h2 style={{ fontSize: "1.1rem" }}>Role Email Ownership</h2>
+                  </div>
                   <div className="registry-table-wrap">
                     <table className="registry-table">
                       <thead>
                         <tr>
-                          <th>Role</th>
-                          <th>Officer</th>
-                          <th>Shared Role Email</th>
-                          <th>Last Login</th>
-                          <th>Status</th>
+                          <th>Division Role</th>
+                          <th>Primary Email</th>
+                          <th>Last Sync</th>
+                          <th>Access</th>
                         </tr>
                       </thead>
                       <tbody>
                         {authAccounts.map((account) => (
                           <tr key={account.id}>
                             <td>{account.roleName}</td>
-                            <td>{account.displayName}</td>
                             <td>{account.email}</td>
-                            <td>{account.lastLoginAt ? new Date(account.lastLoginAt).toLocaleString() : "Never"}</td>
-                            <td>{account.isActive ? "Active" : "Inactive"}</td>
+                            <td>
+                              {account.lastLoginAt
+                                ? new Date(account.lastLoginAt).toLocaleDateString()
+                                : "Never"}
+                            </td>
+                            <td>{account.isActive ? "Granted" : "Revoked"}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                )}
+                </section>
+              )}
+
+              <section className="registry-create-panel" style={{ marginTop: "1rem" }}>
+                <div className="sidebar-header" style={{ marginBottom: "1rem" }}>
+                  <h2 style={{ fontSize: "1.1rem" }}>Unit Configuration</h2>
+                </div>
+                <div className="artifact-upload-grid">
+                  <label>
+                    Sector Reach
+                    <input
+                      type="text"
+                      value={groupForm.targetSector}
+                      onChange={(event) =>
+                        setGroupForm((prev) => ({ ...prev, targetSector: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <label>
+                    Liaison Span
+                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                      <input
+                        type="number"
+                        value={groupForm.liaisonMin}
+                        onChange={(e) =>
+                          setGroupForm((p) => ({ ...p, liaisonMin: Number(e.target.value) }))
+                        }
+                      />
+                      <span>to</span>
+                      <input
+                        type="number"
+                        value={groupForm.liaisonMax}
+                        onChange={(e) =>
+                          setGroupForm((p) => ({ ...p, liaisonMax: Number(e.target.value) }))
+                        }
+                      />
+                    </div>
+                  </label>
+                  <label>
+                    Unit State
+                    <select
+                      value={groupForm.isActive ? "active" : "inactive"}
+                      onChange={(e) =>
+                        setGroupForm((p) => ({ ...p, isActive: e.target.value === "active" }))
+                      }
+                    >
+                      <option value="active">Active Division</option>
+                      <option value="inactive">Paused/Dissolved</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="settings-actions-footer">
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={saveGroupConfig}
+                    disabled={isSavingGroup}
+                  >
+                    {isSavingGroup ? "Updating..." : "Push Config Update"}
+                  </button>
+                </div>
               </section>
-            )}
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       <Modal
-        title={editingMember ? "Edit Team Member" : "Add Team Member"}
+        title={editingMember ? "Modify Division Officer" : "Deploy New Officer"}
         open={isMemberModalOpen}
         onClose={() => setIsMemberModalOpen(false)}
       >
@@ -504,75 +443,57 @@ export const TeamManagementPage = () => {
             <input
               type="text"
               value={memberForm.fullName}
-              onChange={(event) => setMemberForm((prev) => ({ ...prev, fullName: event.target.value }))}
+              onChange={(e) => setMemberForm((p) => ({ ...p, fullName: e.target.value }))}
             />
           </label>
           <label>
-            Officer Type
+            Division Arm
             <select
               value={memberForm.officerType}
-              onChange={(event) =>
-                setMemberForm((prev) => ({
-                  ...prev,
-                  officerType: event.target.value as "liaison" | "compliance",
+              onChange={(e) =>
+                setMemberForm((p) => ({
+                  ...p,
+                  officerType: e.target.value as "liaison" | "compliance",
                 }))
               }
             >
-              <option value="liaison">Liaison Officer</option>
-              <option value="compliance">Compliance Officer</option>
+              <option value="liaison">Liaison Unit</option>
+              <option value="compliance">Compliance Unit</option>
             </select>
           </label>
-          <label>
+          <label className="registry-create-field-wide">
             Designation
             <input
               type="text"
               value={memberForm.designation}
-              onChange={(event) =>
-                setMemberForm((prev) => ({ ...prev, designation: event.target.value }))
-              }
-              placeholder="e.g. Corporate Liaison Officer"
+              placeholder="e.g. Senior Tech Liaison"
+              onChange={(e) => setMemberForm((p) => ({ ...p, designation: e.target.value }))}
             />
           </label>
           <label>
-            Email
+            Contact Email
             <input
               type="email"
               value={memberForm.email}
-              onChange={(event) => setMemberForm((prev) => ({ ...prev, email: event.target.value }))}
+              onChange={(e) => setMemberForm((p) => ({ ...p, email: e.target.value }))}
             />
           </label>
           <label>
-            Phone
-            <input
-              type="text"
-              value={memberForm.phone}
-              onChange={(event) => setMemberForm((prev) => ({ ...prev, phone: event.target.value }))}
-            />
-          </label>
-          <label>
-            Status
+            Officer Status
             <select
               value={memberForm.status}
-              onChange={(event) =>
-                setMemberForm((prev) => ({ ...prev, status: event.target.value as "active" | "inactive" }))
+              onChange={(e) =>
+                setMemberForm((p) => ({ ...p, status: e.target.value as "active" | "inactive" }))
               }
             >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="active">Active Duty</option>
+              <option value="inactive">On Leave / Inactive</option>
             </select>
           </label>
-          <label className="registry-create-field-wide">
-            Notes
-            <textarea
-              value={memberForm.notes}
-              onChange={(event) => setMemberForm((prev) => ({ ...prev, notes: event.target.value }))}
-              placeholder="Assignment notes, capacity notes, or constraints"
-            />
-          </label>
         </div>
-        <div className="qualification-actions">
-          <button type="button" onClick={saveMember} disabled={isSavingMember}>
-            {isSavingMember ? "Saving..." : "Save Member"}
+        <div className="settings-actions-footer">
+          <button type="button" className="secondary-btn" onClick={saveMember} disabled={isSavingMember}>
+            {isSavingMember ? "Syncing..." : "Commit Officer Record"}
           </button>
         </div>
       </Modal>
