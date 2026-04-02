@@ -302,9 +302,16 @@ export const PartnersPage = () => {
 
   const renderRegistryTable = () => (
     <div className="registry-panel">
-      <header className="section-header">
-        <h2>Partner Registry</h2>
-        <p className="muted">Managing and tracking the central repository of network collaborators</p>
+      <header className="section-header section-header-row">
+        <div>
+          <h2>Partner Registry</h2>
+          <p className="muted">Managing and tracking the central repository of network collaborators</p>
+        </div>
+        <div className="section-header-actions">
+          <button type="button" className="emphasized-add-btn" onClick={() => setShowAddModal(true)}>
+            + Add New Partner
+          </button>
+        </div>
       </header>
 
       <div className="registry-header-filters">
@@ -334,9 +341,6 @@ export const PartnersPage = () => {
             <option value="active">Active</option>
             <option value="archived">Archived</option>
           </select>
-          <button type="button" className="emphasized-add-btn filter-equal" onClick={() => setShowAddModal(true)}>
-            + Add New Partner
-          </button>
         </div>
       </div>
 
