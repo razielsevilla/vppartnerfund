@@ -9,11 +9,13 @@ import {
   DuplicatePartnerError,
   getWorkflowConfigRequest,
   getWorkflowHealthMetricsRequest,
+  getWorkflowKpiMetricsRequest,
   listPartnersRequest,
   type DuplicateCandidate,
   type PartnerRecord,
   type WorkflowConfig,
   type WorkflowHealthMetrics,
+  type WorkflowKpiMetrics,
 } from "../services/partners-api";
 
 type FilterState = {
@@ -54,10 +56,11 @@ export const PartnersPage = () => {
   const [partnersError, setPartnersError] = useState<string | null>(null);
   const [workflowConfig, setWorkflowConfig] = useState<WorkflowConfig | null>(null);
   const [metrics, setMetrics] = useState<WorkflowHealthMetrics | null>(null);
+  const [kpi, setKpi] = useState<WorkflowKpiMetrics | null>(null);
   const [taskCounters, setTaskCounters] = useState({ open: 0, done: 0, overdue: 0 });
   const [createError, setCreateError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [activeView, setActiveView] = usePersistentState<"table" | "health_add">(
+  const [activeView, setActiveView] = usePersistentState<"table" | "pipeline" | "add">(
     "ui:partners:active-view",
     "table"
   );
@@ -154,15 +157,19 @@ export const PartnersPage = () => {
   }, [partners.length]);
 
   useEffect(() => {
-    const loadMetrics = async () => {
+    const loadPipelineData = async () => {
       try {
-        const data = await getWorkflowHealthMetricsRequest();
-        setMetrics(data);
-      } catch (error) {
-        // Silently fail or log for debug
+        const [health, kpiData] = await Promise.all([
+          getWorkflowHealthMetricsRequest(),
+          getWorkflowKpiMetricsRequest(),
+        ]);
+        setMetrics(health);
+        setKpi(kpiData);
+      } catch {
+        // Silently fail
       }
     };
-    loadMetrics();
+    loadPipelineData();
   }, [partners.length]);
 
   const onFilterChange = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
@@ -180,14 +187,9 @@ export const PartnersPage = () => {
     [workflowConfig?.phases]
   );
 
-  // Removing duplicate groupedPartners computation as it's unused (replaced by finalDisplayGroups)
-
   const totalFilteredCount = partners.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredCount / pageSize));
 
-  // Note: Simplified pagination for grouped results - usually you'd paginate the groups or the flat list.
-  // For now we'll paginate the flat list and then group the visible page if group is active, 
-  // OR just show all if grouped (as per user "if no enough space, limit number of partners shown in each page")
   const paginatedPartners = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return partners.slice(start, start + pageSize);
@@ -239,6 +241,7 @@ export const PartnersPage = () => {
         websiteUrl: "",
       });
       await refreshPartners();
+      setActiveView("table"); // Redirect to table after success
     } catch (error) {
       if (error instanceof DuplicatePartnerError) {
         setPendingCreatePayload(payloadSource);
@@ -423,10 +426,17 @@ export const PartnersPage = () => {
           </button>
           <button
             type="button"
-            className={`sidebar-link ${activeView === "health_add" ? "is-active" : ""}`}
-            onClick={() => setActiveView("health_add")}
+            className={`sidebar-link ${activeView === "pipeline" ? "is-active" : ""}`}
+            onClick={() => setActiveView("pipeline")}
           >
-            Pipeline & New Partner
+            Pipeline Health
+          </button>
+          <button
+            type="button"
+            className={`sidebar-link ${activeView === "add" ? "is-active" : ""}`}
+            onClick={() => setActiveView("add")}
+          >
+            Add New Partner
           </button>
         </nav>
       </div>
@@ -435,35 +445,87 @@ export const PartnersPage = () => {
         <div className="single-screen-content">
           {activeView === "table" && renderRegistryTable()}
 
-          {activeView === "health_add" && (
-            <div className="health-add-combined">
+          {activeView === "pipeline" && (
+            <div className="pipeline-stats-view">
               <section className="health-section-compact">
                 <header className="section-header">
-                  <h2>Pipeline Performance</h2>
-                  <p className="muted">Live overview of engagement velocity and health</p>
+                  <h2>Engagement Pipeline Summary</h2>
+                  <p className="muted">Statistical overview of network health and conversion velocity</p>
                 </header>
                 {metrics && (
-                  <div className="health-grid-mini">
-                    <div className="health-card-mini">
-                      <span className="label">Active</span>
+                   <div className="stats-grid-detailed">
+                    <div className="metric-box">
+                      <span className="label">Total Active</span>
                       <span className="value">{metrics.summary.totalActivePartners}</span>
+                      <p className="subtext">Entities currently in the workflow</p>
                     </div>
-                    <div className="health-card-mini warning">
-                      <span className="label">Overdue</span>
+                    <div className="metric-box warning">
+                      <span className="label">Next Action Overdue</span>
                       <span className="value">{metrics.summary.overdueNextActionCount}</span>
+                      <p className="subtext">Threshold: {metrics.summary.overdueNextActionDaysThreshold} days</p>
                     </div>
-                    <div className="health-card-mini danger">
-                      <span className="label">Stalled</span>
+                    <div className="metric-box danger">
+                      <span className="label">Stalled Partners</span>
                       <span className="value">{metrics.summary.stalledPartnerCount}</span>
+                      <p className="subtext">No progress in current phase</p>
                     </div>
-                    <div className="health-card-mini">
-                      <span className="label">Tasks</span>
+                    <div className="metric-box info">
+                      <span className="label">Pending Tasks</span>
                       <span className="value">{taskCounters.open}</span>
+                      <p className="subtext">Open items across all actors</p>
                     </div>
+
+                    {kpi && (
+                      <>
+                        <div className="metric-box success">
+                          <span className="label">Overall Win Rate</span>
+                          <span className="value">{((kpi.conversion.overallWinRatePct || 0) * 100).toFixed(1)}%</span>
+                          <p className="subtext">Conversion to Partnership</p>
+                        </div>
+                        <div className="metric-box full-width-stat">
+                          <span className="label">Stage Distribution</span>
+                          <div className="stage-distribution-bar">
+                            {kpi.stageCounts.map(stage => (
+                              <div 
+                                key={stage.phaseId} 
+                                className="stage-slice"
+                                title={`${stage.phaseName}: ${stage.count}`}
+                                style={{ 
+                                  flex: stage.count || 1,
+                                  opacity: (stage.count > 0) ? 1 : 0.2
+                                }}
+                              >
+                                <span className="stage-label">{stage.phaseCode}</span>
+                                <span className="stage-count">{stage.count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </section>
 
+              {metrics && metrics.overduePartners.length > 0 && (
+                <section className="stalled-list-section">
+                  <h3>Critical Attention Required ({metrics.overduePartners.length})</h3>
+                  <div className="stalled-partners-grid">
+                    {metrics.overduePartners.slice(0, 6).map(p => (
+                      <Link to={`/partners/${p.partnerId}`} key={p.partnerId} className="stalled-card">
+                         <span className="p-name">{p.organizationName}</span>
+                         <span className="p-ov">Overdue: {p.overdueByDays} days</span>
+                         <span className="p-phase">{p.currentPhaseName}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
+
+          {activeView === "add" && (
+            <div className="add-partner-view">
               <section className="add-partner-section">
                 <header className="section-header">
                   <h2>Register New Partner</h2>

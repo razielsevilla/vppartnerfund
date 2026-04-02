@@ -1583,3 +1583,150 @@ textarea:hover {
   margin-top: var(--space-4);
 }
 
+
+
+/* Pipeline Statistical View */
+.stats-grid-detailed {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+
+.metric-box {
+  background: var(--bg-canvas);
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.metric-box .label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.metric-box .value {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: var(--brand-primary);
+  line-height: 1.2;
+}
+
+.metric-box .subtext {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: var(--space-2);
+}
+
+.metric-box.warning { border-top: 4px solid var(--state-warning-border); }
+.metric-box.warning .value { color: var(--state-warning-text); }
+.metric-box.danger { border-top: 4px solid var(--state-danger-border); }
+.metric-box.danger .value { color: var(--state-danger-text); }
+.metric-box.info { border-top: 4px solid var(--brand-secondary); }
+.metric-box.info .value { color: var(--brand-secondary); }
+.metric-box.success { border-top: 4px solid #059669; }
+.metric-box.success .value { color: #059669; }
+
+.full-width-stat {
+  grid-column: span 4;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.stage-distribution-bar {
+  display: flex;
+  width: 100%;
+  height: 48px;
+  background: var(--bg-canvas-2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-top: var(--space-4);
+}
+
+.stage-slice {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: var(--brand-primary);
+  color: #fff;
+  border-right: 1px solid rgba(255,255,255,0.2);
+  transition: transform 0.2s ease;
+  min-width: 40px;
+}
+
+.stage-slice:hover {
+  filter: brightness(1.2);
+  transform: scaleY(1.05);
+}
+
+.stage-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  opacity: 0.8;
+}
+
+.stage-count {
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.stalled-list-section {
+  margin-top: var(--space-6);
+}
+
+.stalled-list-section h3 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--state-danger-text);
+  margin-bottom: var(--space-4);
+}
+
+.stalled-partners-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.stalled-card {
+  background: var(--bg-surface);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--state-danger-border);
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+
+.stalled-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-raised);
+}
+
+.stalled-card .p-name {
+  font-weight: 800;
+  color: var(--brand-primary);
+  font-size: 1rem;
+}
+
+.stalled-card .p-ov {
+  color: var(--state-danger-text);
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.stalled-card .p-phase {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
