@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
 import { usePersistentState } from "../../../shared/hooks/usePersistentState";
-import { listTasksRequest, type TaskRecord } from "../../tasks/services/tasks-api";
+import { listTasksRequest } from "../../tasks/services/tasks-api";
 import {
   archivePartnerRequest,
   createPartnerRequest,
@@ -54,7 +54,6 @@ export const PartnersPage = () => {
   const [partnersError, setPartnersError] = useState<string | null>(null);
   const [workflowConfig, setWorkflowConfig] = useState<WorkflowConfig | null>(null);
   const [metrics, setMetrics] = useState<WorkflowHealthMetrics | null>(null);
-  const [metricsError, setMetricsError] = useState<string | null>(null);
   const [taskCounters, setTaskCounters] = useState({ open: 0, done: 0, overdue: 0 });
   const [createError, setCreateError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -159,9 +158,8 @@ export const PartnersPage = () => {
       try {
         const data = await getWorkflowHealthMetricsRequest();
         setMetrics(data);
-        setMetricsError(null);
       } catch (error) {
-        setMetricsError(error instanceof Error ? error.message : "Failed to load metrics");
+        // Silently fail or log for debug
       }
     };
     loadMetrics();
@@ -182,26 +180,7 @@ export const PartnersPage = () => {
     [workflowConfig?.phases]
   );
 
-  const groupedPartners = useMemo(() => {
-    if (filters.groupBy === "none") {
-      return { "All Partners": partners };
-    }
-
-    const groups: Record<string, PartnerRecord[]> = {};
-    partners.forEach((p) => {
-      let key = "Other";
-      if (filters.groupBy === "type") key = p.organizationType || "Uncategorized";
-      if (filters.groupBy === "status") key = p.status.toUpperCase();
-      if (filters.groupBy === "phase") {
-        const phase = workflowConfig?.phases.find((ph) => ph.id === p.currentPhaseId);
-        key = phase ? phase.name : p.currentPhaseId.replace(/^phase_/, "").toUpperCase();
-      }
-
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(p);
-    });
-    return groups;
-  }, [filters.groupBy, partners, workflowConfig]);
+  // Removing duplicate groupedPartners computation as it's unused (replaced by finalDisplayGroups)
 
   const totalFilteredCount = partners.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredCount / pageSize));
@@ -222,7 +201,7 @@ export const PartnersPage = () => {
     paginatedPartners.forEach((p) => {
       let key = "Other";
       if (filters.groupBy === "type") key = p.organizationType || "Uncategorized";
-      if (filters.groupBy === "status") key = p.status.toUpperCase();
+      if (filters.groupBy === "status") key = p.archivedAt ? "ARCHIVED" : "ACTIVE";
       if (filters.groupBy === "phase") {
         const phase = workflowConfig?.phases.find((ph) => ph.id === p.currentPhaseId);
         key = phase ? phase.name : p.currentPhaseId.replace(/^phase_/, "").toUpperCase();
