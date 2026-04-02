@@ -18,9 +18,16 @@ const getBearerToken = (authHeader) => {
 const requireAuth = (req, res, next) => {
   const cookieToken = req.cookies?.[SESSION_COOKIE_NAME] || null;
   const token = cookieToken || getBearerToken(req.headers.authorization);
+  
+  if (!token) {
+    console.log(`[AuthDebug] No token found in cookies or headers for ${req.path}`);
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   const session = findSession(token);
 
   if (!session) {
+    console.log(`[AuthDebug] Invalid or expired session token for ${req.path}`);
     return res.status(401).json({ error: "Unauthorized" });
   }
 

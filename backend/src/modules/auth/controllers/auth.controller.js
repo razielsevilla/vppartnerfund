@@ -33,9 +33,19 @@ const login = async (req, res) => {
     logFailedLoginEvent({ email, ip, reason: "invalid_credentials" });
     return res.status(401).json({ error: "Invalid credentials" });
   }
-  const token = createSession(user);
-  res.cookie(SESSION_COOKIE_NAME, token, cookieOptions);
 
+  const token = createSession(user);
+  console.log(`[AuthDebug] Logged in user ${user.id}, token generated.`);
+  
+  // Vercel: Always use secure cookies in production (HTTPS)
+  const isVercel = Boolean(process.env.VERCEL);
+  const options = {
+    ...cookieOptions,
+    secure: isVercel || isProduction,
+    sameSite: "lax", // 'Lax' is required for CSRF protection and works well within .vercel.app
+  };
+
+  res.cookie(SESSION_COOKIE_NAME, token, options);
   return res.status(200).json({ user });
 };
 
