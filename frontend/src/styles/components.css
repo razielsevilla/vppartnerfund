@@ -858,6 +858,150 @@ textarea:hover {
   }
 }
 
+/* SETTINGS SIDEBAR LAYOUT */
+.settings-page-container {
+  display: flex;
+  gap: 0 !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+  height: calc(100vh - 64px);
+  overflow: hidden;
+}
+
+.settings-sidebar {
+  width: 280px;
+  background: #f8fafc;
+  border-right: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  margin-bottom: 2rem;
+}
+
+.sidebar-header h1 {
+  font-size: 1.25rem;
+  margin: 0 0 0.5rem;
+  color: var(--text-primary);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.sidebar-link {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidebar-link:hover {
+  background: var(--bg-hover);
+  color: var(--brand-primary);
+}
+
+.sidebar-link.is-active {
+  background: white;
+  color: var(--brand-primary-strong);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+  border: 1px solid var(--border-soft);
+}
+
+.sidebar-status {
+  padding-top: 1rem;
+  font-size: 0.85rem;
+  border-top: 1px solid var(--border-soft);
+}
+
+.settings-content {
+  flex: 1;
+  background: white;
+  padding: 1.5rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-content .single-screen-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-content .registry-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+.settings-content .registry-table-wrap {
+  flex: 1;
+  overflow: hidden; /* No scroll as requested, managed by pagination */
+}
+
+/* PAGINATION STYLES */
+.settings-actions-footer {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.table-pagination-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex: 1;
+}
+
+.table-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.page-indicator {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.taxonomy-header-row {
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 960px) {
+  .settings-page-container {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+  
+  .settings-sidebar {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+}
+
 @media (max-width: 960px) {
   .single-screen-page {
     height: auto;
