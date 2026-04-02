@@ -525,6 +525,24 @@ textarea:hover {
   overflow: auto;
 }
 
+.partner-detail-modal {
+  width: min(1180px, 96vw);
+  height: min(86vh, 860px);
+}
+
+.partner-detail-modal-body {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.modal-body-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
 .single-screen-page {
   height: 100vh;
   overflow: hidden;

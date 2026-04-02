@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Modal } from "../../../shared/components/Modal";
+import { useAuthSession } from "../../auth/hooks/use-auth-session";
 import {
   artifactFileUrl,
   listArtifactsRequest,
@@ -57,6 +58,7 @@ const defaultQualification: QualificationProfile = {
 };
 
 export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalProps) => {
+  const { user } = useAuthSession();
   const [partner, setPartner] = useState<PartnerRecord | null>(null);
   const [qualification, setQualification] = useState<QualificationProfile>(defaultQualification);
   const [contacts, setContacts] = useState<PartnerContactRecord[]>([]);
@@ -100,6 +102,7 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
   const [transitionReason, setTransitionReason] = useState("");
   const [isTransitioningPhase, setIsTransitioningPhase] = useState(false);
   const [transitionBlockingDetails, setTransitionBlockingDetails] = useState<string[]>([]);
+  const canHardDelete = user?.role === "vp_head";
 
   useEffect(() => {
     const load = async () => {
@@ -505,11 +508,42 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
     </div>
   );
 
-  if (isLoading) return <Modal title="Loading..." open={true} onClose={onClose}><div className="loading-state">Syncing partner details...</div></Modal>;
-  if (error) return <Modal title="Error" open={true} onClose={onClose}><div className="status-card status-error">{error}</div></Modal>;
+  if (isLoading) {
+    return (
+      <Modal
+        title="Loading..."
+        open={true}
+        onClose={onClose}
+        modalClassName="partner-detail-modal"
+        bodyClassName="partner-detail-modal-body"
+      >
+        <div className="loading-state">Syncing partner details...</div>
+      </Modal>
+    );
+  }
+
+  if (error) {
+    return (
+      <Modal
+        title="Error"
+        open={true}
+        onClose={onClose}
+        modalClassName="partner-detail-modal"
+        bodyClassName="partner-detail-modal-body"
+      >
+        <div className="status-card status-error">{error}</div>
+      </Modal>
+    );
+  }
 
   return (
-    <Modal title={partner?.organizationName || "Details"} open={true} onClose={onClose}>
+    <Modal
+      title={partner?.organizationName || "Details"}
+      open={true}
+      onClose={onClose}
+      modalClassName="partner-detail-modal"
+      bodyClassName="partner-detail-modal-body"
+    >
       <div className="modal-top-nav-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-soft)', paddingBottom: '0.75rem', marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
           {(["General", "Qualification", "Contacts", "Transitions", "Artifacts", "Discovery Notes", "Timeline"] as const).map(tab => (
@@ -518,7 +552,11 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button className="secondary-btn archive-nav-btn" onClick={handleArchive}>Archive</button>
-          <button className="secondary-btn" onClick={handleDelete} style={{ color: '#ef4444' }}>Delete</button>
+          {canHardDelete && (
+            <button className="secondary-btn" onClick={handleDelete} style={{ color: '#ef4444' }}>
+              Delete
+            </button>
+          )}
         </div>
       </div>
       <div className="modal-body-content">

@@ -183,6 +183,7 @@ export type PartnerListFilters = {
   search?: string;
   organizationType?: string;
   industryNiche?: string;
+  phaseCode?: string;
   status?: "active" | "archived" | "all";
   impactTier?: string;
   valueProp?: string;
@@ -312,6 +313,9 @@ export const listPartnersRequest = async (filters: PartnerListFilters): Promise<
   }
   if (filters.industryNiche?.trim()) {
     params.set("industryNiche", filters.industryNiche.trim());
+  }
+  if (filters.phaseCode?.trim()) {
+    params.set("phaseCode", filters.phaseCode.trim());
   }
   if (filters.status) {
     params.set("status", filters.status);

@@ -5,9 +5,18 @@ type ModalProps = {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
+  modalClassName?: string;
+  bodyClassName?: string;
 };
 
-export const Modal = ({ title, open, onClose, children }: ModalProps) => {
+export const Modal = ({
+  title,
+  open,
+  onClose,
+  children,
+  modalClassName,
+  bodyClassName,
+}: ModalProps) => {
   useEffect(() => {
     if (!open) {
       return;
@@ -30,7 +39,7 @@ export const Modal = ({ title, open, onClose, children }: ModalProps) => {
   return (
     <div className="ui-modal-backdrop" role="presentation" onClick={onClose}>
       <div
-        className="ui-modal"
+        className={modalClassName ? `ui-modal ${modalClassName}` : "ui-modal"}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -42,7 +51,7 @@ export const Modal = ({ title, open, onClose, children }: ModalProps) => {
             Close
           </button>
         </header>
-        <div className="ui-modal-body">{children}</div>
+        <div className={bodyClassName ? `ui-modal-body ${bodyClassName}` : "ui-modal-body"}>{children}</div>
       </div>
     </div>
   );

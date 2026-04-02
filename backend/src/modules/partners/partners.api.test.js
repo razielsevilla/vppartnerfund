@@ -70,6 +70,29 @@ test("archives a partner and excludes it from default active list", async () => 
   assert.equal(archivedListResponse.body.partners[0].id, partnerId);
 });
 
+test("filters partners by workflow phase code", async () => {
+  const leadPartner = await agent.post("/api/partners").send({
+    organizationName: "Lead Filter Corp",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(leadPartner.status, 201);
+
+  const prospectPartner = await agent.post("/api/partners").send({
+    organizationName: "Prospecting Filter Corp",
+    organizationType: "Corporate",
+    industryNiche: "Technology",
+    currentPhaseId: "phase_prospecting",
+  });
+  assert.equal(prospectPartner.status, 201);
+
+  const filteredResponse = await agent.get("/api/partners?phaseCode=prospecting");
+  assert.equal(filteredResponse.status, 200);
+  assert.equal(filteredResponse.body.partners.length, 1);
+  assert.equal(filteredResponse.body.partners[0].currentPhaseId, "phase_prospecting");
+});
+
 test("blocks create when similar-name duplicate is detected", async () => {
   const firstCreate = await agent.post("/api/partners").send({
     organizationName: "Acme Corporation",

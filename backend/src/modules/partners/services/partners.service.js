@@ -326,6 +326,19 @@ async function listPartners(filters) {
   if (filters.industryNiche) {
     query.where("industry_niche", filters.industryNiche);
   }
+  if (filters.phaseCode) {
+    const normalizedPhase = String(filters.phaseCode).trim().toLowerCase();
+    query.where((builder) => {
+      builder
+        .where("current_phase_id", filters.phaseCode)
+        .orWhereIn(
+          "current_phase_id",
+          db("workflow_phases")
+            .select("id")
+            .whereRaw("lower(code) = ?", [normalizedPhase]),
+        );
+    });
+  }
   if (filters.impactTier) {
     query.where("impact_tier", filters.impactTier);
   }
@@ -789,11 +802,12 @@ async function upsertPartnerQualification(partnerId, payload, actorId) {
       const normalizedImpact = String(item.impactLevel || "").trim().toLowerCase();
       const normalizedRole = String(item.functionalRole || "").trim();
       if (!ROLE_PACKAGE_IMPACTS.has(normalizedImpact)) {
+        const allowedImpacts = [...ROLE_PACKAGE_IMPACTS].join(", ");
         throw new PartnerServiceError(
           `Invalid role package impact: ${normalizedImpact || "(empty)"}`,
           "PARTNER_QUALIFICATION_INVALID_PACKAGE",
           400,
-          [{ field: "rolePackages", message: "Each role package must use standard, major, or lead impact" }],
+          [{ field: "rolePackages", message: `Each role package must use one of: ${allowedImpacts}` }],
         );
       }
 

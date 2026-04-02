@@ -82,6 +82,7 @@ async function listPartnersHandler(req, res) {
       search: req.query.search,
       organizationType: req.query.organizationType,
       industryNiche: req.query.industryNiche,
+      phaseCode: req.query.phaseCode,
       impactTier: req.query.impactTier,
       status: req.query.status,
       valueProp: req.query.valueProp,

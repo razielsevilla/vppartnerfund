@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuthSession } from "../../auth/hooks/use-auth-session";
 import { usePersistentState } from "../../../shared/hooks/usePersistentState";
@@ -117,16 +117,18 @@ export const PartnersPage = () => {
     }
   };
 
-  const refreshPartners = async () => {
+  const refreshPartners = useCallback(async () => {
+    setPartnersError(null);
     try {
       const data = await listPartnersRequest(filters);
       setPartners(data);
+      setPartnersError(null);
     } catch (error) {
       setPartnersError(error instanceof Error ? error.message : "Failed to load partners");
     } finally {
       setIsLoadingPartners(false);
     }
-  };
+  }, [filters]);
 
   useEffect(() => {
     loadWorkflowConfig();
@@ -134,7 +136,7 @@ export const PartnersPage = () => {
 
   useEffect(() => {
     refreshPartners();
-  }, [filters]);
+  }, [refreshPartners]);
 
   useEffect(() => {
     const loadTaskCounters = async () => {
@@ -174,6 +176,7 @@ export const PartnersPage = () => {
 
   const onFilterChange = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     setFilters((prev: FilterState) => ({ ...prev, [key]: value }));
+    setCurrentPage(1);
   };
 
   const phaseOptions = useMemo(
@@ -208,6 +211,12 @@ export const PartnersPage = () => {
 
   const totalFilteredCount = filteredByLocation.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredCount / pageSize));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const paginatedPartners = useMemo(() => {
     const start = (currentPage - 1) * pageSize;

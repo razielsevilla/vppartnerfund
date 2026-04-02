@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
+import { useAuthSession } from "../../auth/hooks/use-auth-session";
 import { usePersistentState } from "../../../shared/hooks/usePersistentState";
 import { Modal } from "../../../shared/components/Modal";
 import {
@@ -120,6 +121,7 @@ const CLIENT_ALLOWED_ARTIFACT_TYPES = [
 const CLIENT_MAX_ARTIFACT_BYTES = 10 * 1024 * 1024;
 
 export const PartnerDetailPage = () => {
+  const { user } = useAuthSession();
   const { partnerId } = useParams();
   const [partner, setPartner] = useState<PartnerRecord | null>(null);
   const [qualification, setQualification] = useState<QualificationProfile>(defaultQualification);
@@ -168,6 +170,7 @@ export const PartnerDetailPage = () => {
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [isSavingInfo, setIsSavingInfo] = useState(false);
   const navigate = useNavigate();
+  const canHardDelete = user?.role === "vp_head";
 
   useEffect(() => {
     if (!partnerId) {
@@ -568,8 +571,8 @@ export const PartnerDetailPage = () => {
 
     const actionText = isHard ? "PERMANENTLY DELETE" : "ARCHIVE";
     const warning = isHard 
-      ? `WARNING: This will PERMANENTLY REMOVE \"${partner.organizationName}\" and all associated data. This action cannot be undone.`
-      : `Are you sure you want to archive \"${partner.organizationName}\"? It will be moved to the Archived view.`;
+      ? `WARNING: This will PERMANENTLY REMOVE "${partner.organizationName}" and all associated data. This action cannot be undone.`
+      : `Are you sure you want to archive "${partner.organizationName}"? It will be moved to the Archived view.`;
 
     if (!window.confirm(warning)) return;
 
@@ -712,14 +715,16 @@ export const PartnerDetailPage = () => {
         {infoMessage && <p className="status-message">{infoMessage}</p>}
 
         <div className="modal-footer-actions">
-          <button 
-            type="button" 
-            className="danger-btn" 
-            style={{ marginRight: 'auto' }}
-            onClick={() => handleDeletePartner(true)}
-          >
-            Hard Delete
-          </button>
+          {canHardDelete && (
+            <button 
+              type="button" 
+              className="danger-btn" 
+              style={{ marginRight: 'auto' }}
+              onClick={() => handleDeletePartner(true)}
+            >
+              Hard Delete
+            </button>
+          )}
           <button type="button" className="secondary-btn" onClick={() => setIsEditingInfo(false)}>
             Cancel
           </button>
