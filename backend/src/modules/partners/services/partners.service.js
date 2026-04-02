@@ -64,6 +64,52 @@ const ROLE_PACKAGE_IMPACTS = new Set([
   "high",
   "transformational",
 ]);
+
+function getBenefitSelectionLimits(rolePackages) {
+  if (!Array.isArray(rolePackages) || rolePackages.length === 0) {
+    return {
+      highestImpact: null,
+      baseCategories: 0,
+      bonusCategories: 0,
+      picksPerBaseCategory: 0,
+      picksPerBonusCategory: 3,
+      totalCategories: 0,
+      totalSelections: 0,
+    };
+  }
+
+  let highestImpact = "standard";
+  for (const rolePackage of rolePackages) {
+    if (rolePackage.impactLevel === "lead") {
+      highestImpact = "lead";
+      break;
+    }
+
+    if (rolePackage.impactLevel === "major") {
+      highestImpact = "major";
+    }
+  }
+
+  const baseConfig = {
+    standard: { categories: 1, picks: 3 },
+    major: { categories: 2, picks: 4 },
+    lead: { categories: 3, picks: 5 },
+  }[highestImpact];
+
+  const bonusCategories = Math.floor(rolePackages.length / 3);
+  const picksPerBonusCategory = 3;
+
+  return {
+    highestImpact,
+    baseCategories: baseConfig.categories,
+    bonusCategories,
+    picksPerBaseCategory: baseConfig.picks,
+    picksPerBonusCategory,
+    totalCategories: baseConfig.categories + bonusCategories,
+    totalSelections: baseConfig.categories * baseConfig.picks + bonusCategories * picksPerBonusCategory,
+  };
+}
+
 const FUNCTIONAL_BENEFIT_PACKAGE_OPTIONS = [
   "Direct Access to Tech Talent",
   "Talent Vetting and Mentorship",
@@ -877,8 +923,7 @@ async function upsertPartnerQualification(partnerId, payload, actorId) {
     legacyPotentialValues.length > 0 ? legacyPotentialValues : functionalBenefits;
   const effectiveConfirmedValues =
     legacyConfirmedValues.length > 0 ? legacyConfirmedValues : functionalBenefits;
-  const maxBenefitSlots =
-    rolePackages.length > 0 ? rolePackages.length + 2 + Math.floor(rolePackages.length / 3) : 0;
+  const benefitLimits = getBenefitSelectionLimits(rolePackages);
 
   if (rolePackages.length > 0) {
     for (const item of rolePackages) {
@@ -926,15 +971,15 @@ async function upsertPartnerQualification(partnerId, payload, actorId) {
     }
   }
 
-  if (functionalBenefits.length > maxBenefitSlots) {
+  if (functionalBenefits.length > benefitLimits.totalSelections) {
     throw new PartnerServiceError(
-      "Functional benefit package count exceeds allowed slots",
+      "Functional benefit package count exceeds allowed selections",
       "PARTNER_QUALIFICATION_BENEFIT_LIMIT_EXCEEDED",
       400,
       [
         {
           field: "functionalBenefits",
-          message: `Allowed benefit slots: ${maxBenefitSlots} for ${rolePackages.length} role packages`,
+          message: `Allowed benefit selections: ${benefitLimits.totalSelections} for ${rolePackages.length} role packages`,
         },
       ],
     );

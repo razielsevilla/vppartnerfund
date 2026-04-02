@@ -25,6 +25,65 @@ export const IMPACT_LABEL: Record<"standard" | "major" | "lead", string> = {
   lead: "Lead",
 };
 
+export type BenefitRolePackage = {
+  impactLevel: "standard" | "major" | "lead";
+};
+
+export type BenefitSelectionLimits = {
+  highestImpact: "standard" | "major" | "lead" | null;
+  baseCategories: number;
+  bonusCategories: number;
+  picksPerBaseCategory: number;
+  picksPerBonusCategory: number;
+  totalCategories: number;
+  totalSelections: number;
+};
+
+export const getBenefitSelectionLimits = (rolePackages: BenefitRolePackage[]): BenefitSelectionLimits => {
+  if (rolePackages.length === 0) {
+    return {
+      highestImpact: null,
+      baseCategories: 0,
+      bonusCategories: 0,
+      picksPerBaseCategory: 0,
+      picksPerBonusCategory: 3,
+      totalCategories: 0,
+      totalSelections: 0,
+    };
+  }
+
+  let highestImpact: "standard" | "major" | "lead" = "standard";
+  for (const rolePackage of rolePackages) {
+    if (rolePackage.impactLevel === "lead") {
+      highestImpact = "lead";
+      break;
+    }
+
+    if (rolePackage.impactLevel === "major") {
+      highestImpact = "major";
+    }
+  }
+
+  const baseConfig = {
+    standard: { categories: 1, picks: 3 },
+    major: { categories: 2, picks: 4 },
+    lead: { categories: 3, picks: 5 },
+  }[highestImpact];
+
+  const bonusCategories = Math.floor(rolePackages.length / 3);
+  const picksPerBonusCategory = 3;
+
+  return {
+    highestImpact,
+    baseCategories: baseConfig.categories,
+    bonusCategories,
+    picksPerBaseCategory: baseConfig.picks,
+    picksPerBonusCategory,
+    totalCategories: baseConfig.categories + bonusCategories,
+    totalSelections: baseConfig.categories * baseConfig.picks + bonusCategories * picksPerBonusCategory,
+  };
+};
+
 export const DURATION_OPTIONS: Array<{
   value: "event_based" | "project_based" | "term_based";
   label: string;

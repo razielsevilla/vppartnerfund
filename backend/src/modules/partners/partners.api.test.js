@@ -538,7 +538,7 @@ test("qualification mapping persists and rehydrates on reload", async () => {
   assert.ok(reload.body.qualification.confirmedValuePropositions.includes("Research Collaboration"));
 });
 
-test("qualification mapping supports role packages and functional benefit packages", async () => {
+test("major role packages allow eight functional benefits", async () => {
   const createResponse = await agent.post("/api/partners").send({
     organizationName: "Package Menu Partner",
     organizationType: "Tech Corporate",
@@ -552,21 +552,56 @@ test("qualification mapping supports role packages and functional benefit packag
   const saveResponse = await agent.put(`/api/partners/${partnerId}/qualification`).send({
     durationCategory: "project_based",
     rolePackages: [
-      { impactLevel: "standard", functionalRole: "Technology Partner" },
       { impactLevel: "major", functionalRole: "Mentorship Partner" },
-      { impactLevel: "lead", functionalRole: "Knowledge Partner" },
     ],
     functionalBenefits: [
       "Direct Access to Tech Talent",
       "Talent Vetting and Mentorship",
       "Thought Leadership and Speaking Slots",
-      "Up-Skilling Opportunities",
+      "Targeted Community Exposure and Media Amplification",
+      "User Onboarding and Technical Testing Grounds",
+      "CSR Fulfillment and Industry-Academe Bridging",
+      "Physical Venue Traffic",
+      "Policy Implementation and Economic Development Support",
     ],
   });
 
   assert.equal(saveResponse.status, 200);
-  assert.equal(saveResponse.body.qualification.rolePackages.length, 3);
-  assert.equal(saveResponse.body.qualification.functionalBenefits.length, 4);
+  assert.equal(saveResponse.body.qualification.rolePackages.length, 1);
+  assert.equal(saveResponse.body.qualification.functionalBenefits.length, 8);
+});
+
+test("major role packages reject more than eight functional benefits", async () => {
+  const createResponse = await agent.post("/api/partners").send({
+    organizationName: "Package Limit Partner",
+    organizationType: "Tech Corporate",
+    industryNiche: "Developer tools",
+    currentPhaseId: "phase_lead",
+  });
+  assert.equal(createResponse.status, 201);
+
+  const partnerId = createResponse.body.partner.id;
+
+  const saveResponse = await agent.put(`/api/partners/${partnerId}/qualification`).send({
+    durationCategory: "project_based",
+    rolePackages: [
+      { impactLevel: "major", functionalRole: "Mentorship Partner" },
+    ],
+    functionalBenefits: [
+      "Direct Access to Tech Talent",
+      "Talent Vetting and Mentorship",
+      "Thought Leadership and Speaking Slots",
+      "Targeted Community Exposure and Media Amplification",
+      "User Onboarding and Technical Testing Grounds",
+      "CSR Fulfillment and Industry-Academe Bridging",
+      "Physical Venue Traffic",
+      "Policy Implementation and Economic Development Support",
+      "Up-Skilling Opportunities",
+    ],
+  });
+
+  assert.equal(saveResponse.status, 400);
+  assert.equal(saveResponse.body.error.code, "PARTNER_QUALIFICATION_BENEFIT_LIMIT_EXCEEDED");
 });
 
 test("partner contacts can be added and listed", async () => {

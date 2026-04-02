@@ -44,6 +44,7 @@ import {
   FUNCTIONAL_BENEFIT_GUIDES,
   IMPACT_LABEL,
   IMPACT_PACKAGE_OPTIONS,
+  getBenefitSelectionLimits,
   ROLE_GUIDES,
   ROLE_PACKAGE_FUNCTION_OPTIONS,
 } from "../constants/qualification-menu";
@@ -255,17 +256,13 @@ export const PartnerDetailPage = () => {
       rolePackages: prev.rolePackages.filter((_, currentIndex) => currentIndex !== index),
       functionalBenefits: prev.functionalBenefits.slice(
         0,
-        prev.rolePackages.length > 1
-          ? prev.rolePackages.length - 1 + 2 + Math.floor((prev.rolePackages.length - 1) / 3)
-          : 0,
+        getBenefitSelectionLimits(prev.rolePackages.filter((_, currentIndex) => currentIndex !== index)).totalSelections,
       ),
     }));
   };
 
-  const benefitSlots =
-    qualification.rolePackages.length > 0
-      ? qualification.rolePackages.length + 2 + Math.floor(qualification.rolePackages.length / 3)
-      : 0;
+  const benefitLimits = getBenefitSelectionLimits(qualification.rolePackages);
+  const benefitSlots = benefitLimits.totalSelections;
 
   const qualificationTitleSummary = useMemo(
     () => buildRolePackageSummary(qualification.rolePackages),
@@ -943,9 +940,9 @@ export const PartnerDetailPage = () => {
 
               <div>
                 <h3>Functional Benefit Packages</h3>
-                <p className="muted">{`Benefit slots: ${benefitSlots}`}</p>
+                <p className="muted">{`Benefit selections allowed: ${benefitSlots}`}</p>
                 {benefitSlots === 0 && (
-                  <p className="muted">Add role packages to unlock benefit package slots.</p>
+                  <p className="muted">Add role packages to unlock benefit selections.</p>
                 )}
                 {benefitSlots > 0 && (
                   <div className="qualification-grid">

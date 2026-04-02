@@ -40,6 +40,7 @@ import {
   BASELINE_BENEFIT,
   DURATION_OPTIONS,
   FUNCTIONAL_BENEFIT_GUIDES,
+  getBenefitSelectionLimits,
   ROLE_PACKAGE_FUNCTION_OPTIONS,
   ROLE_GUIDES,
 } from "../constants/qualification-menu";
@@ -214,10 +215,7 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
   const removeRolePackage = (index: number) => {
     setQualification((prev) => {
       const nextRolePackages = prev.rolePackages.filter((_, i) => i !== index);
-      const nextSlots =
-        nextRolePackages.length > 0
-          ? nextRolePackages.length + 2 + Math.floor(nextRolePackages.length / 3)
-          : 0;
+      const nextSlots = getBenefitSelectionLimits(nextRolePackages).totalSelections;
 
       return {
         ...prev,
@@ -229,29 +227,7 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
   };
 
   const getBenefitLimits = () => {
-    if (qualification.rolePackages.length === 0) return { totalCats: 0, baseCats: 0, basePicks: 0, bonusCats: 0, bonusPicks: 3, highestTier: null };
-    
-    const tiers = qualification.rolePackages.map(pkg => pkg.impactLevel);
-    let highestTier: "standard" | "major" | "lead" = "standard";
-    if (tiers.includes("lead")) highestTier = "lead";
-    else if (tiers.includes("major")) highestTier = "major";
-
-    const baseConfig = {
-      standard: { cats: 2, picks: 3 },
-      major: { cats: 4, picks: 4 },
-      lead: { cats: 8, picks: 5 }
-    }[highestTier];
-
-    const bonusCats = Math.floor(qualification.rolePackages.length / 2);
-    
-    return {
-      totalCats: baseConfig.cats + bonusCats,
-      baseCats: baseConfig.cats,
-      basePicks: baseConfig.picks,
-      bonusCats,
-      bonusPicks: 3,
-      highestTier
-    };
+    return getBenefitSelectionLimits(qualification.rolePackages);
   };
 
   const benefitLimits = getBenefitLimits();
@@ -278,16 +254,18 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
         }).filter(Boolean)));
         
         const isNewCategory = !selectedCategories.includes(category);
-        if (isNewCategory && selectedCategories.length >= benefitLimits.totalCats) {
-          setQualificationMessage(`You can only select up to ${benefitLimits.totalCats} benefit categories.`);
+        if (isNewCategory && selectedCategories.length >= benefitLimits.totalCategories) {
+          setQualificationMessage(`You can only select up to ${benefitLimits.totalCategories} benefit categories.`);
           return prev;
         }
 
         // Determine if this category is treated as "base" or "bonus" for pick limit
         const categoryIndex = selectedCategories.indexOf(category);
-        const limit = (categoryIndex !== -1 && categoryIndex < benefitLimits.baseCats) || (categoryIndex === -1 && selectedCategories.length < benefitLimits.baseCats)
-          ? benefitLimits.basePicks 
-          : benefitLimits.bonusPicks;
+        const limit =
+          (categoryIndex !== -1 && categoryIndex < benefitLimits.baseCategories) ||
+          (categoryIndex === -1 && selectedCategories.length < benefitLimits.baseCategories)
+            ? benefitLimits.picksPerBaseCategory
+            : benefitLimits.picksPerBonusCategory;
 
         if (categorySelections.length >= limit) {
           setQualificationMessage(`You can only pick ${limit} selections for this category.`);
@@ -295,7 +273,7 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
         }
 
         // Enforce Lead tier for ★
-        if (benefit.includes("★") && benefitLimits.highestTier !== "lead") {
+        if (benefit.includes("★") && benefitLimits.highestImpact !== "lead") {
           setQualificationMessage("Only partners with Lead Tier role packages can select starred (★) benefits.");
           return prev;
         }
@@ -623,8 +601,8 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
             ) : (
               <div style={{ marginTop: '1.5rem' }}>
                 <div className="limits-banner">
-                  <span>Categories: <strong>{benefitLimits.totalCats}</strong> (Base: {benefitLimits.baseCats}, Bonus: {benefitLimits.bonusCats})</span>
-                  <span> | Picks per Category: <strong>{benefitLimits.basePicks}</strong> (Bonus: {benefitLimits.bonusPicks})</span>
+                  <span>Categories: <strong>{benefitLimits.totalCategories}</strong> (Base: {benefitLimits.baseCategories}, Bonus: {benefitLimits.bonusCategories})</span>
+                  <span> | Picks per Category: <strong>{benefitLimits.picksPerBaseCategory}</strong> (Bonus: {benefitLimits.picksPerBonusCategory})</span>
                 </div>
 
                 <div className="benefit-categories-grid">
@@ -640,9 +618,11 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
                     }).filter(Boolean))) as string[];
                     
                     const categoryIndex = selectedCategories.indexOf(catName);
-                    const limit = (categoryIndex !== -1 && categoryIndex < benefitLimits.baseCats) || (categoryIndex === -1 && selectedCategories.length < benefitLimits.baseCats)
-                      ? benefitLimits.basePicks 
-                      : benefitLimits.bonusPicks;
+                    const limit =
+                      (categoryIndex !== -1 && categoryIndex < benefitLimits.baseCategories) ||
+                      (categoryIndex === -1 && selectedCategories.length < benefitLimits.baseCategories)
+                        ? benefitLimits.picksPerBaseCategory
+                        : benefitLimits.picksPerBonusCategory;
 
                     return (
                       <div key={catName} className={`benefit-category-card ${isAnySelected ? 'is-active' : ''}`}>
@@ -656,7 +636,7 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
                           {guide.responsibilities.map(resp => {
                             const isChecked = qualification.functionalBenefits.includes(resp);
                             const isStar = resp.includes("★");
-                            const isLocked = isStar && benefitLimits.highestTier !== "lead";
+                            const isLocked = isStar && benefitLimits.highestImpact !== "lead";
                             
                             return (
                               <label key={resp} className={`benefit-option-label ${isLocked ? 'is-locked' : ''} ${isChecked ? 'is-checked' : ''}`}>
