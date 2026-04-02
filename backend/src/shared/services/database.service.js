@@ -184,7 +184,7 @@ async function initializeDatabase() {
       
       // Seed initial data if not already present
       const rolesCount = await db('roles').count('* as count').first();
-      if (rolesCount.count === 0) {
+      if (Number(rolesCount.count) === 0) {
         await seedRoles();
       }
 
@@ -305,14 +305,14 @@ async function seedUsersIfNeeded() {
 
 async function seedWorkflowPhasesIfNeeded() {
   const phasesCount = await db('workflow_phases').count('* as count').first();
-  if (phasesCount.count === 0) {
+  if (Number(phasesCount.count) === 0) {
     await seedWorkflowPhases();
   }
 }
 
 async function seedWorkflowTransitionRulesIfNeeded() {
   const rulesCount = await db('workflow_transition_rules').count('* as count').first();
-  if (rulesCount.count === 0) {
+  if (Number(rulesCount.count) === 0) {
     const nowIso = new Date().toISOString();
     const rows = defaultTransitionRules().map((rule) => ({
       ...rule,
@@ -326,7 +326,7 @@ async function seedWorkflowTransitionRulesIfNeeded() {
 
 async function seedWorkflowHealthConfigIfNeeded() {
   const configCount = await db('workflow_health_config').count('* as count').first();
-  if (configCount.count === 0) {
+  if (Number(configCount.count) === 0) {
     await db('workflow_health_config').insert({
       key: 'overdue_next_action_days',
       value_int: 14,
@@ -336,7 +336,7 @@ async function seedWorkflowHealthConfigIfNeeded() {
   }
 
   const thresholdsCount = await db('workflow_stage_stall_thresholds').count('* as count').first();
-  if (thresholdsCount.count === 0) {
+  if (Number(thresholdsCount.count) === 0) {
     const nowIso = new Date().toISOString();
     await db('workflow_stage_stall_thresholds').insert(
       defaultStageThresholds().map((row) => ({ ...row, updated_at: nowIso })),
@@ -347,7 +347,7 @@ async function seedWorkflowHealthConfigIfNeeded() {
 
 async function seedWorkflowArtifactRequirementsIfNeeded() {
   const requirementsCount = await db('workflow_artifact_requirements').count('* as count').first();
-  if (requirementsCount.count === 0) {
+  if (Number(requirementsCount.count) === 0) {
     const nowIso = new Date().toISOString();
     await db('workflow_artifact_requirements').insert(
       defaultArtifactRequirements().map((row) => ({
@@ -367,7 +367,7 @@ async function seedMasterTaxonomyIfNeeded() {
   }
 
   const taxonomyCount = await db("master_taxonomy_items").count("* as count").first();
-  if (taxonomyCount.count === 0) {
+  if (Number(taxonomyCount.count) === 0) {
     const nowIso = new Date().toISOString();
     await db("master_taxonomy_items").insert(defaultMasterTaxonomyRows(nowIso));
     console.log("Master taxonomy seeded");
