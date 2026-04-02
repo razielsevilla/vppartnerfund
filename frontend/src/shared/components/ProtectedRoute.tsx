@@ -15,11 +15,11 @@ export const ProtectedRoute = () => {
   }
 
   return (
-    <>
+    <div className="authenticated-wrapper">
       <Navbar />
-      <div className="authenticated-layout">
+      <div className="authenticated-content">
         <Outlet />
       </div>
-    </>
+    </div>
   );
 };

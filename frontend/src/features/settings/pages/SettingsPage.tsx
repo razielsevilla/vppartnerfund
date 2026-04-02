@@ -166,7 +166,7 @@ export const SettingsPage = () => {
   };
 
   return (
-    <main className="page-layout single-screen-page settings-page-container">
+    <main className="settings-page-container">
       <div className="settings-sidebar">
         <div className="sidebar-header">
           <h1>Settings</h1>
