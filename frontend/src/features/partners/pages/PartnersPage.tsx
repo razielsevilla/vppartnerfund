@@ -4,6 +4,7 @@ import { useAuthSession } from "../../auth/hooks/use-auth-session";
 import { usePersistentState } from "../../../shared/hooks/usePersistentState";
 import { listTasksRequest, type TaskRecord } from "../../tasks/services/tasks-api";
 import {
+  archivePartnerRequest,
   createPartnerRequest,
   DuplicatePartnerError,
   getWorkflowConfigRequest,
@@ -505,6 +506,17 @@ export const PartnersPage = () => {
       setIsImporting(false);
     }
   };
+  const handleDeletePartner = async (partnerId: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to archive "${name}"? It will be moved to the Archived view.`)) {
+      return;
+    }
+    try {
+      await archivePartnerRequest(partnerId);
+      await refreshPartners();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to archive partner");
+    }
+  };
 
   return (
     <main className="settings-page-container">
@@ -584,6 +596,7 @@ export const PartnersPage = () => {
                           <th>Phase</th>
                           <th>Location</th>
                           <th>Impact</th>
+                          <th style={{ width: "80px" }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -598,6 +611,16 @@ export const PartnersPage = () => {
                             <td>{partner.currentPhaseId.replace(/^phase_/, "").toUpperCase()}</td>
                             <td>{partner.location}</td>
                             <td>{partner.impactTier || "standard"}</td>
+                            <td>
+                              <button
+                                type="button"
+                                className="table-action-btn delete-btn"
+                                title="Archive Partner"
+                                onClick={() => handleDeletePartner(partner.id, partner.organizationName)}
+                              >
+                                <span role="img" aria-label="delete">🗑️</span>
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>

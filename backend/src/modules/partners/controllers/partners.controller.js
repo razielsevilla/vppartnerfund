@@ -12,6 +12,7 @@ const {
   createDiscoveryNote,
   updateDiscoveryNote,
   updatePartner,
+  deletePartner,
   createPartnerContact,
   upsertPartnerQualification,
   archivePartner,
@@ -357,6 +358,25 @@ async function updatePartnerHandler(req, res) {
 
 const transitionPartnerHandler = transitionPartnerPhaseHandler;
 
+async function deletePartnerHandler(req, res) {
+  try {
+    const deleted = await deletePartner(req.params.partnerId, req.user.id);
+    if (!deleted) {
+      return res.status(404).json({
+        error: {
+          code: "PARTNER_NOT_FOUND",
+          message: "Partner was not found",
+          details: [{ field: "partnerId", message: "No partner exists with this id" }],
+        },
+      });
+    }
+
+    return res.status(200).json({ message: "Partner record deleted" });
+  } catch (error) {
+    return serviceError(res, error);
+  }
+}
+
 async function archivePartnerHandler(req, res) {
   try {
     const partner = await archivePartner(req.params.partnerId, req.user.id);
@@ -394,4 +414,5 @@ module.exports = {
   updatePartnerHandler,
   transitionPartnerHandler,
   archivePartnerHandler,
+  deletePartnerHandler,
 };

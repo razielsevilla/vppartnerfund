@@ -1290,3 +1290,89 @@ textarea:hover {
     overflow: visible;
   }
 }
+
+
+/* Danger and Delete Buttons */
+.danger-btn {
+  background: linear-gradient(145deg, #ef4444, #dc2626);
+  color: #ffffff;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+  transition: all 180ms ease;
+}
+
+.danger-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
+}
+
+.danger-btn:active {
+  transform: translateY(0);
+}
+
+.danger-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.table-action-btn {
+  background: transparent;
+  border: 0;
+  padding: 0.4rem;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 150ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: auto;
+  box-shadow: none;
+}
+
+.table-action-btn:hover {
+  background: rgba(15, 23, 42, 0.05);
+  transform: scale(1.1);
+}
+
+.table-action-btn.delete-btn:hover {
+  background: #fef2f2;
+}
+
+.modal-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-soft);
+  align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.button-group {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.status-message {
+  margin-top: var(--space-3);
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-canvas);
+  color: var(--brand-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+}
+

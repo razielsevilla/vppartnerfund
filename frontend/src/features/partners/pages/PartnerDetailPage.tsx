@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { usePersistentState } from "../../../shared/hooks/usePersistentState";
+import { Modal } from "../../../shared/components/Modal";
 import {
   artifactFileUrl,
   listArtifactsRequest,
@@ -22,6 +23,9 @@ import {
   transitionPartnerPhaseRequest,
   updateDiscoveryNoteRequest,
   upsertPartnerQualificationRequest,
+  archivePartnerRequest,
+  deletePartnerRequest,
+  updatePartnerRequest,
   type PartnerContactRecord,
   type DiscoveryNoteGuidedAnswer,
   type DiscoveryNoteRecord,
@@ -159,6 +163,11 @@ export const PartnerDetailPage = () => {
   const [activeView, setActiveView] = usePersistentState<
     "qualification" | "contacts" | "transition" | "artifacts" | "notes" | "timeline"
   >("ui:partner-detail:active-view", "qualification");
+  const [isEditingInfo, setIsEditingInfo] = useState(false);
+  const [infoForm, setInfoForm] = useState<Partial<PartnerRecord>>({});
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [isSavingInfo, setIsSavingInfo] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!partnerId) {
@@ -195,6 +204,13 @@ export const PartnerDetailPage = () => {
           setDiscoveryNotes(notesData);
           setArtifacts(artifactsData);
           setWorkflowPhases(workflowConfig.phases.filter((phase) => phase.isActive));
+          setInfoForm({
+            organizationName: partnerData.organizationName,
+            organizationType: partnerData.organizationType,
+            industryNiche: partnerData.industryNiche,
+            location: partnerData.location || "",
+            websiteUrl: partnerData.websiteUrl || "",
+          });
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -531,6 +547,44 @@ export const PartnerDetailPage = () => {
     }
   };
 
+  const handleUpdateInfo = async () => {
+    if (!partnerId) return;
+    setIsSavingInfo(true);
+    setInfoMessage(null);
+    try {
+      const updated = await updatePartnerRequest(partnerId, infoForm);
+      setPartner(updated);
+      setInfoMessage("Partner information updated.");
+      setIsEditingInfo(false);
+    } catch (saveError) {
+      setInfoMessage(saveError instanceof Error ? saveError.message : "Failed to update partner information");
+    } finally {
+      setIsSavingInfo(false);
+    }
+  };
+
+  const handleDeletePartner = async (isHard: boolean = false) => {
+    if (!partnerId || !partner) return;
+
+    const actionText = isHard ? "PERMANENTLY DELETE" : "ARCHIVE";
+    const warning = isHard 
+      ? `WARNING: This will PERMANENTLY REMOVE \"${partner.organizationName}\" and all associated data. This action cannot be undone.`
+      : `Are you sure you want to archive \"${partner.organizationName}\"? It will be moved to the Archived view.`;
+
+    if (!window.confirm(warning)) return;
+
+    try {
+      if (isHard) {
+        await deletePartnerRequest(partnerId);
+      } else {
+        await archivePartnerRequest(partnerId);
+      }
+      navigate("/partners");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : `Failed to ${actionText.toLowerCase()} partner`);
+    }
+  };
+
   const filteredArtifacts = useMemo(() => {
     const nameFilter = artifactNameFilter.trim().toLowerCase();
 
@@ -596,10 +650,84 @@ export const PartnerDetailPage = () => {
           <h1>{partner?.organizationName || "Partner Detail"}</h1>
           <p className="muted">{subtitle}</p>
         </div>
-        <Link to="/partners" className="link-button">
-          Back to Registry
-        </Link>
+        <div className="header-actions">
+          <div className="button-group">
+            <button type="button" className="secondary-btn" onClick={() => setIsEditingInfo(true)}>
+              Edit Information
+            </button>
+            <button type="button" className="secondary-btn delete-btn" onClick={() => handleDeletePartner(false)}>
+              Archive
+            </button>
+          </div>
+          <Link to="/partners" className="link-button">
+            Back to Registry
+          </Link>
+        </div>
       </header>
+
+      <Modal title="Edit Partner Information" open={isEditingInfo} onClose={() => setIsEditingInfo(false)}>
+        <div className="qualification-grid">
+          <label>
+            Organization Name
+            <input
+              type="text"
+              value={infoForm.organizationName || ""}
+              onChange={(e) => setInfoForm((p) => ({ ...p, organizationName: e.target.value }))}
+            />
+          </label>
+          <label>
+            Organization Type
+            <input
+              type="text"
+              value={infoForm.organizationType || ""}
+              onChange={(e) => setInfoForm((p) => ({ ...p, organizationType: e.target.value }))}
+            />
+          </label>
+          <label>
+            Industry Niche
+            <input
+              type="text"
+              value={infoForm.industryNiche || ""}
+              onChange={(e) => setInfoForm((p) => ({ ...p, industryNiche: e.target.value }))}
+            />
+          </label>
+          <label>
+            Location
+            <input
+              type="text"
+              value={infoForm.location || ""}
+              onChange={(e) => setInfoForm((p) => ({ ...p, location: e.target.value }))}
+            />
+          </label>
+          <label>
+            Website URL
+            <input
+              type="text"
+              value={infoForm.websiteUrl || ""}
+              onChange={(e) => setInfoForm((p) => ({ ...p, websiteUrl: e.target.value }))}
+            />
+          </label>
+        </div>
+
+        {infoMessage && <p className="status-message">{infoMessage}</p>}
+
+        <div className="modal-footer-actions">
+          <button 
+            type="button" 
+            className="danger-btn" 
+            style={{ marginRight: 'auto' }}
+            onClick={() => handleDeletePartner(true)}
+          >
+            Hard Delete
+          </button>
+          <button type="button" className="secondary-btn" onClick={() => setIsEditingInfo(false)}>
+            Cancel
+          </button>
+          <button type="button" className="primary-btn" onClick={handleUpdateInfo} disabled={isSavingInfo}>
+            {isSavingInfo ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </Modal>
 
       {isLoading && <p className="loading-state">Loading timeline...</p>}
 

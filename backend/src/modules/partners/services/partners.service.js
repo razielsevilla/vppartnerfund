@@ -1171,6 +1171,27 @@ async function importPartnersFromSpreadsheet(payload, actorId) {
   };
 }
 
+async function deletePartner(partnerId, actorId) {
+  const db = getDatabase();
+  const existing = await db("partners").where({ id: partnerId }).first();
+  if (!existing) {
+    return null;
+  }
+
+  // Log before delete as the record and its association to the log might be affected
+  await logPartnerActivity(db, {
+    partnerId,
+    actionType: "partner_deleted_hard",
+    actorId,
+    payload: {
+      organizationName: existing.organization_name,
+    },
+  });
+
+  await db("partners").where({ id: partnerId }).delete();
+  return { id: partnerId };
+}
+
 module.exports = {
   PartnerServiceError,
   createPartner,
@@ -1180,6 +1201,7 @@ module.exports = {
   getPartnerQualification,
   listPartnerContacts,
   updatePartner,
+  deletePartner,
   createPartnerContact,
   upsertPartnerQualification,
   archivePartner,

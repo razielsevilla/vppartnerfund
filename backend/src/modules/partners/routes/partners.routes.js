@@ -18,6 +18,7 @@ const {
   updateDiscoveryNoteHandler,
   updatePartnerHandler,
   archivePartnerHandler,
+  deletePartnerHandler,
   transitionPartnerHandler,
 } = require("../controllers/partners.controller");
 
@@ -40,6 +41,7 @@ router.post("/:partnerId/discovery-notes", requireRole(ALL_ROLE_CODES), createDi
 router.put("/:partnerId/discovery-notes/:noteId", requireRole(ALL_ROLE_CODES), updateDiscoveryNoteHandler);
 router.put("/:partnerId/qualification", requireRole(ALL_ROLE_CODES), upsertPartnerQualificationHandler);
 router.put("/:partnerId", requireRole(ALL_ROLE_CODES), updatePartnerHandler);
+router.delete("/:partnerId", requireRole(ALL_ROLE_CODES), deletePartnerHandler);
 router.post("/:partnerId/transition", requireRole(ALL_ROLE_CODES), transitionPartnerHandler);
 router.post("/:partnerId/archive", requireRole(ALL_ROLE_CODES), archivePartnerHandler);
 
