@@ -749,43 +749,44 @@ export const updatePartnerRequest = async (
   partnerId: string,
   payload: Partial<PartnerRecord>,
 ): Promise<PartnerRecord> => {
-  const response = await fetch(${API_URL}/partners/, {
-    method: " PUT\,
- headers: { \Content-Type\: \application/json\ },
- credentials: \include\,
- body: JSON.stringify(payload),
- });
+  const response = await fetch(`${API_URL}/partners/${partnerId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
 
- const body = await response.json().catch(() => ({}));
- if (!response.ok) {
- throw new Error(extractApiMessage(body, \Failed to update partner\));
- }
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to update partner"));
+  }
 
- return (body as { partner: PartnerRecord }).partner;
+  return (body as { partner: PartnerRecord }).partner;
 };
 
 export const archivePartnerRequest = async (partnerId: string): Promise<PartnerRecord> => {
- const response = await fetch(${API_URL}/partners//archive, {
- method: \POST\,
- credentials: \include\,
- });
+  const response = await fetch(`${API_URL}/partners/${partnerId}/archive`, {
+    method: "POST",
+    credentials: "include",
+  });
 
- const body = await response.json().catch(() => ({}));
- if (!response.ok) {
- throw new Error(extractApiMessage(body, \Failed to archive partner\));
- }
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to archive partner"));
+  }
 
- return (body as { partner: PartnerRecord }).partner;
+  return (body as { partner: PartnerRecord }).partner;
 };
 
 export const deletePartnerRequest = async (partnerId: string): Promise<void> => {
- const response = await fetch(${API_URL}/partners/, {
- method: \DELETE\,
- credentials: \include\,
- });
+  const response = await fetch(`${API_URL}/partners/${partnerId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
 
- const body = await response.json().catch(() => ({}));
- if (!response.ok) {
- throw new Error(extractApiMessage(body, \Failed to delete partner\));
- }
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractApiMessage(body, "Failed to delete partner"));
+  }
 };
+
