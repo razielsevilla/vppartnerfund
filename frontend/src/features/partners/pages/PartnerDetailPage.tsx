@@ -855,6 +855,9 @@ export const PartnerDetailPage = () => {
             <div className="value-prop-columns">
               <div>
                 <h3>Role Package Menu</h3>
+                <p className="muted">
+                  Standard and Major tier responsibilities are fixed commitments. Only Lead tier responsibilities are negotiable and can be custom-tailored based on partner goals, capabilities, and budget.
+                </p>
                 <div className="qualification-grid">
                   <label>
                     Impact
@@ -931,7 +934,7 @@ export const PartnerDetailPage = () => {
                         <p>{roleGuide.description}</p>
                         <p>{`Standard: ${roleGuide.tiers.standard}`}</p>
                         <p>{`Major: ${roleGuide.tiers.major}`}</p>
-                        <p>{`Lead: ${roleGuide.tiers.lead}`}</p>
+                        <p>{`Lead (Negotiable): ${roleGuide.tiers.lead}`}</p>
                       </article>
                     );
                   })}

@@ -201,7 +201,7 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
     const newPackage = {
       functionalRole: selectedRole,
       impactLevel: selectedTier,
-      checklistItems: [guide.tiers[selectedTier]],
+      checklistItems: selectedTier === "lead" ? [guide.tiers.lead] : [],
     };
     setQualification((prev) => ({
       ...prev,
@@ -223,6 +223,26 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
         functionalBenefits: prev.functionalBenefits.slice(0, nextSlots),
       };
     });
+    setQualificationMessage(null);
+  };
+
+  const updateLeadPackageDeliverables = (index: number, value: string) => {
+    const parsedItems = value
+      .split("\n")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+    setQualification((prev) => ({
+      ...prev,
+      rolePackages: prev.rolePackages.map((pkg, currentIndex) =>
+        currentIndex === index && pkg.impactLevel === "lead"
+          ? {
+              ...pkg,
+              checklistItems: parsedItems,
+            }
+          : pkg,
+      ),
+    }));
     setQualificationMessage(null);
   };
 
@@ -503,7 +523,7 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
                       <th style={{ width: '25%' }}>Category & Responsibility</th>
                       <th style={{ width: '25%' }}>Standard Tier</th>
                       <th style={{ width: '25%' }}>Major Tier</th>
-                      <th style={{ width: '25%' }}>Lead Tier</th>
+                      <th style={{ width: '25%' }}>Lead Tier (Negotiable)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -553,6 +573,9 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
                     </tr>
                   </tbody>
                 </table>
+                <p className="muted" style={{ marginTop: "0.75rem" }}>
+                  Standard and Major tier responsibilities are fixed commitments. Lead tier responsibilities are negotiable and can be custom-tailored to fit the partner's goals, capabilities, and budget.
+                </p>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
                   <button className="emphasized-add-btn" onClick={addRolePackage}>
                     Add {selectedTier.toUpperCase()} {selectedRole}
@@ -570,8 +593,18 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
                       <span>{pkg.impactLevel.toUpperCase()}</span>
                     </div>
                     <p>{pkg.functionalRole}</p>
-                    {(pkg.checklistItems || []).length > 0 && (
-                      <p>{`Checklist: ${(pkg.checklistItems || []).join(", ")}`}</p>
+                    {pkg.impactLevel === "lead" ? (
+                      <label>
+                        <span>Negotiable Lead Deliverables</span>
+                        <textarea
+                          rows={4}
+                          value={(pkg.checklistItems || []).join("\n")}
+                          onChange={(event) => updateLeadPackageDeliverables(index, event.target.value)}
+                          placeholder="One deliverable per line"
+                        />
+                      </label>
+                    ) : (
+                      <p>{`Fixed commitment: ${ROLE_GUIDES[pkg.functionalRole]?.tiers[pkg.impactLevel] || "Defined in role guide"}`}</p>
                     )}
                     <button className="secondary-btn" onClick={() => removeRolePackage(index)}>
                       Remove

@@ -923,7 +923,6 @@ async function upsertPartnerQualification(partnerId, payload, actorId) {
     legacyPotentialValues.length > 0 ? legacyPotentialValues : functionalBenefits;
   const effectiveConfirmedValues =
     legacyConfirmedValues.length > 0 ? legacyConfirmedValues : functionalBenefits;
-  const benefitLimits = getBenefitSelectionLimits(rolePackages);
 
   if (rolePackages.length > 0) {
     for (const item of rolePackages) {
@@ -949,6 +948,13 @@ async function upsertPartnerQualification(partnerId, payload, actorId) {
       }
     }
   }
+
+  const persistedRolePackages = rolePackages.map((item) => ({
+    ...item,
+    checklistItems: item.impactLevel === "lead" ? item.checklistItems : [],
+  }));
+
+  const benefitLimits = getBenefitSelectionLimits(persistedRolePackages);
 
   const allowedBenefits = new Set(getFunctionalBenefitOptions(partner.organization_type));
   const shouldValidatePresetBenefits =
@@ -979,7 +985,7 @@ async function upsertPartnerQualification(partnerId, payload, actorId) {
       [
         {
           field: "functionalBenefits",
-          message: `Allowed benefit selections: ${benefitLimits.totalSelections} for ${rolePackages.length} role packages`,
+          message: `Allowed benefit selections: ${benefitLimits.totalSelections} for ${persistedRolePackages.length} role packages`,
         },
       ],
     );
@@ -989,9 +995,9 @@ async function upsertPartnerQualification(partnerId, payload, actorId) {
   const row = {
     partner_id: partnerId,
     duration_category: payload.durationCategory,
-    impact_level: rolePackages[0]?.impactLevel || payload.impactLevel || null,
-    functional_role: rolePackages[0]?.functionalRole || payload.functionalRole || null,
-    role_packages: JSON.stringify(rolePackages),
+    impact_level: persistedRolePackages[0]?.impactLevel || payload.impactLevel || null,
+    functional_role: persistedRolePackages[0]?.functionalRole || payload.functionalRole || null,
+    role_packages: JSON.stringify(persistedRolePackages),
     benefit_packages: JSON.stringify(functionalBenefits),
     potential_value_props: JSON.stringify(effectivePotentialValues),
     confirmed_value_props: JSON.stringify(effectiveConfirmedValues),
@@ -1018,10 +1024,10 @@ async function upsertPartnerQualification(partnerId, payload, actorId) {
       previous: mapQualificationRow(existing),
       next: {
         durationCategory: payload.durationCategory,
-        rolePackages,
+        rolePackages: persistedRolePackages,
         functionalBenefits,
-        impactLevel: rolePackages[0]?.impactLevel || payload.impactLevel || null,
-        functionalRole: rolePackages[0]?.functionalRole || payload.functionalRole || null,
+        impactLevel: persistedRolePackages[0]?.impactLevel || payload.impactLevel || null,
+        functionalRole: persistedRolePackages[0]?.functionalRole || payload.functionalRole || null,
       },
     },
   });
