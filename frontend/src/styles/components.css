@@ -1376,3 +1376,210 @@ textarea:hover {
   text-align: center;
 }
 
+
+
+/* Partners Registry Integrated Filters */
+.registry-header-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.search-input-inline {
+  flex: 1;
+  min-width: 240px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease;
+}
+
+.search-input-inline:focus {
+  border-color: var(--brand-primary);
+  outline: none;
+}
+
+.registry-header-filters select {
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-soft);
+  background: #fff;
+  min-width: 140px;
+  cursor: pointer;
+}
+
+/* Grouping Styles */
+.registry-group-section {
+  margin-bottom: var(--space-6);
+}
+
+.group-header {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--brand-primary);
+  margin-bottom: var(--space-3);
+  padding-left: var(--space-2);
+  border-left: 4px solid var(--brand-secondary);
+}
+
+/* Combined Health & Add View */
+.health-add-combined {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.health-section-compact, 
+.add-partner-section {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-raised);
+}
+
+.section-header {
+  margin-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: var(--space-3);
+}
+
+.section-header h2 {
+  font-size: 1.6rem;
+  color: var(--brand-primary);
+  margin: 0;
+}
+
+.health-grid-mini {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+}
+
+.health-card-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-4);
+  background: var(--bg-canvas);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+}
+
+.health-card-mini .label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.health-card-mini .value {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--brand-primary);
+}
+
+.health-card-mini.warning { background: var(--state-warning-bg); border-color: var(--state-warning-border); }
+.health-card-mini.warning .value { color: var(--state-warning-text); }
+
+.health-card-mini.danger { background: var(--state-danger-bg); border-color: var(--state-danger-border); }
+.health-card-mini.danger .value { color: var(--state-danger-text); }
+
+/* Form Enhancements */
+.wide-form {
+  max-width: 100%;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+
+.full-width {
+  grid-column: span 2;
+}
+
+.registry-create-form textarea {
+  width: 100%;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  font-family: inherit;
+  font-size: 1rem;
+  resize: vertical;
+}
+
+.location-group {
+  grid-column: span 2;
+  background: var(--bg-canvas-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+}
+
+.group-label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
+
+.radio-options {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.emphasized-add-btn {
+  background: linear-gradient(135deg, var(--brand-secondary), var(--brand-secondary-strong));
+  color: #fff;
+  border: 0;
+  padding: 1.2rem 3.5rem;
+  font-size: 1.2rem;
+  font-weight: 800;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(15, 118, 110, 0.3);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.emphasized-add-btn:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 32px rgba(15, 118, 110, 0.45);
+  filter: brightness(1.1);
+}
+
+.emphasized-add-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.form-footer-centered {
+  margin-top: var(--space-7);
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.error-message.centered {
+  text-align: center;
+  width: 100%;
+  margin-top: var(--space-4);
+}
+
