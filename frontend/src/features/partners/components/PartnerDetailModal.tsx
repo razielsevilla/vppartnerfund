@@ -201,7 +201,7 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
     const newPackage = {
       functionalRole: selectedRole,
       impactLevel: selectedTier,
-      checklistItems: selectedTier === "lead" ? [guide.tiers.lead] : [],
+      checklistItems: selectedTier === "lead" ? guide.tiers.lead : [],
     };
     setQualification((prev) => ({
       ...prev,
