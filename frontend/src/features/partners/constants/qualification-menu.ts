@@ -14,238 +14,230 @@ export const ROLE_PACKAGE_FUNCTION_OPTIONS = [
 ];
 
 export const IMPACT_PACKAGE_OPTIONS: Array<"standard" | "major" | "lead"> = [
-      tiers: { standard: string[]; major: string[]; lead: string[] };
+  "standard",
   "major",
   "lead",
 ];
 
 export const IMPACT_LABEL: Record<"standard" | "major" | "lead", string> = {
-        standard: ["15 users (temporary software licenses / API access)"],
-        major: ["50 users (temporary licenses)", "5 technical certification exam vouchers"],
-        lead: [
-          "100+ users (temporary licenses)",
-          "$2000+ cloud hosting credits for deployments",
-          "20 technical certification exam vouchers",
-          "15 permanent software licenses for core team",
-        ],
+  standard: "Standard",
+  major: "Major",
+  lead: "Lead",
 };
 
 export type BenefitRolePackage = {
   impactLevel: "standard" | "major" | "lead";
 };
-        standard: ["1 speaker for short Q&A/panel (20 mins)", "1 standardized learning module/PDF"],
-        major: ["2 speakers", "3 learning modules", "Facilitate 1 dedicated technical workshop (90 mins)"],
-        lead: [
-          "3+ speakers",
-          "Full curriculum",
-          "Facilitate 2 technical workshops",
-          "1 C-level executive for keynote address",
-        ],
+
+export type BenefitSelectionLimits = {
+  highestImpact: "standard" | "major" | "lead" | null;
   baseCategories: number;
   bonusCategories: number;
   picksPerBaseCategory: number;
   picksPerBonusCategory: number;
   totalCategories: number;
-        standard: ["1 hour asynchronous online AMA / written feedback", "1 live event technical mentor (4-hour shift)"],
-        major: ["2 hours asynchronous feedback", "3 live event technical mentors", "2 judges for Demo Day / Pitch Competition"],
-        lead: [
-          "5 hours asynchronous feedback",
-          "5+ live event technical mentors",
-          "3 judges for Demo Day / Pitch Competition",
-          "Dedicated Scrum Master embedded per team (up to 5 teams)",
-        ],
+  totalSelections: number;
+};
+
 export const getBenefitSelectionLimits = (rolePackages: BenefitRolePackage[]): BenefitSelectionLimits => {
   if (rolePackages.length === 0) {
     return {
       highestImpact: null,
       baseCategories: 0,
-        standard: ["1 meeting room for committee planning (20 pax)"],
-        major: [
-          "2 meeting rooms for committee planning",
-          "1 mid-sized hall for workshops (100 pax)",
-          "15 sets of tables and chairs for project showcase",
-        ],
-        lead: [
-          "Unlimited meeting rooms",
-          "2 mid-sized halls for workshops",
-          "30+ sets of tables and chairs",
-          "1 premium auditorium for main event (200+ pax)",
-        ],
+      bonusCategories: 0,
+      picksPerBaseCategory: 0,
+      picksPerBonusCategory: 3,
       totalCategories: 0,
       totalSelections: 0,
     };
   }
 
-        standard: ["2 sets AV equipment (projectors, mics)", "5 heavy-duty extension cords"],
-        major: ["4 sets AV equipment", "15 heavy-duty extension cords", "1 dedicated high-speed internet router", "1 round-trip transport van (15 pax)"],
-        lead: [
-          "Full stage setup (AV)",
-          "30+ heavy-duty extension cords",
-          "Full venue network connectivity",
-          "2 round-trip transport buses (100 pax)",
-        ],
+  let highestImpact: "standard" | "major" | "lead" = "standard";
+  for (const rolePackage of rolePackages) {
+    if (rolePackage.impactLevel === "lead") {
       highestImpact = "lead";
       break;
     }
 
     if (rolePackage.impactLevel === "major") {
-        standard: ["Coffee/pastries for organizing committee (20 pax)", "20 bottled waters for speakers and VIPs"],
-        major: ["Coffee/pastries (50 pax)", "50 bottled waters", "Full meal catering for volunteers (100 pax)"],
-        lead: [
-          "Coffee/pastries (100 pax)",
-          "100+ bottled water",
-          "Full meal package for attendees (100 pax)",
-          "Exclusive VIP/speaker networking dinner (20 pax)",
-        ],
+      highestImpact = "major";
+    }
+  }
 
   const baseConfig = {
     standard: { categories: 1, picks: 3 },
     major: { categories: 2, picks: 4 },
     lead: { categories: 3, picks: 5 },
-        standard: ["50 pcs basic merch (stickers, pens, lanyards, pins)"],
-        major: [
-          "100 pcs basic merch",
-          "50 event shirts for organizing staff",
-          "50 branded attendee fashion merch (cap, tote bag, shirt)",
-        ],
-        lead: [
-          "200+ pcs basic merch",
-          "150+ branded attendee fashion merch (cap, tote bag, shirt)",
-          "5+ premium tech giveaways",
-        ],
+  }[highestImpact];
+
+  const bonusCategories = Math.floor(rolePackages.length / 3);
   const picksPerBonusCategory = 3;
 
   return {
     highestImpact,
     baseCategories: baseConfig.categories,
-        standard: ["2 social media cross-posts/blasts", "1 dedicated event photographer"],
-        major: ["4 social media cross-posts", "1 pre-event feature article", "3 dedicated event photographers"],
-        lead: [
-          "10+ social media cross-posts",
-          "3 pre-event feature articles",
-          "Full media team",
-          "Professional live-stream and aftermovie",
-        ],
+    bonusCategories,
+    picksPerBaseCategory: baseConfig.picks,
+    picksPerBonusCategory,
     totalCategories: baseConfig.categories + bonusCategories,
     totalSelections: baseConfig.categories * baseConfig.picks + bonusCategories * picksPerBonusCategory,
   };
 };
 
-        standard: ["2 social media cross-posts/blasts", "15 guaranteed registered attendees"],
-        major: ["4 social media cross-posts", "30 guaranteed registered attendees", "1 formed project teams to compete (if applicable)"],
-        lead: ["10+ social media cross-posts", "50+ guaranteed registered attendees", "3 formed project teams to compete (if applicable)"],
+export const DURATION_OPTIONS: Array<{
+  value: "event_based" | "project_based" | "term_based";
+  label: string;
 }> = [
   { value: "event_based", label: "Event-Based (one-time partnership)" },
   { value: "project_based", label: "Project-Based (multiple events/projects)" },
   { value: "term_based", label: "Term-Based (year-long partnership)" },
 ];
-        standard: ["2 direct email introductions to industry contacts"],
-        major: ["5 direct email introduction", "1 pitch meeting secured with local incubators"],
-        lead: ["10+ direct email introductions", "3 pitch meetings secured", "2 seats secured on local tech advisory boards"],
+
+export const ROLE_GUIDES: Record<
+  string,
   {
     description: string;
-    tiers: { standard: string; major: string; lead: string };
+    tiers: { standard: string[]; major: string[]; lead: string[] };
   }
 > = {
-        standard: ["Primary operational budget funding: ₱10,000 - ₱20,000"],
-        major: ["Primary operational budget funding: ₱20,001 - ₱50,000"],
-        lead: ["Primary operational budget funding: ₱50,001+"],
-      standard: "15 users (temporary software licenses / API access)",
-      major: "50 users (temporary licenses); 5 technical certification exam vouchers",
-      lead: "100+ users (temporary licenses); $2000+ cloud hosting credits for deployments; 20 technical certification exam vouchers; 15 permanent software licenses for core team",
+  "Technology Partner": {
+    description: "Provides software, API, and cloud infrastructure support.",
+    tiers: {
+      standard: ["15 users (temporary software licenses / API access)"],
+      major: ["50 users (temporary licenses)", "5 technical certification exam vouchers"],
+      lead: [
+        "100+ users (temporary licenses)",
+        "$2000+ cloud hosting credits for deployments",
+        "20 technical certification exam vouchers",
+        "15 permanent software licenses for core team",
+      ],
     },
   },
-        standard: ["₱3,000 micro-grants for student project deployments"],
-        major: ["₱10,000 micro-grants", "₱10,000 secondary cash prize pool (2nd/3rd place)"],
-        lead: [
-          "₱10,000 micro-grants",
-          "₱20,000 secondary cash prize pool",
-          "₱30,000+ grand champion seed funding / prize pool",
-          "2 guaranteed paid internships for winners",
-        ],
-      standard: "1 speaker for short Q&A/panel (20 mins); 1 standardized learning module/PDF",
-      major: "2 speakers; 3 learning modules; facilitate 1 dedicated technical workshop (90 mins)",
-      lead: "3+ speakers; full curriculum; facilitate 2 technical workshops; 1 C-level executive for keynote address",
+  "Knowledge Partner": {
+    description: "Shares industry expertise through speakers and learning modules.",
+    tiers: {
+      standard: ["1 speaker for short Q&A/panel (20 mins)", "1 standardized learning module/PDF"],
+      major: ["2 speakers", "3 learning modules", "Facilitate 1 dedicated technical workshop (90 mins)"],
+      lead: [
+        "3+ speakers",
+        "Full curriculum",
+        "Facilitate 2 technical workshops",
+        "1 C-level executive for keynote address",
+      ],
     },
   },
   "Mentorship Partner": {
     description: "Provides direct technical guidance and mentorship.",
     tiers: {
-      standard: "1 hour asynchronous online AMA/written feedback; 1 live event technical mentor (4-hour shift)",
-      major: "2 hours asynchronous feedback; 3 live event technical mentors; 2 judges for Demo Day/Pitch Competition",
-      lead: "5 hours asynchronous feedback; 5+ live event technical mentors; 3 judges for Demo Day/Pitch Competition; dedicated Scrum Master embedded per team (up to 5 teams)",
+      standard: ["1 hour asynchronous online AMA / written feedback", "1 live event technical mentor (4-hour shift)"],
+      major: ["2 hours asynchronous feedback", "3 live event technical mentors", "2 judges for Demo Day / Pitch Competition"],
+      lead: [
+        "5 hours asynchronous feedback",
+        "5+ live event technical mentors",
+        "3 judges for Demo Day / Pitch Competition",
+        "Dedicated Scrum Master embedded per team (up to 5 teams)",
+      ],
     },
   },
   "Venue Partner": {
     description: "Supplies physical event spaces.",
     tiers: {
-      standard: "1 meeting room for committee planning (20 pax)",
-      major: "2 meeting rooms for committee planning; 1 mid-sized hall for workshops (100 pax); 15 sets of tables and chairs for project showcase",
-      lead: "unlimited meeting rooms; 2 mid-sized halls for workshops; 30+ sets of tables and chairs; 1 premium auditorium for main event (200+ pax)",
+      standard: ["1 meeting room for committee planning (20 pax)"],
+      major: [
+        "2 meeting rooms for committee planning",
+        "1 mid-sized hall for workshops (100 pax)",
+        "15 sets of tables and chairs for project showcase",
+      ],
+      lead: [
+        "Unlimited meeting rooms",
+        "2 mid-sized halls for workshops",
+        "30+ sets of tables and chairs",
+        "1 premium auditorium for main event (200+ pax)",
+      ],
     },
   },
   "Logistics Partner": {
     description: "Covers event operations and transport.",
     tiers: {
-      standard: "2 sets AV equipment (projectors, mics); 5 heavy-duty extension cords; 1 dedicated high-speed internet router; 1 round-trip transport van (15 pax)",
-      major: "4 sets AV equipment; 15 heavy-duty extension cords",
-      lead: "full stage setup (AV); 30+ heavy-duty extension cords; full venue network connectivity; 2 round-trip transport buses (100 pax)",
+      standard: ["2 sets AV equipment (projectors, mics)", "5 heavy-duty extension cords"],
+      major: ["4 sets AV equipment", "15 heavy-duty extension cords", "1 dedicated high-speed internet router", "1 round-trip transport van (15 pax)"],
+      lead: [
+        "Full stage setup (AV)",
+        "30+ heavy-duty extension cords",
+        "Full venue network connectivity",
+        "2 round-trip transport buses (100 pax)",
+      ],
     },
   },
   "F&B Partner": {
     description: "Provides food and beverage support.",
     tiers: {
-      standard: "coffee/pastries for organizing committee (20 pax); 20 bottled waters for speakers and VIPs",
-      major: "coffee/pastries (50 pax); 50 bottled waters; full meal catering for attendees (100 pax)",
-      lead: "coffee/pastries (100 pax); 100+ bottled waters; full meal catering for attendees (200 pax); exclusive VIP/speaker networking dinner (20 pax)",
+      standard: ["Coffee/pastries for organizing committee (20 pax)", "20 bottled waters for speakers and VIPs"],
+      major: ["Coffee/pastries (50 pax)", "50 bottled waters", "Full meal catering for volunteers (100 pax)"],
+      lead: [
+        "Coffee/pastries (100 pax)",
+        "100+ bottled water",
+        "Full meal package for attendees (100 pax)",
+        "Exclusive VIP/speaker networking dinner (20 pax)",
+      ],
     },
   },
   "Swag Partner": {
     description: "Provides merch and recognition items.",
     tiers: {
-      standard: "50 pcs basic merch (stickers, pens, lanyards); 30 event shirts for organizing staff",
-      major: "100 pcs basic merch; 50 event shirts; 50 branded attendee tote bags; 3 custom trophies",
-      lead: "200+ pcs basic merch; 150+ branded attendee tote bags; 100+ premium tech giveaways and custom trophies",
+      standard: ["50 pcs basic merch (stickers, pens, lanyards, pins)"],
+      major: ["100 pcs basic merch", "50 event shirts for organizing staff", "50 branded attendee fashion merch (cap, tote bag, shirt)"],
+      lead: ["200+ pcs basic merch", "150+ branded attendee fashion merch (cap, tote bag, shirt)", "5+ premium tech giveaways"],
     },
   },
   "Media Partner": {
     description: "Amplifies event visibility through media coverage.",
     tiers: {
-      standard: "2 social media cross-posts/blasts",
-      major: "4 social media cross-posts; 1 pre-event feature article; 1 dedicated event photographer",
-      lead: "10+ social media cross-posts; 3 pre-event feature articles; full media team; professional live-stream and aftermovie",
+      standard: ["2 social media cross-posts/blasts", "1 dedicated event photographer"],
+      major: ["4 social media cross-posts", "1 pre-event feature article", "3 dedicated event photographers"],
+      lead: [
+        "10+ social media cross-posts",
+        "3 pre-event feature articles",
+        "Full media team",
+        "Professional live-stream and aftermovie",
+      ],
     },
   },
   "Community Partner": {
     description: "Mobilizes communities and teams.",
     tiers: {
-      standard: "digital flyers shared to 2 internal group chats; 10 guaranteed registered attendees",
-      major: "digital flyers shared to 5 internal group chats; 20 guaranteed registered attendees; 2 formed project teams to compete",
-      lead: "digital flyers shared to all channels; 50+ guaranteed registered attendees; 5 formed project teams to compete; 1 co-hosted major joint-assembly",
+      standard: ["2 social media cross-posts/blasts", "15 guaranteed registered attendees"],
+      major: ["4 social media cross-posts", "30 guaranteed registered attendees", "1 formed project teams to compete (if applicable)"],
+      lead: ["10+ social media cross-posts", "50+ guaranteed registered attendees", "3 formed project teams to compete (if applicable)"],
     },
   },
   "Ecosystem Partner": {
     description: "Connects participants with incubators and leaders.",
     tiers: {
-      standard: "2 direct email introductions to industry contacts",
-      major: "5 direct email introductions; 1 pitch meeting secured with local incubators",
-      lead: "10+ direct email introductions; 3 pitch meetings secured; integration into formal regional tech roadmap (1 document); 2 seats secured on local tech advisory boards",
+      standard: ["2 direct email introductions to industry contacts"],
+      major: ["5 direct email introduction", "1 pitch meeting secured with local incubators"],
+      lead: ["10+ direct email introductions", "3 pitch meetings secured", "2 seats secured on local tech advisory boards"],
     },
   },
   "Resource Partner": {
     description: "Provides operating support resources.",
     tiers: {
-      standard: "primary operational budget funding: ₱5,000 - ₱10,000",
-      major: "primary operational budget funding: ₱10,001 - ₱30,000",
-      lead: "primary operational budget funding: ₱30,001+",
+      standard: ["Primary operational budget funding: ₱10,000 - ₱20,000"],
+      major: ["Primary operational budget funding: ₱20,001 - ₱50,000"],
+      lead: ["Primary operational budget funding: ₱50,001+"],
     },
   },
   "Grant Partner": {
     description: "Provides grants and prize pools.",
     tiers: {
-      standard: "₱3,000 micro-grants for student project deployments",
-      major: "₱10,000 micro-grants; ₱10,000 secondary cash prize pool (2nd/3rd place)",
-      lead: "₱10,000 micro-grants; ₱20,000 secondary cash prize pool; ₱30,000+ grand champion seed funding/prize pool; 2 guaranteed paid internships for winners",
+      standard: ["₱3,000 micro-grants for student project deployments"],
+      major: ["₱10,000 micro-grants", "₱10,000 secondary cash prize pool (2nd/3rd place)"],
+      lead: [
+        "₱10,000 micro-grants",
+        "₱20,000 secondary cash prize pool",
+        "₱30,000+ grand champion seed funding / prize pool",
+        "2 guaranteed paid internships for winners",
+      ],
     },
   },
 };
