@@ -99,6 +99,7 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
   const [openPanel, setOpenPanel] = useState<"role" | "benefit" | null>("role");
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [selectedTier, setSelectedTier] = useState<"standard" | "major" | "lead">("standard");
+  const [activeBenefitCategory, setActiveBenefitCategory] = useState<string>("");
   const [qualificationMessage, setQualificationMessage] = useState<string | null>(null);
   const [isSavingQualification, setIsSavingQualification] = useState(false);
 
@@ -251,6 +252,34 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
   };
 
   const benefitLimits = getBenefitLimits();
+  const benefitGuideEntries = Object.entries(FUNCTIONAL_BENEFIT_GUIDES);
+
+  const resolveBenefitCategory = (benefit: string) => {
+    for (const [categoryName, guide] of benefitGuideEntries) {
+      if (guide.responsibilities.includes(benefit)) {
+        return categoryName;
+      }
+    }
+    return null;
+  };
+
+  const selectedBenefitCategories = Array.from(
+    new Set(
+      qualification.functionalBenefits
+        .map((benefit) => resolveBenefitCategory(benefit))
+        .filter((categoryName): categoryName is string => Boolean(categoryName)),
+    ),
+  );
+
+  const getCategoryPickLimit = (categoryName: string) => {
+    const categoryIndex = selectedBenefitCategories.indexOf(categoryName);
+    return (
+      (categoryIndex !== -1 && categoryIndex < benefitLimits.baseCategories) ||
+      (categoryIndex === -1 && selectedBenefitCategories.length < benefitLimits.baseCategories)
+        ? benefitLimits.picksPerBaseCategory
+        : benefitLimits.picksPerBonusCategory
+    );
+  };
 
   const toggleBenefitSelection = (benefit: string, category: string) => {
     setQualification((prev) => {
@@ -663,46 +692,64 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
                   <span> | Picks per Category: <strong>{benefitLimits.picksPerBaseCategory}</strong> (Bonus: {benefitLimits.picksPerBonusCategory})</span>
                 </div>
 
-                <div className="benefit-categories-grid">
-                  {Object.entries(FUNCTIONAL_BENEFIT_GUIDES).map(([catName, guide]) => {
-                    const selectedInCat = qualification.functionalBenefits.filter(b => guide.responsibilities.includes(b));
-                    const isAnySelected = selectedInCat.length > 0;
-                    
-                    const selectedCategories = Array.from(new Set(qualification.functionalBenefits.map(b => {
-                      for (const c in FUNCTIONAL_BENEFIT_GUIDES) {
-                        if (FUNCTIONAL_BENEFIT_GUIDES[c].responsibilities.includes(b)) return c;
-                      }
-                      return null;
-                    }).filter(Boolean))) as string[];
-                    
-                    const categoryIndex = selectedCategories.indexOf(catName);
-                    const limit =
-                      (categoryIndex !== -1 && categoryIndex < benefitLimits.baseCategories) ||
-                      (categoryIndex === -1 && selectedCategories.length < benefitLimits.baseCategories)
-                        ? benefitLimits.picksPerBaseCategory
-                        : benefitLimits.picksPerBonusCategory;
+                <label style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
+                  <span>Choose Benefit Package First</span>
+                  <select
+                    value={activeBenefitCategory}
+                    onChange={(event) => setActiveBenefitCategory(event.target.value)}
+                  >
+                    <option value="">Select benefit package</option>
+                    {benefitGuideEntries.map(([catName]) => {
+                      const isAlreadySelected = selectedBenefitCategories.includes(catName);
+                      const categoriesAtLimit = !isAlreadySelected && selectedBenefitCategories.length >= benefitLimits.totalCategories;
+                      const optionLimit = getCategoryPickLimit(catName);
+                      const selectedInCategory = qualification.functionalBenefits.filter((benefit) =>
+                        FUNCTIONAL_BENEFIT_GUIDES[catName]?.responsibilities.includes(benefit),
+                      ).length;
 
-                    return (
-                      <div key={catName} className={`benefit-category-card ${isAnySelected ? 'is-active' : ''}`}>
+                      return (
+                        <option key={catName} value={catName} disabled={categoriesAtLimit}>
+                          {`${catName} (${selectedInCategory}/${optionLimit})`}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+
+                {!activeBenefitCategory && (
+                  <p className="muted">Select a benefit package to view detailed benefits.</p>
+                )}
+
+                {activeBenefitCategory && FUNCTIONAL_BENEFIT_GUIDES[activeBenefitCategory] && (() => {
+                  const guide = FUNCTIONAL_BENEFIT_GUIDES[activeBenefitCategory];
+                  const selectedInCat = qualification.functionalBenefits.filter((benefit) =>
+                    guide.responsibilities.includes(benefit),
+                  );
+                  const isAnySelected = selectedInCat.length > 0;
+                  const limit = getCategoryPickLimit(activeBenefitCategory);
+
+                  return (
+                    <div className="benefit-categories-grid">
+                      <div className={`benefit-category-card ${isAnySelected ? 'is-active' : ''}`}>
                         <div className="category-header">
-                          <strong>{catName}</strong>
+                          <strong>{activeBenefitCategory}</strong>
                           <span className="count-badge">{selectedInCat.length} / {limit}</span>
                         </div>
                         <p className="muted" style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>{guide.description}</p>
-                        
+
                         <div className="benefit-options-list">
-                          {guide.responsibilities.map(resp => {
+                          {guide.responsibilities.map((resp) => {
                             const isChecked = qualification.functionalBenefits.includes(resp);
                             const isStar = resp.includes("★");
                             const isLocked = isStar && benefitLimits.highestImpact !== "lead";
-                            
+
                             return (
                               <label key={resp} className={`benefit-option-label ${isLocked ? 'is-locked' : ''} ${isChecked ? 'is-checked' : ''}`}>
-                                <input 
-                                  type="checkbox" 
+                                <input
+                                  type="checkbox"
                                   checked={isChecked}
                                   disabled={isLocked}
-                                  onChange={() => toggleBenefitSelection(resp, catName)} 
+                                  onChange={() => toggleBenefitSelection(resp, activeBenefitCategory)}
                                 />
                                 <span className={isStar ? 'star-text' : ''}>{resp}</span>
                                 {isLocked && <span className="lock-icon">🔒</span>}
@@ -711,9 +758,9 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
                           })}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
