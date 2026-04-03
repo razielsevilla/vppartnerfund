@@ -103,97 +103,97 @@ export const ROLE_GUIDES: Record<
   "Technology Partner": {
     description: "Provides software, API, and cloud infrastructure support.",
     tiers: {
-      standard: "15 Users (Temp License)",
-      major: "50 Users & 5 Exam Vouchers",
-      lead: "100+ Users, $2000+ Cloud Credits, 20 Vouchers, 15 Permanent Licenses",
+      standard: "15 users (temporary software licenses / API access)",
+      major: "50 users (temporary licenses); 5 technical certification exam vouchers",
+      lead: "100+ users (temporary licenses); $2000+ cloud hosting credits for deployments; 20 technical certification exam vouchers; 15 permanent software licenses for core team",
     },
   },
   "Knowledge Partner": {
     description: "Shares industry expertise through speakers and learning modules.",
     tiers: {
-      standard: "1 Speaker (20 mins) & 1 Learning Module",
-      major: "2 Speakers, 3 Modules, & 1 Technical Workshop (90 mins)",
-      lead: "3+ Speakers, Full Curriculum, 2 Workshops, & 1 C-Level Keynote",
+      standard: "1 speaker for short Q&A/panel (20 mins); 1 standardized learning module/PDF",
+      major: "2 speakers; 3 learning modules; facilitate 1 dedicated technical workshop (90 mins)",
+      lead: "3+ speakers; full curriculum; facilitate 2 technical workshops; 1 C-level executive for keynote address",
     },
   },
   "Mentorship Partner": {
     description: "Provides direct technical guidance and mentorship.",
     tiers: {
-      standard: "1 Hr Async Feedback & 1 Live Mentor",
-      major: "2 Hrs Async, 3 Live Mentors, & 2 Judges",
-      lead: "5 Hrs Async, 5+ Live Mentors, 3 Judges, & Dedicated Scrum Masters for up to 5 teams",
+      standard: "1 hour asynchronous online AMA/written feedback; 1 live event technical mentor (4-hour shift)",
+      major: "2 hours asynchronous feedback; 3 live event technical mentors; 2 judges for Demo Day/Pitch Competition",
+      lead: "5 hours asynchronous feedback; 5+ live event technical mentors; 3 judges for Demo Day/Pitch Competition; dedicated Scrum Master embedded per team (up to 5 teams)",
     },
   },
   "Venue Partner": {
     description: "Supplies physical event spaces.",
     tiers: {
-      standard: "1 Committee Room (20 Pax)",
-      major: "2 Rooms, 1 Workshop Hall (100 Pax), & 15 Showcase Tables",
-      lead: "Unlimited Rooms, 2 Halls, 30+ Tables, & Premium Main Auditorium (200+ Pax)",
+      standard: "1 meeting room for committee planning (20 pax)",
+      major: "2 meeting rooms for committee planning; 1 mid-sized hall for workshops (100 pax); 15 sets of tables and chairs for project showcase",
+      lead: "unlimited meeting rooms; 2 mid-sized halls for workshops; 30+ sets of tables and chairs; 1 premium auditorium for main event (200+ pax)",
     },
   },
   "Logistics Partner": {
     description: "Covers event operations and transport.",
     tiers: {
-      standard: "2 AV Sets, 5 Ext. Cords, 1 Dedicated Router, 1 Transport Van (15 Pax)",
-      major: "4 AV Sets & 15 Ext. Cords",
-      lead: "Full Stage Setup, 30+ Ext. Cords, Full Venue Network, & 2 Transport Buses (100 Pax)",
+      standard: "2 sets AV equipment (projectors, mics); 5 heavy-duty extension cords; 1 dedicated high-speed internet router; 1 round-trip transport van (15 pax)",
+      major: "4 sets AV equipment; 15 heavy-duty extension cords",
+      lead: "full stage setup (AV); 30+ heavy-duty extension cords; full venue network connectivity; 2 round-trip transport buses (100 pax)",
     },
   },
   "F&B Partner": {
     description: "Provides food and beverage support.",
     tiers: {
-      standard: "Coffee/Pastries (20 Pax) & 20 VIP Waters",
-      major: "Coffee (50 Pax), 50 Waters, & Full Meal (100 Pax)",
-      lead: "Coffee (100 Pax), 100+ Waters, Full Meal (200 Pax), & Exclusive VIP Dinner (20 Pax)",
+      standard: "coffee/pastries for organizing committee (20 pax); 20 bottled waters for speakers and VIPs",
+      major: "coffee/pastries (50 pax); 50 bottled waters; full meal catering for attendees (100 pax)",
+      lead: "coffee/pastries (100 pax); 100+ bottled waters; full meal catering for attendees (200 pax); exclusive VIP/speaker networking dinner (20 pax)",
     },
   },
   "Swag Partner": {
     description: "Provides merch and recognition items.",
     tiers: {
-      standard: "50 Basic Merch Pcs & 30 Staff Shirts",
-      major: "100 Basic Merch, 50 Shirts, 50 Tote Bags, & 3 Custom Trophies",
-      lead: "200+ Basic Merch, 150+ Tote Bags, & 100+ Premium Tech Giveaways",
+      standard: "50 pcs basic merch (stickers, pens, lanyards); 30 event shirts for organizing staff",
+      major: "100 pcs basic merch; 50 event shirts; 50 branded attendee tote bags; 3 custom trophies",
+      lead: "200+ pcs basic merch; 150+ branded attendee tote bags; 100+ premium tech giveaways and custom trophies",
     },
   },
   "Media Partner": {
     description: "Amplifies event visibility through media coverage.",
     tiers: {
-      standard: "2 Social Cross-posts",
-      major: "4 Posts, 1 Feature Article, & 1 Photographer",
-      lead: "10+ Posts, 3 Articles, Full Media Team, Live-stream, & Aftermovie",
+      standard: "2 social media cross-posts/blasts",
+      major: "4 social media cross-posts; 1 pre-event feature article; 1 dedicated event photographer",
+      lead: "10+ social media cross-posts; 3 pre-event feature articles; full media team; professional live-stream and aftermovie",
     },
   },
   "Community Partner": {
     description: "Mobilizes communities and teams.",
     tiers: {
-      standard: "Flyers in 2 Groups & 10 Guaranteed Attendees",
-      major: "Flyers in 5 Groups, 20 Attendees, & 2 Competing Teams",
-      lead: "Flyers in All Channels, 50+ Attendees, 5 Teams, & 1 Co-hosted Joint-Assembly",
+      standard: "digital flyers shared to 2 internal group chats; 10 guaranteed registered attendees",
+      major: "digital flyers shared to 5 internal group chats; 20 guaranteed registered attendees; 2 formed project teams to compete",
+      lead: "digital flyers shared to all channels; 50+ guaranteed registered attendees; 5 formed project teams to compete; 1 co-hosted major joint-assembly",
     },
   },
   "Ecosystem Partner": {
     description: "Connects participants with incubators and leaders.",
     tiers: {
-      standard: "2 Direct Industry Intros",
-      major: "5 Intros & 1 Pitch Meeting with Incubators",
-      lead: "10+ Intros, 3 Pitch Meetings, 1 Tech Roadmap Integration, & 2 Advisory Board Seats",
+      standard: "2 direct email introductions to industry contacts",
+      major: "5 direct email introductions; 1 pitch meeting secured with local incubators",
+      lead: "10+ direct email introductions; 3 pitch meetings secured; integration into formal regional tech roadmap (1 document); 2 seats secured on local tech advisory boards",
     },
   },
   "Resource Partner": {
     description: "Provides operating support resources.",
     tiers: {
-      standard: "₱5,000 - ₱10,000 Funding",
-      major: "₱10,001 - ₱30,000 Funding",
-      lead: "₱30,001+ Funding",
+      standard: "primary operational budget funding: ₱5,000 - ₱10,000",
+      major: "primary operational budget funding: ₱10,001 - ₱30,000",
+      lead: "primary operational budget funding: ₱30,001+",
     },
   },
   "Grant Partner": {
     description: "Provides grants and prize pools.",
     tiers: {
-      standard: "₱3,000 Micro-grant",
-      major: "₱10,000 Micro-grant & ₱10,000 Secondary Prize Pool",
-      lead: "₱10,000 Micro-grant, ₱20,000 Secondary Prize, ₱30,000+ Grand Champion Seed Funding, & 2 Guaranteed Paid Internships",
+      standard: "₱3,000 micro-grants for student project deployments",
+      major: "₱10,000 micro-grants; ₱10,000 secondary cash prize pool (2nd/3rd place)",
+      lead: "₱10,000 micro-grants; ₱20,000 secondary cash prize pool; ₱30,000+ grand champion seed funding/prize pool; 2 guaranteed paid internships for winners",
     },
   },
 };
