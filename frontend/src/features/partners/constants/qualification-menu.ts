@@ -14,103 +14,155 @@ export const ROLE_PACKAGE_FUNCTION_OPTIONS = [
 ];
 
 export const IMPACT_PACKAGE_OPTIONS: Array<"standard" | "major" | "lead"> = [
-  "standard",
+      tiers: { standard: string[]; major: string[]; lead: string[] };
   "major",
   "lead",
 ];
 
 export const IMPACT_LABEL: Record<"standard" | "major" | "lead", string> = {
-  standard: "Standard",
-  major: "Major",
-  lead: "Lead",
+        standard: ["15 users (temporary software licenses / API access)"],
+        major: ["50 users (temporary licenses)", "5 technical certification exam vouchers"],
+        lead: [
+          "100+ users (temporary licenses)",
+          "$2000+ cloud hosting credits for deployments",
+          "20 technical certification exam vouchers",
+          "15 permanent software licenses for core team",
+        ],
 };
 
 export type BenefitRolePackage = {
   impactLevel: "standard" | "major" | "lead";
 };
-
-export type BenefitSelectionLimits = {
-  highestImpact: "standard" | "major" | "lead" | null;
+        standard: ["1 speaker for short Q&A/panel (20 mins)", "1 standardized learning module/PDF"],
+        major: ["2 speakers", "3 learning modules", "Facilitate 1 dedicated technical workshop (90 mins)"],
+        lead: [
+          "3+ speakers",
+          "Full curriculum",
+          "Facilitate 2 technical workshops",
+          "1 C-level executive for keynote address",
+        ],
   baseCategories: number;
   bonusCategories: number;
   picksPerBaseCategory: number;
   picksPerBonusCategory: number;
   totalCategories: number;
-  totalSelections: number;
-};
-
+        standard: ["1 hour asynchronous online AMA / written feedback", "1 live event technical mentor (4-hour shift)"],
+        major: ["2 hours asynchronous feedback", "3 live event technical mentors", "2 judges for Demo Day / Pitch Competition"],
+        lead: [
+          "5 hours asynchronous feedback",
+          "5+ live event technical mentors",
+          "3 judges for Demo Day / Pitch Competition",
+          "Dedicated Scrum Master embedded per team (up to 5 teams)",
+        ],
 export const getBenefitSelectionLimits = (rolePackages: BenefitRolePackage[]): BenefitSelectionLimits => {
   if (rolePackages.length === 0) {
     return {
       highestImpact: null,
       baseCategories: 0,
-      bonusCategories: 0,
-      picksPerBaseCategory: 0,
-      picksPerBonusCategory: 3,
+        standard: ["1 meeting room for committee planning (20 pax)"],
+        major: [
+          "2 meeting rooms for committee planning",
+          "1 mid-sized hall for workshops (100 pax)",
+          "15 sets of tables and chairs for project showcase",
+        ],
+        lead: [
+          "Unlimited meeting rooms",
+          "2 mid-sized halls for workshops",
+          "30+ sets of tables and chairs",
+          "1 premium auditorium for main event (200+ pax)",
+        ],
       totalCategories: 0,
       totalSelections: 0,
     };
   }
 
-  let highestImpact: "standard" | "major" | "lead" = "standard";
-  for (const rolePackage of rolePackages) {
-    if (rolePackage.impactLevel === "lead") {
+        standard: ["2 sets AV equipment (projectors, mics)", "5 heavy-duty extension cords"],
+        major: ["4 sets AV equipment", "15 heavy-duty extension cords", "1 dedicated high-speed internet router", "1 round-trip transport van (15 pax)"],
+        lead: [
+          "Full stage setup (AV)",
+          "30+ heavy-duty extension cords",
+          "Full venue network connectivity",
+          "2 round-trip transport buses (100 pax)",
+        ],
       highestImpact = "lead";
       break;
     }
 
     if (rolePackage.impactLevel === "major") {
-      highestImpact = "major";
-    }
-  }
+        standard: ["Coffee/pastries for organizing committee (20 pax)", "20 bottled waters for speakers and VIPs"],
+        major: ["Coffee/pastries (50 pax)", "50 bottled waters", "Full meal catering for volunteers (100 pax)"],
+        lead: [
+          "Coffee/pastries (100 pax)",
+          "100+ bottled water",
+          "Full meal package for attendees (100 pax)",
+          "Exclusive VIP/speaker networking dinner (20 pax)",
+        ],
 
   const baseConfig = {
     standard: { categories: 1, picks: 3 },
     major: { categories: 2, picks: 4 },
     lead: { categories: 3, picks: 5 },
-  }[highestImpact];
-
-  const bonusCategories = Math.floor(rolePackages.length / 3);
+        standard: ["50 pcs basic merch (stickers, pens, lanyards, pins)"],
+        major: [
+          "100 pcs basic merch",
+          "50 event shirts for organizing staff",
+          "50 branded attendee fashion merch (cap, tote bag, shirt)",
+        ],
+        lead: [
+          "200+ pcs basic merch",
+          "150+ branded attendee fashion merch (cap, tote bag, shirt)",
+          "5+ premium tech giveaways",
+        ],
   const picksPerBonusCategory = 3;
 
   return {
     highestImpact,
     baseCategories: baseConfig.categories,
-    bonusCategories,
-    picksPerBaseCategory: baseConfig.picks,
-    picksPerBonusCategory,
+        standard: ["2 social media cross-posts/blasts", "1 dedicated event photographer"],
+        major: ["4 social media cross-posts", "1 pre-event feature article", "3 dedicated event photographers"],
+        lead: [
+          "10+ social media cross-posts",
+          "3 pre-event feature articles",
+          "Full media team",
+          "Professional live-stream and aftermovie",
+        ],
     totalCategories: baseConfig.categories + bonusCategories,
     totalSelections: baseConfig.categories * baseConfig.picks + bonusCategories * picksPerBonusCategory,
   };
 };
 
-export const DURATION_OPTIONS: Array<{
-  value: "event_based" | "project_based" | "term_based";
-  label: string;
+        standard: ["2 social media cross-posts/blasts", "15 guaranteed registered attendees"],
+        major: ["4 social media cross-posts", "30 guaranteed registered attendees", "1 formed project teams to compete (if applicable)"],
+        lead: ["10+ social media cross-posts", "50+ guaranteed registered attendees", "3 formed project teams to compete (if applicable)"],
 }> = [
   { value: "event_based", label: "Event-Based (one-time partnership)" },
   { value: "project_based", label: "Project-Based (multiple events/projects)" },
   { value: "term_based", label: "Term-Based (year-long partnership)" },
 ];
-
-export const ROLE_GUIDES: Record<
-  string,
+        standard: ["2 direct email introductions to industry contacts"],
+        major: ["5 direct email introduction", "1 pitch meeting secured with local incubators"],
+        lead: ["10+ direct email introductions", "3 pitch meetings secured", "2 seats secured on local tech advisory boards"],
   {
     description: string;
     tiers: { standard: string; major: string; lead: string };
   }
 > = {
-  "Technology Partner": {
-    description: "Provides software, API, and cloud infrastructure support.",
-    tiers: {
+        standard: ["Primary operational budget funding: ₱10,000 - ₱20,000"],
+        major: ["Primary operational budget funding: ₱20,001 - ₱50,000"],
+        lead: ["Primary operational budget funding: ₱50,001+"],
       standard: "15 users (temporary software licenses / API access)",
       major: "50 users (temporary licenses); 5 technical certification exam vouchers",
       lead: "100+ users (temporary licenses); $2000+ cloud hosting credits for deployments; 20 technical certification exam vouchers; 15 permanent software licenses for core team",
     },
   },
-  "Knowledge Partner": {
-    description: "Shares industry expertise through speakers and learning modules.",
-    tiers: {
+        standard: ["₱3,000 micro-grants for student project deployments"],
+        major: ["₱10,000 micro-grants", "₱10,000 secondary cash prize pool (2nd/3rd place)"],
+        lead: [
+          "₱10,000 micro-grants",
+          "₱20,000 secondary cash prize pool",
+          "₱30,000+ grand champion seed funding / prize pool",
+          "2 guaranteed paid internships for winners",
+        ],
       standard: "1 speaker for short Q&A/panel (20 mins); 1 standardized learning module/PDF",
       major: "2 speakers; 3 learning modules; facilitate 1 dedicated technical workshop (90 mins)",
       lead: "3+ speakers; full curriculum; facilitate 2 technical workshops; 1 C-level executive for keynote address",

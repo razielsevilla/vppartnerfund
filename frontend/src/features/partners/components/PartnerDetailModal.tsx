@@ -538,7 +538,13 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
                         className={`tier-cell ${selectedTier === 'standard' ? 'is-selected' : ''}`}
                         onClick={() => setSelectedTier('standard')}
                       >
-                        <div className="tier-content">{ROLE_GUIDES[selectedRole].tiers.standard}</div>
+                        <div className="tier-content">
+                          <ul>
+                            {ROLE_GUIDES[selectedRole].tiers.standard.map((item) => (
+                              <li key={`selected-role:${selectedRole}:standard:${item}`}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
                         <button 
                           className={`tier-select-btn ${selectedTier === 'standard' ? 'active' : ''}`}
                           onClick={(e) => { e.stopPropagation(); setSelectedTier('standard'); }}
@@ -550,7 +556,13 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
                         className={`tier-cell ${selectedTier === 'major' ? 'is-selected' : ''}`}
                         onClick={() => setSelectedTier('major')}
                       >
-                        <div className="tier-content">{ROLE_GUIDES[selectedRole].tiers.major}</div>
+                        <div className="tier-content">
+                          <ul>
+                            {ROLE_GUIDES[selectedRole].tiers.major.map((item) => (
+                              <li key={`selected-role:${selectedRole}:major:${item}`}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
                         <button 
                           className={`tier-select-btn ${selectedTier === 'major' ? 'active' : ''}`}
                           onClick={(e) => { e.stopPropagation(); setSelectedTier('major'); }}
@@ -562,7 +574,13 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
                         className={`tier-cell ${selectedTier === 'lead' ? 'is-selected' : ''}`}
                         onClick={() => setSelectedTier('lead')}
                       >
-                        <div className="tier-content">{ROLE_GUIDES[selectedRole].tiers.lead}</div>
+                        <div className="tier-content">
+                          <ul>
+                            {ROLE_GUIDES[selectedRole].tiers.lead.map((item) => (
+                              <li key={`selected-role:${selectedRole}:lead:${item}`}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
                         <button 
                           className={`tier-select-btn ${selectedTier === 'lead' ? 'active' : ''}`}
                           onClick={(e) => { e.stopPropagation(); setSelectedTier('lead'); }}
@@ -604,7 +622,14 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
                         />
                       </label>
                     ) : (
-                      <p>{`Fixed commitment: ${ROLE_GUIDES[pkg.functionalRole]?.tiers[pkg.impactLevel] || "Defined in role guide"}`}</p>
+                      <div>
+                        <p>Fixed commitment:</p>
+                        <ul>
+                          {(ROLE_GUIDES[pkg.functionalRole]?.tiers[pkg.impactLevel] || ["Defined in role guide"]).map((item) => (
+                            <li key={`${pkg.functionalRole}:${pkg.impactLevel}:${item}`}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                     <button className="secondary-btn" onClick={() => removeRolePackage(index)}>
                       Remove

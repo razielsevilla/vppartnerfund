@@ -932,9 +932,24 @@ export const PartnerDetailPage = () => {
                           <strong>{role}</strong>
                         </div>
                         <p>{roleGuide.description}</p>
-                        <p>{`Standard: ${roleGuide.tiers.standard}`}</p>
-                        <p>{`Major: ${roleGuide.tiers.major}`}</p>
-                        <p>{`Lead (Negotiable): ${roleGuide.tiers.lead}`}</p>
+                        <p>Standard:</p>
+                        <ul>
+                          {roleGuide.tiers.standard.map((item) => (
+                            <li key={`role-guide:${role}:standard:${item}`}>{item}</li>
+                          ))}
+                        </ul>
+                        <p>Major:</p>
+                        <ul>
+                          {roleGuide.tiers.major.map((item) => (
+                            <li key={`role-guide:${role}:major:${item}`}>{item}</li>
+                          ))}
+                        </ul>
+                        <p>Lead (Negotiable):</p>
+                        <ul>
+                          {roleGuide.tiers.lead.map((item) => (
+                            <li key={`role-guide:${role}:lead:${item}`}>{item}</li>
+                          ))}
+                        </ul>
                       </article>
                     );
                   })}
