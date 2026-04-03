@@ -37,7 +37,8 @@ import {
   WorkflowTransitionError,
 } from "../services/partners-api";
 import {
-  BASELINE_BENEFIT,
+  BASELINE_BENEFIT_COMPLIANCE_NOTE,
+  BASELINE_BENEFITS_BY_TIER,
   DURATION_OPTIONS,
   FUNCTIONAL_BENEFIT_GUIDES,
   getBenefitSelectionLimits,
@@ -252,6 +253,8 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
   };
 
   const benefitLimits = getBenefitLimits();
+  const baselineTier = benefitLimits.highestImpact || "standard";
+  const baselineBenefit = BASELINE_BENEFITS_BY_TIER[baselineTier];
   const benefitGuideEntries = Object.entries(FUNCTIONAL_BENEFIT_GUIDES);
 
   const resolveBenefitCategory = (benefit: string) => {
@@ -677,10 +680,14 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
           </div>
           <div className="sliding-panel-content">
             <div className="baseline-benefit-box">
-              <h4>{BASELINE_BENEFIT.name}</h4>
+              <h4>{baselineBenefit.name}</h4>
+              <p className="muted" style={{ marginBottom: "0.5rem" }}>
+                Baseline benefits automatically use the highest impact tier across selected role packages.
+              </p>
               <ul className="baseline-list">
-                {BASELINE_BENEFIT.responsibilities.map(r => <li key={r}>{r}</li>)}
+                {baselineBenefit.responsibilities.map((r) => <li key={r}>{r}</li>)}
               </ul>
+              <p className="muted" style={{ marginTop: "0.75rem" }}>{BASELINE_BENEFIT_COMPLIANCE_NOTE}</p>
             </div>
 
             {qualification.rolePackages.length === 0 ? (
@@ -777,7 +784,7 @@ export const PartnerDetailModal = ({ partnerId, onClose }: PartnerDetailModalPro
         </div>
         
         <p style={{ marginTop: '1rem' }}><strong>Benefit Selections:</strong></p>
-        <p className="muted" style={{ fontSize: '0.85rem' }}>+ {BASELINE_BENEFIT.name}</p>
+        <p className="muted" style={{ fontSize: '0.85rem' }}>{`+ ${baselineBenefit.name} (auto-applied by highest impact tier)`}</p>
         <div className="tags-list">
           {qualification.functionalBenefits.map((benefit, index) => (
             <span key={index} className="tag tag-benefit">{benefit}</span>

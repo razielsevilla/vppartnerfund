@@ -242,14 +242,40 @@ export const ROLE_GUIDES: Record<
   },
 };
 
-export const BASELINE_BENEFIT = {
-  name: "Baseline Benefit (Always Included)",
-  responsibilities: [
-    "Logo Placement: A small logo featured on the official event website and physical tarpaulin.",
-    "Social Media Mention: Inclusion in 1 grouped 'Thank You' sponsor post.",
-    "Event Access: 1 VIP Access Pass for a company representative.",
-    "Official Recognition: A digital and physical Certificate of Partnership.",
-  ],
+export const BASELINE_BENEFIT_COMPLIANCE_NOTE =
+  "All physical items or funding must be secured 14 days before the event, and digital access must be granted 7 days before the event.";
+
+export const BASELINE_BENEFITS_BY_TIER: Record<
+  "standard" | "major" | "lead",
+  { name: string; responsibilities: string[] }
+> = {
+  standard: {
+    name: "Standard Tier Baseline",
+    responsibilities: [
+      "Logo Placement: Small logo featured on the official event website and the physical sponsor tarpaulin.",
+      "Social Media Mention: Inclusion in 1 grouped 'Thank You' sponsor post alongside other standard partners.",
+      "Event Access: 1 VIP Access Pass for a company representative.",
+      "Official Recognition: Digital and physical Certificate of Partnership.",
+    ],
+  },
+  major: {
+    name: "Major Tier Baseline",
+    responsibilities: [
+      "Logo Placement: Medium logo featured on the official event website, physical sponsor tarpaulin, and digital transition slides between segments.",
+      "Social Media Mention: 1 Dedicated 'Thank You' sponsor post exclusively highlighting the partner's company and contribution.",
+      "Event Access: 3 VIP Access Passes for company representatives.",
+      "Official Recognition: Premium framed physical Certificate of Partnership.",
+    ],
+  },
+  lead: {
+    name: "Lead Tier Baseline",
+    responsibilities: [
+      "Logo Placement: Large, premium logo placement on the event website, main stage backdrop/tarpaulin, and prominent placement on livestream overlays.",
+      "Social Media Mention: 1 Dedicated 'Thank You' post and a special verbal acknowledgment by the event host during opening or closing remarks.",
+      "Event Access: 5 VIP Access Passes featuring reserved front-row seating.",
+      "Official Recognition: Premium glass plaque or trophy of partnership, officially presented on stage.",
+    ],
+  },
 };
 
 export const FUNCTIONAL_BENEFIT_GUIDES: Record<string, { description: string; responsibilities: string[] }> = {
