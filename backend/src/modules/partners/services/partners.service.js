@@ -91,9 +91,9 @@ function getBenefitSelectionLimits(rolePackages) {
   }
 
   const baseConfig = {
-    standard: { categories: 1, picks: 3 },
-    major: { categories: 2, picks: 4 },
-    lead: { categories: 3, picks: 5 },
+    standard: { categories: 1, picks: 2 },
+    major: { categories: 2, picks: 3 },
+    lead: { categories: 3, picks: 4 },
   }[highestImpact];
 
   const bonusCategories = Math.floor(rolePackages.length / 3);

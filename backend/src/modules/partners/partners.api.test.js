@@ -538,7 +538,7 @@ test("qualification mapping persists and rehydrates on reload", async () => {
   assert.ok(reload.body.qualification.confirmedValuePropositions.includes("Research Collaboration"));
 });
 
-test("major role packages allow eight functional benefits", async () => {
+test("major role packages allow six functional benefits", async () => {
   const createResponse = await agent.post("/api/partners").send({
     organizationName: "Package Menu Partner",
     organizationType: "Tech Corporate",
@@ -561,17 +561,15 @@ test("major role packages allow eight functional benefits", async () => {
       "Targeted Community Exposure and Media Amplification",
       "User Onboarding and Technical Testing Grounds",
       "CSR Fulfillment and Industry-Academe Bridging",
-      "Physical Venue Traffic",
-      "Policy Implementation and Economic Development Support",
     ],
   });
 
   assert.equal(saveResponse.status, 200);
   assert.equal(saveResponse.body.qualification.rolePackages.length, 1);
-  assert.equal(saveResponse.body.qualification.functionalBenefits.length, 8);
+  assert.equal(saveResponse.body.qualification.functionalBenefits.length, 6);
 });
 
-test("major role packages reject more than eight functional benefits", async () => {
+test("major role packages reject more than six functional benefits", async () => {
   const createResponse = await agent.post("/api/partners").send({
     organizationName: "Package Limit Partner",
     organizationType: "Tech Corporate",
@@ -595,8 +593,6 @@ test("major role packages reject more than eight functional benefits", async () 
       "User Onboarding and Technical Testing Grounds",
       "CSR Fulfillment and Industry-Academe Bridging",
       "Physical Venue Traffic",
-      "Policy Implementation and Economic Development Support",
-      "Up-Skilling Opportunities",
     ],
   });
 
