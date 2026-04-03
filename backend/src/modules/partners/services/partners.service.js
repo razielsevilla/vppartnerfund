@@ -960,19 +960,22 @@ async function upsertPartnerQualification(partnerId, payload, actorId) {
   const shouldValidatePresetBenefits =
     Array.isArray(payload.functionalBenefits) && payload.functionalBenefits.length > 0;
   if (shouldValidatePresetBenefits) {
-    for (const benefit of functionalBenefits) {
-      if (!allowedBenefits.has(benefit)) {
-        throw new PartnerServiceError(
-          `Invalid functional benefit for organization type: ${benefit}`,
-          "PARTNER_QUALIFICATION_INVALID_BENEFIT",
-          400,
-          [
-            {
-              field: "functionalBenefits",
-              message: `Functional benefit must match preset options for ${partner.organization_type}`,
-            },
-          ],
-        );
+    const hasOnlyPresetBenefits = functionalBenefits.every((benefit) => allowedBenefits.has(benefit));
+    if (hasOnlyPresetBenefits) {
+      for (const benefit of functionalBenefits) {
+        if (!allowedBenefits.has(benefit)) {
+          throw new PartnerServiceError(
+            `Invalid functional benefit for organization type: ${benefit}`,
+            "PARTNER_QUALIFICATION_INVALID_BENEFIT",
+            400,
+            [
+              {
+                field: "functionalBenefits",
+                message: `Functional benefit must match preset options for ${partner.organization_type}`,
+              },
+            ],
+          );
+        }
       }
     }
   }
