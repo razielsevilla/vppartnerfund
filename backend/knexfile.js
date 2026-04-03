@@ -19,6 +19,13 @@ function productionConfig() {
       filename: process.env.SQLITE_DB_PATH || path.join(__dirname, 'prod.db')
     },
     useNullAsDefault: true,
+    pool: {
+      afterCreate: (conn, cb) => {
+        conn.pragma('journal_mode = WAL');
+        conn.pragma('synchronous = NORMAL');
+        cb();
+      }
+    },
     migrations: {
       directory: path.join(__dirname, 'src/migrations')
     }
